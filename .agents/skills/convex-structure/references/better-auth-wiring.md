@@ -15,7 +15,8 @@ pnpm add better-auth@~1.6.15   # EXACT-RANGE PIN — adapter lags Better Auth ma
 ## Secrets — Convex env, never Next env
 
 ```bash
-npx convex env set BETTER_AUTH_SECRET=$(openssl rand -base64 32)
+pnpm secret                            # prints one random 32-byte base64 value
+npx convex env set BETTER_AUTH_SECRET <paste the printed value>
 npx convex env set SITE_URL http://localhost:3000
 ```
 

@@ -33,6 +33,32 @@ shadcn/ui · MagicUI · Zustand 5 · pnpm.
 Version pins live in `skills.lock.json`. Do not hand-edit versions — run the
 `upstream-sync` skill.
 
+## Commands
+
+**Node is the only runtime this repo assumes.** Every ShipKit operation is a Node script
+in `scripts/` behind a `pnpm` name, so it behaves identically on macOS, Linux and
+Windows. The buyer may be on any of the three.
+
+| Command | Does |
+| --- | --- |
+| `pnpm health` | machine-checkable half of `setup-health` — pins, SSOT, tokens, env leaks |
+| `pnpm setup:env` | create `.env.local` from `.env.example` |
+| `pnpm link:skills` | make `.claude/skills` resolve to `.agents/skills` (junction on Windows) |
+| `pnpm sync:mcp` · `pnpm check:mcp` | write / verify the `.cursor/mcp.json` mirror |
+| `pnpm secret` | print one random base64 secret |
+
+`pnpm install` runs `link:skills` and `sync:mcp` through `postinstall`.
+
+**Never write `cp`, `ln`, `readlink`, `grep`, `rm -rf`, `mkdir -p`, `chmod`, `openssl`,
+or `$(...)` into a script, a skill, a doc, or a reply.** None of them exist in Windows
+cmd or PowerShell, and a command that silently fails there is worse than no command.
+Need something new that a shell would have done? Add a Node script to `scripts/` and give
+it a `pnpm` name. The full substitution table is in
+`.agents/skills/setup-health/references/platform-notes.md`.
+
+`node`, `npx`, `pnpm`, `git` and the Convex CLI are identical everywhere and safe to
+write literally.
+
 ## Skills
 
 | Skill | Use it when |
@@ -156,5 +182,5 @@ Full reasoning: `.agents/skills/frontend-security/SKILL.md`.
 
 ## Before you say you are done
 
-`pnpm build` passes, and `setup-health` reports HEALTHY or DEGRADED with known
-fallbacks. Nothing else counts as verification.
+`pnpm build` passes, `pnpm health` reports HEALTHY or DEGRADED, and `setup-health`
+reports the same with known fallbacks. Nothing else counts as verification.

@@ -59,8 +59,16 @@ Print a drift table:
 
 Then a changelog block suitable for pasting into the bundle's release notes.
 
-Finish by running the `setup-health` skill. A sync that leaves the project broken is
-worse than no sync at all, and the health check is the proof it did not.
+Finish by running `pnpm health`, then the `setup-health` skill. A sync that leaves the
+project broken is worse than no sync at all, and the health check is the proof it did
+not.
+
+## 6. Scripts
+
+`scripts/` is the cross-platform layer — it is what lets the bundle work on Windows.
+Anything you add there must stay pure Node: no shelling out to `cp`, `ln`, `grep` or
+`openssl`, and no assumption of a POSIX shell. Rules and the substitution table:
+`.agents/skills/setup-health/references/platform-notes.md`.
 
 ## Cadence
 

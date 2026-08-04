@@ -6,7 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "node scripts/link-skills.mjs --soft && node scripts/sync-mcp.mjs --soft",
+    "setup:env": "node scripts/init-env.mjs",
+    "link:skills": "node scripts/link-skills.mjs",
+    "sync:mcp": "node scripts/sync-mcp.mjs",
+    "check:mcp": "node scripts/sync-mcp.mjs --check",
+    "secret": "node scripts/gen-secret.mjs",
+    "health": "node scripts/health.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

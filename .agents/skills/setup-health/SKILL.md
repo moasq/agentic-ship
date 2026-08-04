@@ -1,6 +1,6 @@
 ---
 name: setup-health
-description: Verify every ShipKit connection — MCP servers, registries, version pins, design tokens, fonts, env hygiene — and print a health table with a fallback for every failure. Run after install, after changing .mcp.json, or whenever generation starts misbehaving.
+description: Verify every ShipKit connection — MCP servers, registries, version pins, design tokens, fonts, env hygiene — and print a health table with a fallback for every failure. Starts with `pnpm health`, which runs identically on macOS, Linux and Windows. Run after install, after changing .mcp.json, or whenever generation starts misbehaving.
 ---
 
 # ShipKit Health Check
@@ -9,24 +9,44 @@ Run **every** check. Never stop at the first failure — collect all results, th
 one table at the end. A failed connection must always come with a fallback, because the
 buyer must never be stranded by someone else's outage.
 
-## 1. Toolchain and version pins
+## 0. Run the machine checks first
 
-- `node -v` → need >= 20. FAIL → install via mise or nvm.
-- `pnpm -v` → need >= 9. FAIL → `corepack enable`.
-- Compare `package.json` majors against `skills.lock.json` → `pins`:
+```bash
+pnpm health
+```
+
+That one command covers sections 1, 2, 5 and 6 below and prints them in the output
+format at the bottom of this file. It is a Node script, so it behaves identically on
+macOS, Linux and Windows.
+
+**Never substitute a shell command for it.** `readlink`, `grep`, `cp` and `openssl` do
+not exist on a stock Windows machine, and a check that silently no-ops there is worse
+than no check. Sections 1, 2, 5 and 6 document what `pnpm health` verifies, so you can
+read a failure without reading the script. The command table for every platform:
+`references/platform-notes.md`.
+
+Sections 3, 4, 7 and 8 need judgment or a network, so you run them yourself.
+
+## 1. Toolchain and version pins — `pnpm health`
+
+- Node >= 20. FAIL → install via mise, nvm, fnm, or nvm-windows.
+- pnpm >= 9. FAIL → `corepack enable`.
+- `package.json` majors against `skills.lock.json` → `pins`:
   `next 16.x` · `react 19.x` · `tailwindcss 4.x` · `zustand 5.x`
   Drift → run the `upstream-sync` skill. Do not hand-edit versions.
-- `tailwind.config.js` or `tailwind.config.ts` must **not** exist. Tailwind v4 is
-  CSS-first; a config file is a training-data fossil. Found → flag it and let the
-  `ui-system` skill migrate its contents into the `@theme` block in `globals.css`.
+- `tailwind.config.*` must **not** exist. Tailwind v4 is CSS-first; a config file is a
+  training-data fossil. Found → let the `ui-system` skill migrate its contents into the
+  `@theme` block in `globals.css`.
 
-## 2. Single source of truth
+## 2. Single source of truth — `pnpm health`
 
-- `CLAUDE.md` must contain exactly `@AGENTS.md` (the import pattern Next.js itself
-  ships), or be a symlink resolving to `AGENTS.md`. FAIL → restore it; never let the
-  two files hold separate copies of the rules.
-- `.claude/skills` must resolve to `../.agents/skills`.
-  Check with `readlink .claude/skills`. FAIL → `ln -s ../.agents/skills .claude/skills`.
+- `CLAUDE.md` contains exactly `@AGENTS.md` (the import pattern Next.js itself ships).
+  FAIL → restore it; never let the two files hold separate copies of the rules.
+- `.claude/skills` resolves to `.agents/skills`. FAIL → `pnpm link:skills`.
+  On Windows this is created as a **directory junction**, not a symlink — junctions need
+  no admin rights. A `git clone` there can also leave a plain text file where the link
+  should be; `pnpm link:skills` detects that exact case and repairs it. Why it happens:
+  `references/platform-notes.md`.
 - `AGENTS.md` still contains the ShipKit rules block **and** the Next.js rules block.
 
 ## 3. MCP servers
@@ -50,11 +70,13 @@ Missing key or 401 → report **WARN, not FAIL**. It is optional by design.
 Per-connection detail — probes, failure meanings, upstream links:
 `references/connections.md`.
 
-**Cross-tool mirror check:** `.cursor/mcp.json` must contain the same servers as
-`.mcp.json` (it is a generated mirror for Cursor — same `mcpServers` shape). Drift →
-regenerate the mirror from `.mcp.json`; never edit the mirror directly. Codex uses a
-global TOML instead — snippet and the full per-tool matrix in
-`references/agent-compatibility.md`.
+**Cross-tool mirror check:** `pnpm check:mcp` — `.cursor/mcp.json` must be byte-identical
+to `.mcp.json` (it is a generated mirror for Cursor, same `mcpServers` shape). Drift →
+`pnpm sync:mcp`; never edit the mirror directly. Codex uses a global TOML instead —
+snippet and the full per-tool matrix in `references/agent-compatibility.md`.
+
+**On Windows**, a server that is listed but never connects is usually the `npx` launcher,
+not the server. Fix and caveats: `references/platform-notes.md`.
 
 ## 4. Registries
 
@@ -63,22 +85,28 @@ global TOML instead — snippet and the full per-tool matrix in
 - FAIL → report it and stop using that registry. **Never** silently hand-write a
   substitute component: that is exactly how a bundle drifts away from upstream.
 
-## 5. Design system
+## 5. Design system — `pnpm health`
 
 - `src/app/globals.css` contains the `@theme` block and the ShipKit token layer.
-- Fonts: `src/app/layout.tsx` loads the project faces through `next/font`.
-  Banned as primary faces — Inter, Geist, Space Grotesk, Poppins. If one of these is
-  the body or display face, flag it; that is the single loudest "AI generated this
-  site" signal there is.
-- No raw hex values or Tailwind arbitrary values (`text-[#fff]`) in `src/components`
-  or `src/app`. Grep for them. Found → they must become tokens.
+- Fonts: `src/app/layout.tsx` loads the project faces through `next/font`. Banned as
+  primary faces — Inter, Geist, Space Grotesk, Poppins. Only what is actually **loaded**
+  counts; naming one in a comment is not a violation. A banned face is the single
+  loudest "AI generated this site" signal there is.
+- No raw hex values or Tailwind arbitrary values (`text-[#fff]`) in `src/` or `content/`,
+  outside vendor-owned `components/ui/`. Found → they must become tokens.
 
-## 6. Environment hygiene (frontend)
+Then judge by eye what a script cannot: does the page look like every other AI-built
+site? That question belongs to the `ui-system` skill.
 
-- `.env.local` exists (copy from `.env.example` if not).
+## 6. Environment hygiene (frontend) — `pnpm health`
+
+- `.env.local` exists. Missing → `pnpm setup:env`.
 - `.env*` is gitignored, `.env.example` is not.
-- Grep client components for `process.env`: only `NEXT_PUBLIC_*` may appear there.
-  Anything else is a leaked secret — treat as CRITICAL.
+- Client components (`"use client"`) may reference only `NEXT_PUBLIC_*` under
+  `process.env`. Anything else is a leaked secret — CRITICAL.
+
+Run separately, because it needs the network:
+
 - `pnpm audit --prod` reports no high or critical advisories.
 
 ## 7. Convex backend
@@ -133,6 +161,14 @@ it with a cheap read (list tables).
 ## 8. Build proof
 
 - `pnpm build` completes. This is the only check that proves the others were real.
+
+## References
+
+- `references/platform-notes.md` — **read before writing any command.** macOS / Linux /
+  Windows differences, and the one-to-one table of what to write instead of `cp`, `ln`,
+  `readlink`, `grep` and `openssl`.
+- `references/connections.md` — per-connection probes, failure meanings, fallbacks.
+- `references/agent-compatibility.md` — per-tool matrix, Codex TOML, plugin equivalents.
 
 ## Output format
 

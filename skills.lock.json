@@ -1,7 +1,7 @@
 {
   "$comment": "Provenance manifest. Nothing enters this bundle without an entry. Run the upstream-sync skill monthly.",
   "bundleVersion": "0.1.0",
-  "lastSync": "2026-08-03",
+  "lastSync": "2026-08-04",
   "skills": [
     { "name": "setup-health",      "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
     { "name": "ui-system",         "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
@@ -78,13 +78,32 @@
   "registries": [
     { "name": "@magicui", "url": "https://magicui.design/r/{name}.json", "verified": "2026-08-03" }
   ],
+  "scripts": {
+    "$comment": "Cross-platform mechanism. Node is the only runtime the bundle assumes, so every operation is a Node script behind a pnpm name and runs identically on macOS, Linux and Windows. Rationale and the full substitution table: .agents/skills/setup-health/references/platform-notes.md",
+    "added": "2026-08-04",
+    "entries": [
+      { "name": "pnpm health", "file": "scripts/health.mjs", "replaces": "grep -r, readlink, and the shell half of setup-health" },
+      { "name": "pnpm setup:env", "file": "scripts/init-env.mjs", "replaces": "cp .env.example .env.local" },
+      { "name": "pnpm link:skills", "file": "scripts/link-skills.mjs", "replaces": "ln -s ../.agents/skills .claude/skills", "note": "Windows: creates a directory JUNCTION (no admin needed) and repairs the plain-text stub that git writes when core.symlinks=false. Last-resort fallback is a copy plus a .claude/.skills-is-a-copy marker, reported as WARN every run." },
+      { "name": "pnpm sync:mcp / check:mcp", "file": "scripts/sync-mcp.mjs", "replaces": "cp .mcp.json .cursor/mcp.json" },
+      { "name": "pnpm secret", "file": "scripts/gen-secret.mjs", "replaces": "openssl rand -base64 32" }
+    ],
+    "postinstall": "link-skills --soft && sync-mcp --soft — repairs both mirrors on pnpm install, never aborts the install"
+  },
   "mirrors": [
     {
       "path": ".cursor/mcp.json",
       "generatedFrom": ".mcp.json",
       "for": "Cursor (project-level MCP, same mcpServers shape)",
-      "rule": "Never edited directly. setup-health fails on drift.",
+      "rule": "Never edited directly. Byte-identical on purpose so drift detection is a string compare on every platform. Regenerate with `pnpm sync:mcp`; `pnpm check:mcp` and setup-health fail on drift.",
       "verified": "2026-08-03"
+    },
+    {
+      "path": ".claude/skills",
+      "generatedFrom": ".agents/skills",
+      "for": "Claude Code skill discovery",
+      "rule": "Committed as a git symlink (mode 120000) so macOS and Linux clones work with zero steps. Windows clones without symlink support get a text stub instead; `pnpm link:skills` detects and repairs it, and postinstall runs it automatically.",
+      "verified": "2026-08-04"
     },
     {
       "path": ".agents/skills/setup-health/references/agent-compatibility.md",

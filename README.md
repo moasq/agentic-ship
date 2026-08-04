@@ -33,12 +33,39 @@ shadcn/ui · MagicUI · Zustand 5 · pnpm.
 
 ```bash
 pnpm install
-cp .env.example .env.local
+pnpm setup:env
 pnpm dev
 ```
 
-Then, in your coding agent, run the `setup-health` skill. It checks every connection
-and prints a fallback for anything that fails.
+Then check the setup:
+
+```bash
+pnpm health
+```
+
+Then, in your coding agent, run the `setup-health` skill. `pnpm health` covers what a
+script can prove; the skill adds the live MCP probes, the registry checks and the build.
+Both print a fallback for anything that fails.
+
+## macOS, Linux, Windows
+
+Every ShipKit command is a Node script behind a `pnpm` name, so all of them run the same
+on all three. No WSL, no Git Bash, no admin rights, no OpenSSL.
+
+| Command | Replaces |
+| --- | --- |
+| `pnpm setup:env` | `cp .env.example .env.local` |
+| `pnpm link:skills` | `ln -s ../.agents/skills .claude/skills` |
+| `pnpm sync:mcp` · `pnpm check:mcp` | `cp .mcp.json .cursor/mcp.json` |
+| `pnpm secret` | `openssl rand -base64 32` |
+| `pnpm health` | a pile of `grep -r` and `readlink` |
+
+`pnpm install` runs `link:skills` and `sync:mcp` for you. The first matters more than it
+looks: `.claude/skills` is a symlink, and a Windows `git clone` that cannot create
+symlinks writes a **plain text file containing the path instead** — no error, skills
+silently gone. The script detects that exact state and repairs it with a directory
+junction, which needs no admin rights. Details:
+`.agents/skills/setup-health/references/platform-notes.md`.
 
 ## Works with any agent
 
@@ -149,7 +176,8 @@ login, which is yours to do:
 pnpm add convex@latest @convex-dev/better-auth
 pnpm add better-auth@~1.6.15          # exact-range pin: the adapter lags majors
 npx convex dev                         # opens a browser, creates/links the project
-npx convex env set BETTER_AUTH_SECRET=$(openssl rand -base64 32)
+pnpm secret                            # prints a random secret — paste it below
+npx convex env set BETTER_AUTH_SECRET <paste>
 npx convex env set SITE_URL http://localhost:3000
 ```
 

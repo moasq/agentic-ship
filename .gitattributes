@@ -1,0 +1,16 @@
+# Normalize line endings. Without this, Windows checkouts get CRLF and the
+# byte-comparison between .mcp.json and its .cursor/mcp.json mirror fails for no
+# real reason. See .agents/skills/setup-health/references/platform-notes.md
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
