@@ -76,9 +76,31 @@ const steps = [
   {
     title: "Stripe webhook + price",
     done: false,
-    verifyInstead: "a test checkout flips /billing to `pro` with no reload",
+    verifyInstead: "a test checkout flips api.billing.getEntitlement with no reload",
     command: "stripe listen --forward-to <deployment>.convex.site/stripe/webhook   ·   create a price, then: npx convex env set STRIPE_PRICE_PRO price_...",
     note: "the printed whsec_ is the STRIPE_WEBHOOK_SECRET above. In prod: add the convex.site URL in the Stripe dashboard instead. Fulfillment rides the webhook, never the redirect.",
+  },
+  {
+    title: "Email — Resend",
+    done: false,
+    verifyInstead: "npx convex env list  →  RESEND_API_KEY present; a signup email appears in the component's deliveryEvents table",
+    human: true,
+    command: "create a Resend account, copy the API key, then: npx convex env set RESEND_API_KEY re_...   ·   add a webhook at <deployment>.convex.site/resend-webhook (all email.* events), then: npx convex env set RESEND_WEBHOOK_SECRET whsec_...",
+    note: "convex/email.ts stays in testMode, so only Resend's test inboxes (delivered@resend.dev) can receive mail — a mistake cannot reach a real person. Going live is a deliberate 3-step flip, documented in references/email-resend.md.",
+  },
+  {
+    title: "Analytics — PostHog",
+    done: Boolean(envHas("NEXT_PUBLIC_POSTHOG_KEY")),
+    command: "create a PostHog project, then put NEXT_PUBLIC_POSTHOG_KEY=phc_... in .env.local",
+    note: "the phc_ project key is public by design and belongs in .env.local. A phx_ personal key is a full-access credential and must never enter this repo — pnpm health treats one as CRITICAL. Events route through /ingest on your own origin, so the CSP stays closed.",
+  },
+  {
+    title: "Deploy — Render",
+    done: false,
+    verifyInstead: "the prod URL serves, and <prod-deployment>.convex.site/stripe/webhook is reachable",
+    human: true,
+    command: "connect the repo at render.com — it detects render.yaml — then set CONVEX_DEPLOY_KEY (Convex dashboard → prod → Deploy Keys) and NEXT_PUBLIC_POSTHOG_KEY in Render",
+    note: "render.yaml is the whole topology, committed. The build runs `npx convex deploy --cmd 'pnpm build'` so backend and frontend ship together. Backend secrets live in the PROD Convex deployment's env — Render never sees them. Move SITE_URL and the Stripe/Resend webhook URLs to prod values: references/deploy-render.md.",
   },
 ];
 

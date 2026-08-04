@@ -176,7 +176,15 @@ if (!existsSync(join(root, "convex", "schema.ts"))) {
 
   // Action secrets belong in Convex env. Finding one in .env.local means it is one
   // `git add` away from being public.
-  const misplaced = ["BETTER_AUTH_SECRET", "CONVEX_DEPLOY_KEY", "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRICE_\\w+"].filter((k) => envHas(k));
+  const misplaced = [
+    "BETTER_AUTH_SECRET",
+    "CONVEX_DEPLOY_KEY",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "STRIPE_PRICE_\\w+",
+    "RESEND_API_KEY",
+    "RESEND_WEBHOOK_SECRET",
+  ].filter((k) => envHas(k));
   const misplacedNames = misplaced.map((k) => k.replace("\\w+", "*"));
   add("no backend secrets in .env.local", misplaced.length ? "CRITICAL" : "PASS", misplaced.length ? `${misplacedNames.join(", ")} must live in Convex env — \`npx convex env set\` — not in .env.local` : "");
 
@@ -187,9 +195,63 @@ if (!existsSync(join(root, "convex", "schema.ts"))) {
   const authRoute = existsSync(join(root, "src", "app", "api", "auth", "[...all]", "route.ts"));
   const authWired = existsSync(join(root, "convex", "auth.ts"));
   if (authWired) add("better auth proxy route", authRoute ? "PASS" : "CRITICAL", authRoute ? "" : "convex/auth.ts exists but src/app/api/auth/[...all]/route.ts does not — every sign-in fails with no useful error");
+
+  /* email — the testMode / requireEmailVerification interlock */
+  const emailSrc = read("convex/email.ts") ?? "";
+  const authSrc = read("convex/auth.ts") ?? "";
+  if (emailSrc) {
+    const testMode = /testMode:\s*true/.test(emailSrc);
+    const requireVerify = /requireEmailVerification:\s*true/.test(authSrc);
+    // Both directions are broken states, and both are silent in production.
+    if (testMode && requireVerify) {
+      add("email testMode interlock", "CRITICAL", "requireEmailVerification is ON while convex/email.ts is still in testMode — Resend refuses real addresses, so every genuine signup is locked out");
+    } else if (!testMode && !requireVerify) {
+      add("email testMode interlock", "WARN", "testMode is off (real email sends) but requireEmailVerification is still false — verify a domain and turn it on, or unverified addresses can sign up");
+    } else {
+      add("email testMode interlock", "PASS", testMode ? "testMode on — only Resend test inboxes receive mail" : "");
+    }
+    add("resend webhook route", /resend-webhook/.test(read("convex/http.ts") ?? "") ? "PASS" : "WARN", "without it, bounces and complaints are invisible");
+  }
 }
 
-/* ---------- 9. env hygiene ---------- */
+/* ---------- 9. analytics (PostHog) ---------- */
+
+const analyticsSeam = read("src/lib/analytics.ts");
+if (!analyticsSeam) {
+  add("analytics", "SKIP", "no analytics seam in this repo");
+} else {
+  const envAll = (read(".env.local") ?? "") + (read(".env") ?? "");
+  const publicKey = /NEXT_PUBLIC_POSTHOG_KEY\s*=\s*\S/.test(envAll);
+
+  // A personal API key is a full-access credential. It has no business anywhere here.
+  // A bare prefix is documentation ("never commit a phx_ key"); a prefix followed by a
+  // payload is the credential itself. Matching the prefix alone made this check flag
+  // the very comments warning against the thing.
+  const personalKey = [envAll, ...sourceFiles.map((f) => readFileSync(f, "utf8"))].some((body) => /\bphx_[A-Za-z0-9]{20,}/.test(body));
+  add("no PostHog personal key", personalKey ? "CRITICAL" : "PASS", personalKey ? "a phx_ personal key is a full-access credential — only the public phc_ project key belongs in this repo" : "");
+
+  // The proxy is what keeps the CSP closed. Key without proxy = blocked requests.
+  const proxied = /\/ingest/.test(read("next.config.ts") ?? "") && /\/ingest/.test(read("instrumentation-client.ts") ?? "");
+  add("posthog proxied through /ingest", proxied ? "PASS" : publicKey ? "FAIL" : "WARN", proxied ? "" : "analytics must route through the /ingest rewrite — otherwise the CSP blocks it and ad blockers drop it");
+
+  add("posthog key", publicKey ? "PASS" : "WARN", publicKey ? "" : "not configured — analytics is a no-op. Run `pnpm onboard`");
+}
+
+/* ---------- 10. deploy (Render) ---------- */
+
+const blueprint = read("render.yaml");
+if (!blueprint) {
+  add("deploy blueprint", "WARN", "no render.yaml — deployment topology is not captured in the repo");
+} else {
+  const deploysBackend = /convex deploy/.test(blueprint);
+  add("render.yaml deploys Convex", deploysBackend ? "PASS" : "CRITICAL", deploysBackend ? "" : "buildCommand must run `npx convex deploy --cmd 'pnpm build'` or the frontend ships against a stale backend");
+  // Prefix + payload only, for the same reason as the PostHog check above: this file
+  // deliberately names the secrets it must never contain.
+  const holdsSecret = /\b(sk_live_|rk_live_|whsec_|phx_|prod:)[A-Za-z0-9]{16,}/.test(blueprint);
+  add("no secret values in render.yaml", holdsSecret ? "CRITICAL" : "PASS", holdsSecret ? "this file is committed — secrets must use `sync: false` and be set in the dashboard" : "");
+}
+
+/* ---------- 11. env hygiene ---------- */
 
 const gitignore = read(".gitignore") ?? "";
 add(".env* gitignored", /^\.env\*/m.test(gitignore) ? "PASS" : "CRITICAL", /^\.env\*/m.test(gitignore) ? "" : "add `.env*` to .gitignore immediately");

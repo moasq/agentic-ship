@@ -197,7 +197,50 @@ product. Full flow and rule list: `.agents/skills/convex-structure/references/st
   An embedded Payment Element is a deliberate CSP change under `frontend-security`.
 - `/stripe/webhook` belongs to the `@convex-dev/stripe` component — never parse a
   webhook body yourself, never add a second webhook route in front of it.
-- No money math in our code. Stripe computed it; read it from the synced tables. **It does not exist on a
+- No money math in our code. Stripe computed it; read it from the synced tables.
+
+## Email rules (Resend, wired)
+
+Detail: `.agents/skills/convex-structure/references/email-resend.md`.
+
+- `convex/email.ts` is the only file that imports the Resend SDK. Every outbound email
+  goes through it; adding one means adding a function there, never a direct API call.
+- Sends are enqueued **inside the calling transaction** by the component. Do not write
+  retry logic, and do not send from a client.
+- `testMode: true` is the shipped default — only Resend's test inboxes can receive mail.
+  It flips to `false` **together with** `requireEmailVerification: true` in
+  `convex/auth.ts`, after a sending domain is verified. `pnpm health` fails on either
+  half of that pair being wrong.
+- `/resend-webhook` in `convex/http.ts` belongs to the component; it verifies the
+  signature. Never parse a webhook body yourself.
+
+## Analytics rules (PostHog, wired)
+
+Detail: `.agents/skills/frontend-security/references/analytics-posthog.md`.
+
+- `src/lib/analytics.ts` is the only file that imports `posthog-js`. Events come from
+  the typed `AnalyticsEvent` union — add the name there first, or it does not exist.
+- Traffic is proxied through `/ingest` on our own origin, so **the CSP stays closed**.
+  Never add a PostHog origin to `connect-src` to "fix" analytics; fix the rewrite.
+- `phc_` project key is public and lives in `.env.local`. A `phx_` personal key never
+  enters this repo — `pnpm health` treats one as CRITICAL.
+- `identify()` takes the auth subject, never an email. `resetIdentity()` on sign-out.
+  Never send tokens, emails, or URL contents as event properties.
+- `autocapture` is off and inputs are masked in replay. Turning either on is a
+  `frontend-security` decision, not a convenience.
+
+## Deploy rules (Render)
+
+Detail: `.agents/skills/convex-structure/references/deploy-render.md`.
+
+- `render.yaml` is the deployment. Change the topology there, in a reviewable diff —
+  never by clicking in a dashboard.
+- The build command must run `npx convex deploy --cmd 'pnpm build'`, so backend and
+  frontend ship together. `pnpm build` alone ships a frontend against a stale backend.
+- Render holds `CONVEX_DEPLOY_KEY` and public keys only. Every backend secret lives in
+  the **prod Convex deployment's** env, which is what keeps live Stripe keys off dev
+  machines.
+- Secret **values** never appear in `render.yaml` — declare them `sync: false`. **It does not exist on a
   fresh clone** — `npx convex dev` creates it, and that command opens a browser, so it
   is the buyer's step and never yours. Until then the frontend runs untyped through
   `anyApi` and the app still builds. Never fake, stub, or hand-write `_generated/`.

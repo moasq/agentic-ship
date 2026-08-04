@@ -162,6 +162,37 @@
       "note": "While on an unclaimed `stripe sandbox create` environment, use the CLI, not the MCP (Stripe's own guidance)."
     },
     {
+      "name": "resend",
+      "marketplace": "claude-plugins-official",
+      "source": "github.com/resend/resend-skills",
+      "official": true,
+      "verified": "2026-08-04",
+      "declaredIn": ".claude/settings.json",
+      "bundles": ["email skills", "hosted MCP https://mcp.resend.com/mcp"],
+      "crossTool": "repo ships .codex-plugin, .cursor-plugin and .grok-plugin providers alongside .claude-plugin"
+    },
+    {
+      "name": "posthog",
+      "marketplace": "claude-plugins-official",
+      "source": "github.com/PostHog/ai-plugin",
+      "official": true,
+      "verified": "2026-08-04",
+      "declaredIn": ".claude/settings.json",
+      "bundles": ["analytics skills + agents + commands", "hosted MCP https://mcp.posthog.com/mcp (OAuth)"],
+      "crossTool": "repo ships .codex-plugin and .cursor-plugin providers",
+      "note": "The MCP reads product data BACK — insights, funnels, flags, experiments, replays. That is why PostHog was chosen over Amplitude (also official) and over Plausible/Umami/Mixpanel (no official plugin at all)."
+    },
+    {
+      "name": "render",
+      "marketplace": "claude-plugins-official",
+      "source": "github.com/render-oss/render-plugin-claude-code",
+      "official": true,
+      "verified": "2026-08-04",
+      "declaredIn": ".claude/settings.json",
+      "bundles": ["deploy-to-render + check-render-status commands", "render-assistant agent", "hooks", "hosted MCP https://mcp.render.com/mcp (OAuth)"],
+      "alternative": "railwayapp/railway-skills is equally official (one use-railway skill, mcp.railway.com, cross-tool providers). Render was chosen because render.yaml declares the WHOLE topology as committed, diffable code, while Railway services are created interactively — state the repo cannot see. Swapping is writing one file."
+    },
+    {
       "name": "shadcn / magicui / tailwind / zustand plugins",
       "status": "none exist",
       "verified": "2026-08-03",
@@ -187,6 +218,46 @@
         "plans": "browser sends a plan KEY (\"pro\"), never a price ID or amount; price IDs live in Convex env as STRIPE_PRICE_* set at onboarding"
       },
       "secrets": "STRIPE_SECRET_KEY (prefer rk_), STRIPE_WEBHOOK_SECRET — Convex env only; pnpm health CRITICALs on either in .env.local and on any sk_live/rk_live there"
+    },
+    "email": {
+      "component": "@convex-dev/resend",
+      "version": "0.2.6",
+      "upstream": "https://github.com/get-convex/resend",
+      "official": true,
+      "verified": "2026-08-04",
+      "webhookPath": "/resend-webhook",
+      "seam": "convex/email.ts — the only file importing the Resend SDK",
+      "safetyDefault": "testMode: true. Resend then accepts ONLY its own test inboxes, so a wrong address in development cannot reach a real person. It flips to false together with requireEmailVerification: true in convex/auth.ts, after a sending domain is verified — pnpm health fails CRITICAL on the mismatch in either direction.",
+      "secrets": "RESEND_API_KEY, RESEND_WEBHOOK_SECRET, EMAIL_FROM — Convex env only",
+      "note": "The component bundles workpool + rate-limiter, so sends are enqueued inside the calling transaction and retried by the component. No hand-rolled retry logic."
+    },
+    "analytics": {
+      "vendor": "posthog",
+      "package": "posthog-js",
+      "version": "1.410.10",
+      "verified": "2026-08-04",
+      "seam": "src/lib/analytics.ts — typed AnalyticsEvent union; components never import posthog-js",
+      "init": "instrumentation-client.ts (Next.js official integration point)",
+      "cspDecision": "Traffic is proxied through /ingest on our own origin via next.config.ts rewrites, so connect-src stays 'self' — no analytics origin is ever added to the CSP, and ad blockers do not silently drop technical users' data. PostHog's own recommended setup. Requires skipTrailingSlashRedirect: true.",
+      "privacyDefaults": "person_profiles: identified_only · autocapture: false · maskAllInputs in replay · maskTextSelector [data-private] · no key means init never runs",
+      "keys": "phc_ project key is public → .env.local. phx_ personal key is a full-access credential and is CRITICAL if found (matched as prefix+payload, so docs naming phx_ do not false-positive).",
+      "rejected": {
+        "amplitude": "official plugin exists, but events-first — weaker read-back loop",
+        "plausible / umami / mixpanel": "no official plugin in claude-plugins-official as of 2026-08-04"
+      }
+    },
+    "deploy": {
+      "target": "render",
+      "blueprint": "render.yaml",
+      "verified": "2026-08-04",
+      "buildCommand": "corepack enable && pnpm install --frozen-lockfile && npx convex deploy --cmd 'pnpm build'",
+      "buildReason": "convex deploy pushes the backend to the PROD deployment and only then builds the frontend with the prod URL injected. `pnpm build` alone ships a frontend against a stale backend — the most common Convex production failure.",
+      "secretSplit": "Render holds CONVEX_DEPLOY_KEY + public keys only. Every backend secret lives in the prod Convex deployment's env, which is what keeps live Stripe keys off dev machines (rule R7).",
+      "rejected": {
+        "railway": "equally official, but services are created interactively — topology the repo cannot see. Swapping to it is writing one file.",
+        "vercel": "excluded by decision"
+      },
+      "deferred": "domain (Cloudflare or Namecheap). HSTS ships with a two-year max-age, so the certificate must be right on the first request at a custom domain."
     },
     "preLoginContract": {
       "buildsGreen": true,

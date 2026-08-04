@@ -5,6 +5,8 @@ import { v } from "convex/values";
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
+import { requireActionCtx } from "@convex-dev/better-auth/utils";
+import { sendEmailVerification, sendResetPassword } from "./email";
 import authConfig from "./auth.config";
 
 /**
@@ -27,10 +29,21 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
   return {
     baseURL: siteUrl,
     database: authComponent.adapter(ctx),
+    emailVerification: {
+      sendVerificationEmail: async ({ user, url }) => {
+        await sendEmailVerification(requireActionCtx(ctx), { to: user.email, url });
+      },
+    },
     emailAndPassword: {
       enabled: true,
-      // Flip to true once an email sender exists (Resend phase). Shipping
-      // requireEmailVerification without a sender locks every user out at signup.
+      sendResetPassword: async ({ user, url }) => {
+        await sendResetPassword(requireActionCtx(ctx), { to: user.email, url });
+      },
+      // The sender now exists, but convex/email.ts still runs in testMode, where
+      // Resend refuses every real address. Turning this on before flipping testMode
+      // would lock out every genuine signup. Both flips happen together, as the last
+      // step of the production checklist in references/email-resend.md — and
+      // `pnpm health` FAILS on the mismatch in either direction.
       requireEmailVerification: false,
     },
     plugins: [convex({ authConfig })],

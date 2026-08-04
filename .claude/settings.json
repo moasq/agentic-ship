@@ -11,7 +11,10 @@
   "enabledPlugins": {
     "nextjs@nextjs": true,
     "convex@claude-plugins-official": true,
-    "stripe@claude-plugins-official": true
+    "stripe@claude-plugins-official": true,
+    "resend@claude-plugins-official": true,
+    "posthog@claude-plugins-official": true,
+    "render@claude-plugins-official": true
   },
   "permissions": {
     "allow": [

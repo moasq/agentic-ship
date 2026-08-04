@@ -56,10 +56,27 @@ const securityHeaders = [
   },
 ];
 
+/**
+ * PostHog reverse proxy. The browser only ever talks to /ingest on our own origin, so
+ * the CSP keeps `connect-src 'self'` — no analytics vendor is added to the policy — and
+ * ad blockers do not silently drop the analytics of technical users. This is PostHog's
+ * own recommended setup, not a workaround.
+ */
+const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";
+const posthogAssetHost = posthogHost.replace(".i.posthog.com", "-assets.i.posthog.com");
+
 const nextConfig: NextConfig = {
   // Articles are `page.mdx` files under src/app/blog/. MDX is compiled by Next's own
   // plugin — no CMS, no third-party renderer, no runtime dependency.
   pageExtensions: ["ts", "tsx", "mdx"],
+  async rewrites() {
+    return [
+      { source: "/ingest/static/:path*", destination: `${posthogAssetHost}/static/:path*` },
+      { source: "/ingest/:path*", destination: `${posthogHost}/:path*` },
+    ];
+  },
+  // Rewrites to an external host need the trailing-slash behaviour PostHog expects.
+  skipTrailingSlashRedirect: true,
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
