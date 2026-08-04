@@ -36,22 +36,38 @@ Version pins live in `skills.lock.json`. Do not hand-edit versions — run the
 | `asset-pipeline` | adding images, illustrations, icons, or 3D |
 | `frontend-security` | before shipping, after adding dependencies, after pasting code |
 | `seo-blog` | writing an article or auditing a page's search surface |
+| `convex-structure` | before writing backend code, adding a table, or wiring a component to data |
 | `upstream-sync` | monthly, or when a tool ships a major version |
+
+Convex-the-product is taught by the official `convex` plugin's skills (schema-builder,
+auth-setup, function-creator, migration-helper, and the `convex-expert` subagent). Those
+are not copied into this repo — they arrive through the plugin and stay current on their
+own. `convex-structure` covers only what they cannot know: this repo's conventions.
 
 ## Structure
 
 ```
+convex/                   the backend — repo root, required by the CLI
+  schema.ts               every table and index. Nothing exists unless declared here.
+  auth.ts  auth.config.ts Better Auth wiring; plugins toggle in auth.ts
+  http.ts                 auth routes + inbound webhooks, nothing else
+  <domain>.ts             one file per domain, the whole public API of that domain
+  lib/                    requireUser, requireOwner, shared validators
+  _generated/             committed, never edited
 src/
   app/                    routes only — keep these files thin
   components/ui/          shadcn primitives — vendor-owned, never edited in place
   components/magicui/     MagicUI accents
   components/blocks/      composed sections: hero, features, pricing, faq
-  components/features/    feature-owned components
+  components/features/    feature-owned components — Convex hooks live HERE
   stores/                 Zustand stores, one per domain
-  lib/                    utils, constants, cn()
+  lib/                    utils, constants, cn(), auth-client, auth-server
   app/globals.css         the only place tokens are defined
 content/blog/             MDX articles
 ```
+
+Names line up across all three layers: table `posts` → `convex/posts.ts` →
+`src/components/features/posts/`. One word, three places, no translation.
 
 ## Component rules
 
@@ -86,6 +102,35 @@ One store per domain in `src/stores/`. Select narrowly at call sites; never subs
 to a whole store. Stores are created per request — no module-level mutable store shared
 across SSR requests. `blocks/` stay stateless; stores are consumed in `features/` and
 routes.
+
+## Backend rules (Convex)
+
+Full detail and the fixed feature-building sequence: `.agents/skills/convex-structure/SKILL.md`.
+
+- `convex/` is the only backend. Convex functions **are** the API — no `src/app/api`
+  data routes. Webhooks go in `convex/http.ts`. Exactly one Next API route is
+  sanctioned: `src/app/api/auth/[...all]/route.ts`, the Better Auth proxy.
+- Every function uses object syntax with **both `args` and `returns` validators**. A
+  function missing either is a defect, not a draft.
+- Public `query`/`mutation`/`action` are the browser's contract. Everything else is
+  `internalQuery`/`internalMutation`/`internalAction`. Crons and scheduled jobs target
+  internal functions only.
+- **Identity comes from the authenticated context inside the function — never from a
+  client-passed argument.** Ownership is checked per document on every read and write.
+  Domain code calls `requireUser` / `requireOwner`; it never names the auth vendor.
+- Queries use `.withIndex()`, not `.filter()`. Unbounded `.collect()` is banned on any
+  table a user can grow — `.take(n)` or `paginate`.
+- Function naming is CRUD-consistent everywhere: `list`, `get`, `create`, `update`,
+  `remove`, `paginate`. Anything else is a verb phrase.
+- Data access: `useQuery` by default · `preloadQuery`/`preloadAuthQuery` for SSR'd live
+  pages · `fetchQuery` only on server-only surfaces **and it needs a one-line comment
+  saying why it is not reactive** · `fetchAuthMutation` in Server Actions ·
+  `httpAction` for inbound webhooks.
+- `components/blocks/` never call `useQuery`. Hooks live in `components/features/`.
+- Action secrets live in **Convex env** (`npx convex env set`), never in `.env.local`.
+  The only Convex values Next sees are `NEXT_PUBLIC_CONVEX_URL` and
+  `NEXT_PUBLIC_CONVEX_SITE_URL` — both URLs, both public by design.
+- `convex/_generated/` is committed and never hand-edited.
 
 ## Security rules
 

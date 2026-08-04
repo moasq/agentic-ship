@@ -9,7 +9,14 @@
     { "name": "asset-pipeline",    "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
     { "name": "frontend-security", "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
     { "name": "seo-blog",          "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
-    { "name": "upstream-sync",     "upstream": "original", "patched": false, "lastSync": "2026-08-03" }
+    { "name": "upstream-sync",     "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
+    {
+      "name": "convex-structure",
+      "upstream": "original",
+      "patched": false,
+      "lastSync": "2026-08-03",
+      "note": "Deliberately narrow: covers Convex INSIDE ShipKit only. Convex-the-product is taught by the official convex plugin's skills, which are not vendored here — they update themselves."
+    }
   ],
   "mcp": [
     {
@@ -72,12 +79,58 @@
       "note": "Official Next.js skills from the framework repo itself: Cache Components adoption, Partial Prefetching, runtime verification against a running dev server."
     },
     {
+      "name": "convex",
+      "marketplace": "claude-plugins-official",
+      "source": "anthropics/claude-plugins-official",
+      "official": true,
+      "verified": "2026-08-03",
+      "declaredIn": ".claude/settings.json",
+      "bundles": [
+        "convex backend design skill",
+        "convex-quickstart (live scaffolding)",
+        "schema-builder",
+        "auth-setup",
+        "function-creator",
+        "components-guide",
+        "migration-helper",
+        "convex-helpers-guide",
+        "convex-expert subagent",
+        "runtime error monitor hook",
+        "Convex MCP server (live deployment introspection)"
+      ],
+      "note": "Official skills are NOT vendored into .agents/skills — they arrive through the plugin and update themselves. That is upstream-sync by delegation. Our convex-structure skill covers only what the official ones cannot know: this repo's conventions."
+    },
+    {
       "name": "shadcn / magicui / tailwind / zustand plugins",
       "status": "none exist",
       "verified": "2026-08-03",
       "note": "Their official integration is the MCP layer in .mcp.json plus Context7 docs. Do not bundle unofficial plugins for these."
     }
   ],
+  "backend": {
+    "$comment": "Phase 2. Deps are NOT installed yet — convex/ scaffolding requires a Convex login, which is a human step. Run: /plugin install convex@claude-plugins-official, then npx convex dev.",
+    "status": "specced, not scaffolded",
+    "auth": {
+      "choice": "better-auth",
+      "adapter": "@convex-dev/better-auth",
+      "adapterUpstream": "https://labs.convex.dev/better-auth",
+      "official": true,
+      "verified": "2026-08-03",
+      "pins": {
+        "convex": ">=1.25.0",
+        "better-auth": "~1.6.15"
+      },
+      "pinReason": "The Convex adapter is known to lag Better Auth major releases (the v1.6 contract change broke integrations). upstream-sync flags majors as breaking rather than bumping.",
+      "risks": [
+        "Better Auth joined Vercel (Jul 2026); Convex is a competitor. Integration remains actively promoted by Convex as of Aug 2026, and both projects are open source. The auth seam keeps a swap to Clerk or Convex Auth an afternoon's work.",
+        "A DoS advisory was reported against @convex-dev/better-auth. pnpm audit runs in setup-health."
+      ],
+      "alternatives": {
+        "convex-auth": "lighter, fewer features, no orgs/2FA — Convex's own team has signalled a rework",
+        "clerk": "when you want someone else on-call for auth: orgs, MFA, admin UI, compliance. Costs a subscription and caps AI automation at ~70% because its dashboard steps cannot be scripted."
+      }
+    }
+  },
   "pins": {
     "next": "16.x",
     "react": "19.x",

@@ -64,7 +64,7 @@ Missing key or 401 → report **WARN, not FAIL**. It is optional by design.
 - No raw hex values or Tailwind arbitrary values (`text-[#fff]`) in `src/components`
   or `src/app`. Grep for them. Found → they must become tokens.
 
-## 6. Environment hygiene
+## 6. Environment hygiene (frontend)
 
 - `.env.local` exists (copy from `.env.example` if not).
 - `.env*` is gitignored, `.env.example` is not.
@@ -72,9 +72,53 @@ Missing key or 401 → report **WARN, not FAIL**. It is optional by design.
   Anything else is a leaked secret — treat as CRITICAL.
 - `pnpm audit --prod` reports no high or critical advisories.
 
-## 7. Build proof
+## 7. Convex backend
 
-- `pnpm build` completes. This is the only check that proves the other six were real.
+Skip this whole section with `SKIPPED — phase 1 only` if `convex/` does not exist.
+
+**7.1 Present**
+
+- `convex/schema.ts` exists, and `convex/_generated/` is committed.
+- `.env.local` has `CONVEX_DEPLOYMENT`, `NEXT_PUBLIC_CONVEX_URL`, and
+  `NEXT_PUBLIC_CONVEX_SITE_URL`.
+
+**7.2 Connected? — try to fix it, in this order**
+
+Run `npx convex dev --once`. If it fails, attempt each step and re-test:
+
+1. `npx convex dev --once` — writes env vars when the project already exists.
+2. `npx convex login` — **this opens a browser and needs the human.** Say so out loud
+   and wait. Do not spin or retry silently.
+3. `npx convex dev --once` again — offers to create or link a project.
+
+Still failing → **FALLBACK:** create or link the project by hand at
+`dashboard.convex.dev`, paste the deployment name into `.env.local`, re-run step 1.
+Reference: `docs.convex.dev/quickstart`.
+
+**7.3 Convex MCP**
+
+The Convex MCP server arrives with the `convex@claude-plugins-official` plugin. Probe
+it with a cheap read (list tables).
+
+- Plugin not installed → `/plugin install convex@claude-plugins-official`.
+- Plugin present but MCP dead → **FALLBACK:** `npx convex mcp start` standalone, or use
+  `dashboard.convex.dev` for introspection. Neither blocks development.
+
+**7.4 Auth — Better Auth via `@convex-dev/better-auth`**
+
+- `convex/auth.config.ts` exists. **Missing while auth code exists → CRITICAL**: this
+  exact file is the most common cause of "works locally, 401s in production."
+- `npx convex env list` shows `BETTER_AUTH_SECRET` and `SITE_URL`.
+- Those two names must **not** appear in `.env.local` — the leak check runs both
+  directions.
+- Installed `better-auth` matches the `~1.6.x` pin in `skills.lock.json`. The adapter
+  lags Better Auth majors; drift → run `upstream-sync`, never a blind bump.
+- `src/app/api/auth/[...all]/route.ts` exists — without it the proxy is dead and every
+  sign-in fails with no useful error.
+
+## 8. Build proof
+
+- `pnpm build` completes. This is the only check that proves the others were real.
 
 ## Output format
 

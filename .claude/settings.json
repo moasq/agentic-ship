@@ -9,7 +9,8 @@
     }
   },
   "enabledPlugins": {
-    "nextjs@nextjs": true
+    "nextjs@nextjs": true,
+    "convex@claude-plugins-official": true
   },
   "permissions": {
     "allow": [

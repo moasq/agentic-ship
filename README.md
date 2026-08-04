@@ -62,6 +62,7 @@ lives in `.mcp.json`. Three kinds of file, three jobs, no overlap.
 | `asset-pipeline` | adding images, illustrations, icons, or 3D |
 | `frontend-security` | before shipping, after adding dependencies, after pasting code |
 | `seo-blog` | writing an article or auditing a page's search surface |
+| `convex-structure` | before writing backend code, adding a table, or wiring a component to data |
 | `upstream-sync` | monthly, or when a tool ships a major version |
 
 ## MCP servers
@@ -86,13 +87,23 @@ automatically when they trust the repo folder:
   [vercel/next.js repo](https://github.com/vercel/next.js/blob/canary/.claude-plugin/marketplace.json):
   Cache Components adoption, Partial Prefetching, and runtime verification against a
   running dev server.
+- **`convex@claude-plugins-official`** — Convex's official plugin: the backend design
+  skill, quickstart scaffolder, schema-builder, auth-setup, function-creator,
+  migration-helper, the `convex-expert` subagent, a runtime-error monitor, and the
+  Convex MCP server for live deployment introspection.
 
-If the automatic offer does not appear (a known quirk), install it manually:
+If the automatic offer does not appear (a known quirk), install them manually:
 
 ```
 /plugin marketplace add vercel/next.js
 /plugin install nextjs@nextjs
+/plugin install convex@claude-plugins-official
 ```
+
+Official Convex skills are **not** copied into this repo. They arrive through the
+plugin and update themselves — that is `upstream-sync`'s philosophy applied by
+delegation. `convex-structure` covers only what they cannot know: this repo's
+conventions.
 
 Also worth browsing in Anthropic's auto-registered `claude-plugins-official`
 marketplace: the Context7 and frontend-design plugins. Optional — the `.mcp.json` in
@@ -114,6 +125,36 @@ this repo overrides all four:
 
 Swap the palette for your own with [tweakcn](https://tweakcn.com). Every shadcn and
 MagicUI component inherits it automatically.
+
+## Backend — Convex + Better Auth
+
+Specced and rule-enforced; the scaffold is one command away because it needs a Convex
+login, which is yours to do:
+
+```bash
+pnpm add convex@latest @convex-dev/better-auth
+pnpm add better-auth@~1.6.15          # exact-range pin: the adapter lags majors
+npx convex dev                         # opens a browser, creates/links the project
+npx convex env set BETTER_AUTH_SECRET=$(openssl rand -base64 32)
+npx convex env set SITE_URL http://localhost:3000
+```
+
+Then run `setup-health` — its Convex section verifies the connection, attempts
+`convex login` when it is missing, and falls back to the dashboard if that fails.
+
+Why Better Auth over Convex Auth or Clerk: it is the community default, the
+`@convex-dev/better-auth` bridge is first-party, organizations, 2FA and SSO ship as
+plugins (so there is no later forced migration), and it is roughly 95% automatable by
+an agent versus about 70% for Clerk, whose dashboard steps cannot be scripted. Convex
+Auth is documented as the lighter alternative; Clerk as the choice when you want
+someone else on-call for auth. Risks — the Vercel acquisition, adapter version lag, a
+past DoS advisory — are recorded in `skills.lock.json` rather than glossed over.
+
+Conventions that keep an agent from guessing: one file per domain in `convex/`,
+CRUD-consistent function names, mandatory `args` and `returns` validators, identity
+from the authenticated context and never from an argument, indexes over `.filter()`,
+and a fixed data-access decision tree. All in
+`.agents/skills/convex-structure/SKILL.md`.
 
 ## Security
 
