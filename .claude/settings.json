@@ -16,6 +16,19 @@
     "posthog@claude-plugins-official": true,
     "render@claude-plugins-official": true
   },
+  "$comment:hooks": "Claude-only teeth for the AGENTS.md rule 'nothing is done until the build is green'. Codex/Cursor cannot run hooks, so for them AGENTS.md is the rule and CI is the backstop. --hook exits 2 (blocks the stop) and honors stop_hook_active so a failure it cannot fix never traps you.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/verify.mjs --quiet --hook"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(pnpm install)",

@@ -2,12 +2,15 @@ import { readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * The article index, derived from the filesystem — there is no second list to keep in
- * sync and no CMS to keep alive. A directory under src/app/blog containing a page.mdx
- * IS a published article.
+ * The article index. Publishing is two steps, both required:
+ *   1. create src/app/blog/(articles)/<slug>/page.mdx
+ *   2. add its entry to ARTICLES below
  *
- * Server-only: this reads the filesystem, so it may only be imported from Server
- * Components, `sitemap.ts`, and other build-time code.
+ * The list is typed, so a typo is a build error rather than a missing page, and the
+ * sitemap is generated from it — there is no third place to forget.
+ *
+ * Server-only: reads the filesystem, so import it from Server Components, sitemap.ts,
+ * and other build-time code only.
  */
 export type Article = {
   slug: string;
@@ -16,32 +19,19 @@ export type Article = {
   publishedAt: string; // ISO date, used for <time> and structured data
 };
 
-// The `(articles)` route group carries the reading layout without appearing in the URL,
-// so /blog stays the index and /blog/<slug> is an article.
 const BLOG_DIR = join(process.cwd(), "src", "app", "blog", "(articles)");
 
-/**
- * Article metadata lives here rather than in frontmatter: `page.mdx` files export
- * Next's own `metadata` object, and a build-time index cannot import from a route
- * without pulling the whole page into the build. One typed list, checked by TypeScript,
- * beats a parser plus a schema.
- */
-const ARTICLES: Article[] = [
-  {
-    slug: "why-ai-sites-look-the-same",
-    title: "Why every AI-generated site looks the same",
-    description:
-      "Four defaults account for most of the sameness in AI-built interfaces. Each one is a single line to override, and this is what to replace them with.",
-    publishedAt: "2026-08-04",
-  },
-];
+// Empty on purpose. The seo-blog skill writes the first entry with its article.
+const ARTICLES: Article[] = [];
 
+/** Only articles whose page.mdx actually exists — an entry alone never publishes. */
 export function getArticles(): Article[] {
-  const published = ARTICLES.filter((article) => existsSync(join(BLOG_DIR, article.slug, "page.mdx")));
-  return published.sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+  return ARTICLES.filter((article) => existsSync(join(BLOG_DIR, article.slug, "page.mdx"))).sort((a, b) =>
+    b.publishedAt.localeCompare(a.publishedAt),
+  );
 }
 
-/** Directories with a page.mdx but no entry in ARTICLES — a real article nobody links to. */
+/** Directories with a page.mdx but no ARTICLES entry — a real article nobody links to. */
 export function getOrphanedSlugs(): string[] {
   if (!existsSync(BLOG_DIR)) return [];
   const known = new Set(ARTICLES.map((a) => a.slug));

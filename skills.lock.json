@@ -86,9 +86,17 @@
       { "name": "pnpm setup:env", "file": "scripts/init-env.mjs", "replaces": "cp .env.example .env.local" },
       { "name": "pnpm link:skills", "file": "scripts/link-skills.mjs", "replaces": "ln -s ../.agents/skills .claude/skills", "note": "Windows: creates a directory JUNCTION (no admin needed) and repairs the plain-text stub that git writes when core.symlinks=false. Last-resort fallback is a copy plus a .claude/.skills-is-a-copy marker, reported as WARN every run." },
       { "name": "pnpm sync:mcp / check:mcp", "file": "scripts/sync-mcp.mjs", "replaces": "cp .mcp.json .cursor/mcp.json" },
-      { "name": "pnpm secret", "file": "scripts/gen-secret.mjs", "replaces": "openssl rand -base64 32" }
+      { "name": "pnpm secret", "file": "scripts/gen-secret.mjs", "replaces": "openssl rand -base64 32" },
+      { "name": "pnpm verify", "file": "scripts/verify.mjs", "replaces": "the honor system", "note": "The definition of done: health + lint + build. Enforced in Claude Code by a Stop hook (`--hook` exits 2 to block a completion with a red build, and honors stop_hook_active so it can never trap the user). Other tools get the AGENTS.md rule plus CI." }
     ],
     "postinstall": "link-skills --soft && sync-mcp --soft — repairs both mirrors on pnpm install, never aborts the install"
+  },
+  "installer": {
+    "command": "npx github:moasq/create-shipkit my-app",
+    "repo": "https://github.com/moasq/create-shipkit",
+    "verified": "2026-08-04",
+    "design": "Zero dependencies, in its own repo. npx installs a package before running it, so any dependency is time the user spends waiting — and npm cannot install from a subdirectory of this repo, which rules out shipping the CLI here. It downloads the GitHub tarball and unpacks it with node:zlib plus a ~40-line tar reader: no git, no curl, no tar binary, no shell, so it behaves the same on Windows.",
+    "notes": "The .claude/skills symlink is skipped by the tarball (symlink entries are not extracted) and recreated by postinstall's link-skills — the same repair path that fixes Windows checkouts. Publishing to npm would shorten the command to `npx create-shipkit`; that needs the owner's npm account."
   },
   "mirrors": [
     {
@@ -266,10 +274,11 @@
       "onboarding": "pnpm onboard prints the sequence and the single next command; pnpm health reports every unconnected piece as WARN, never FAIL",
       "rule": "Never fabricate or stub convex/_generated/. A stub typechecks and then lies about the shape of every function."
     },
-    "demoDomain": {
-      "choice": "waitlist",
-      "reason": "one table, one indexed dedupe, an O(1) counter, and no auth required — it exercises the rules without needing a session. Swapping to notes is one domain file.",
-      "security": "emails are never returned by a public function; count reads a server-maintained counter document so a stranger-growable table is never scanned; listRecent is an internalQuery and unreachable from the browser."
+    "referenceDomain": {
+      "status": "documented, not shipped",
+      "location": ".agents/skills/convex-structure/references/example-domain.md",
+      "reason": "The waitlist was shipped as working code until 2026-08-04, then moved into the skill as a worked example. A scaffold must not contain anything the buyer has to delete before starting — demo code is boilerplate, and half of it survives into production. The example still teaches every rule (indexed dedupe, O(1) counter instead of a scan, public vs internal, capped input, the blocks/features split); it just teaches instead of shipping.",
+      "shippedSchema": "one `counters` table, so `npx convex dev` has something valid to deploy on the first run. Delete it once a real table exists."
     },
     "auth": {
       "choice": "better-auth",

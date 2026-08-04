@@ -21,8 +21,7 @@ export type AnalyticsEvent =
   | "signup_started"
   | "signup_completed"
   | "checkout_started"
-  | "entitlement_active"
-  | "waitlist_joined";
+  | "entitlement_active";
 
 export function capture(event: AnalyticsEvent, properties?: Record<string, string | number | boolean>) {
   if (!isAnalyticsConfigured) return;

@@ -13,6 +13,7 @@
     "sync:mcp": "node scripts/sync-mcp.mjs",
     "check:mcp": "node scripts/sync-mcp.mjs --check",
     "secret": "node scripts/gen-secret.mjs",
+    "verify": "node scripts/verify.mjs",
     "health": "node scripts/health.mjs",
     "onboard": "node scripts/onboard.mjs",
     "font": "node scripts/fetch-font.mjs",

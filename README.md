@@ -1,263 +1,167 @@
 # ShipKit
 
-An agent-ready Next.js frontend foundation. Design tokens that stop the generated look,
-component rules your coding agent will actually follow, security headers on by default,
-and seven skills — including one that keeps the bundle from going stale.
-
-Built for people who already pay for a coding agent and would rather not also pay for a
-hosted app builder.
-
-## What this replaces
-
-Hosted builders sell a **harness**, not a model — project scaffold, design system,
-component library, deploy button, preview. This repo is that harness, built once, in a
-repo you own.
-
-| Hosted builder feature | Here |
-| --- | --- |
-| Project scaffold | this repo + `setup-health` |
-| Design harness | `ui-system` + tokens in `globals.css` |
-| Component generation | `component-picker` + shadcn / MagicUI MCP |
-| Deploy button | your own host, your own repo |
-| Credit meter | the coding subscription you already pay for |
-
-**Honest version:** if you do not already pay for a coding agent, a hosted builder is
-probably the better deal. This is for people who do.
-
-## Stack
-
-Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind CSS v4 ·
-shadcn/ui · MagicUI · Zustand 5 · pnpm.
-
-## Quick start
+**Stop paying for Lovable, Bolt, v0 and Replit. Build with the coding subscription you already have.**
 
 ```bash
-pnpm install
-pnpm setup:env
+npx github:moasq/create-shipkit my-app
+```
+
+That's it. One command, and you have a real Next.js project your coding agent already
+knows how to work in.
+
+---
+
+## What this actually is
+
+Hosted app builders don't sell you a smarter AI. They sell you the **setup around it** —
+a project that's already configured, a design system, a component library, a database,
+payments, a deploy button.
+
+ShipKit is that setup, in a repo you own, that works with Claude Code, Cursor, Codex and
+the rest. No credits, no monthly fee, no export button.
+
+**Honest version:** if you don't already pay for a coding agent, a hosted builder is
+probably a better deal. This is for people who do.
+
+---
+
+## Start building
+
+```bash
+npx github:moasq/create-shipkit my-app
+cd my-app
 pnpm dev
 ```
 
-Then check the setup:
+Open the folder in your coding agent and tell it what you want to build. It reads
+`AGENTS.md` on its own and follows the rules in there.
 
-```bash
-pnpm health
-```
+There is **no demo site to delete**. The home page is one paragraph. Nothing is
+pre-built for you to tear out.
 
-Then, in your coding agent, run the `setup-health` skill. `pnpm health` covers what a
-script can prove; the skill adds the live MCP probes, the registry checks and the build.
-Both print a fallback for anything that fails.
+---
 
-## macOS, Linux, Windows
+## Three commands worth remembering
 
-Every ShipKit command is a Node script behind a `pnpm` name, so all of them run the same
-on all three. No WSL, no Git Bash, no admin rights, no OpenSSL.
-
-| Command | Replaces |
+| Command | Ask it when you want to know |
 | --- | --- |
-| `pnpm setup:env` | `cp .env.example .env.local` |
-| `pnpm link:skills` | `ln -s ../.agents/skills .claude/skills` |
-| `pnpm sync:mcp` · `pnpm check:mcp` | `cp .mcp.json .cursor/mcp.json` |
-| `pnpm secret` | `openssl rand -base64 32` |
-| `pnpm health` | a pile of `grep -r` and `readlink` |
+| `pnpm health` | Is anything wrong? |
+| `pnpm onboard` | What do I need to connect next? |
+| `pnpm verify` | Is my work actually finished? |
 
-`pnpm install` runs `link:skills` and `sync:mcp` for you. The first matters more than it
-looks: `.claude/skills` is a symlink, and a Windows `git clone` that cannot create
-symlinks writes a **plain text file containing the path instead** — no error, skills
-silently gone. The script detects that exact state and repairs it with a directory
-junction, which needs no admin rights. Details:
-`.agents/skills/setup-health/references/platform-notes.md`.
+`pnpm health` prints a table. Every failure comes with the exact fix, so you never get a
+red line without being told what to do about it.
+
+---
+
+## What's already wired
+
+You don't set any of this up. It's connected — you just add your account when you're
+ready for that piece.
+
+| You want | It's there | You do |
+| --- | --- | --- |
+| A website | Next.js 16, React 19, Tailwind, shadcn/ui, MagicUI | nothing |
+| A database | Convex | run `npx convex dev` once |
+| Sign in / sign up | Better Auth | paste one secret |
+| Take payments | Stripe (subscriptions, hosted checkout) | paste your keys |
+| Send email | Resend | paste your key |
+| See who uses it | PostHog | paste your key |
+| Put it online | Render | connect the repo |
+| A blog that ranks | MDX + sitemap + metadata | write the article |
+
+Every one of these is the **official** integration, not a homemade version. `pnpm onboard`
+walks you through them one at a time and tells you which step needs you.
+
+---
+
+## Why your site won't look AI-generated
+
+Nearly every AI-built site shares the same four defaults. This one changes all four
+before you start:
+
+1. The default grey palette → replaced with a deliberate one
+2. Inter, Geist, Space Grotesk, Poppins → banned. Ships with IBM Plex
+3. `rounded-lg` on everything → one chosen radius
+4. The purple-to-blue gradient → not here
+
+Want a different look? Grab a theme from [tweakcn](https://tweakcn.com), paste it into
+`src/app/globals.css`, done. Every component follows automatically.
+
+---
+
+## The part that makes it work
+
+Your agent doesn't guess how this project works. It's written down.
+
+- **`AGENTS.md`** — every rule, in one file. Claude Code, Cursor, Codex, Windsurf,
+  Copilot and Gemini CLI all read it.
+- **`.agents/skills/`** — step-by-step guides for specific jobs: setting up, picking
+  components, writing backend code, security, SEO.
+- **One source of truth** — a rule is written in exactly one place. Never two.
+
+So when you say *"add a pricing page"*, your agent already knows which component library
+to use, what your colors are, where the file goes, and what not to touch.
+
+---
+
+## Your secrets stay safe
+
+`pnpm health` refuses to pass if a password or API key ends up somewhere it could get
+committed to GitHub. That's a hard stop, not a warning.
+
+Security headers are on from the first minute. Payments go through Stripe's own page —
+card details never touch your site. Analytics runs through your own domain, so you're
+not handing a third party a script tag on every page.
+
+---
 
 ## Works with any agent
 
-| Tool | Rules | Skills | MCP |
-| --- | --- | --- | --- |
-| Claude Code | `CLAUDE.md` → `@AGENTS.md` | `.claude/skills` symlink | `.mcp.json` + plugins |
-| Codex | `AGENTS.md` native | same markdown files | global TOML — snippet in `references/agent-compatibility.md` |
-| Cursor | `AGENTS.md` native | same markdown files | `.cursor/mcp.json` (committed mirror) |
-| Windsurf / Cline / Copilot / Gemini CLI | `AGENTS.md` native | same markdown files | per-tool config, same `mcpServers` shape |
-
-`.cursor/mcp.json` is generated from `.mcp.json` and never edited directly —
-setup-health fails on drift. Claude plugins have documented non-Claude equivalents
-(Convex MCP standalone + official rules; `node_modules/next/dist/docs/`; the official
-`better-auth/skills` pack) in the same reference.
-
-## Single source of truth
-
-- `AGENTS.md` — the only place rules live. Read by Codex, Cursor, Copilot, Gemini CLI,
-  Windsurf, Cline.
-- `CLAUDE.md` — one line: `@AGENTS.md`. Claude Code reads the same rules.
-- `.claude/skills` — a symlink to `.agents/skills`. One skills directory, both worlds.
-- `.mcp.json` — all tool wiring, committed, so everyone gets the same setup on clone.
-- `skills.lock.json` — provenance for every skill, server, and registry.
-
-Instructions live in `AGENTS.md`. Procedures live in `.agents/skills/`. Tool wiring
-lives in `.mcp.json`. Three kinds of file, three jobs, no overlap.
-
-## Skills
-
-| Skill | Use it when |
+| Tool | Just works? |
 | --- | --- |
-| `setup-health` | after install, after changing `.mcp.json`, or when generation misbehaves |
-| `ui-system` | starting a project, changing the theme, or UI starts looking generated |
-| `component-picker` | before adding any new piece of interface |
-| `asset-pipeline` | adding images, illustrations, icons, or 3D |
-| `frontend-security` | before shipping, after adding dependencies, after pasting code |
-| `seo-blog` | writing an article or auditing a page's search surface |
-| `convex-structure` | before writing backend code, adding a table, or wiring a component to data |
-| `upstream-sync` | monthly, or when a tool ships a major version |
+| Claude Code | yes — plus plugins and an automatic build check |
+| Cursor | yes |
+| Codex | yes |
+| Windsurf, Cline, Copilot, Gemini CLI | yes |
 
-## MCP servers
+Same repo, same rules, no per-tool setup.
 
-| Server | Official | Notes |
-| --- | --- | --- |
-| [shadcn](https://ui.shadcn.com/docs/mcp) | yes | components from the official registry and any pinned registry |
-| [next-devtools](https://nextjs.org/docs/app/guides/mcp) | yes | live build and runtime errors, plus version-accurate docs from `node_modules/next/dist/docs/` |
-| [magicui](https://github.com/magicuidesign/mcp) | yes, MIT | animated components |
-| [context7](https://github.com/upstash/context7) | yes | current docs for everything else |
-| [21st](https://github.com/21st-dev/magic-mcp) | yes | **off by default** — remote server, needs an API key. Fallback: browse 21st.dev and paste the component prompt |
+---
 
-Every server checked by `setup-health` has a documented fallback. Nothing here strands
-you because a hosted service is down.
-
-## Official plugins
-
-`.claude/settings.json` declares the plugin wiring, so Claude Code users get offered it
-automatically when they trust the repo folder:
-
-- **`nextjs@nextjs`** — Next.js's own plugin, shipped inside the
-  [vercel/next.js repo](https://github.com/vercel/next.js/blob/canary/.claude-plugin/marketplace.json):
-  Cache Components adoption, Partial Prefetching, and runtime verification against a
-  running dev server.
-- **`convex@claude-plugins-official`** — Convex's official plugin: the backend design
-  skill, quickstart scaffolder, schema-builder, auth-setup, function-creator,
-  migration-helper, the `convex-expert` subagent, a runtime-error monitor, and the
-  Convex MCP server for live deployment introspection.
-
-If the automatic offer does not appear (a known quirk), install them manually:
-
-```
-/plugin marketplace add vercel/next.js
-/plugin install nextjs@nextjs
-/plugin install convex@claude-plugins-official
-```
-
-Official Convex skills are **not** copied into this repo. They arrive through the
-plugin and update themselves — that is `upstream-sync`'s philosophy applied by
-delegation. `convex-structure` covers only what they cannot know: this repo's
-conventions.
-
-Also worth browsing in Anthropic's auto-registered `claude-plugins-official`
-marketplace: the Context7 and frontend-design plugins. Optional — the `.mcp.json` in
-this repo already covers the same ground without them.
-
-shadcn, MagicUI, Tailwind, and Zustand have **no official plugins** — their official
-integration is the MCP layer above. This repo does not bundle unofficial stand-ins;
-that policy is recorded in `skills.lock.json`.
-
-## Why the UI does not look AI-generated
-
-Roughly ninety percent of the sameness in AI-built sites comes from four defaults, and
-this repo overrides all four:
-
-1. The untouched shadcn neutral palette → replaced with a deliberate one.
-2. Inter, Geist, Space Grotesk, Poppins → banned as primary faces. Ships with IBM Plex.
-3. `rounded-lg` everywhere → one chosen radius, `0.375rem`.
-4. Violet-to-blue gradient on white → not present.
-
-Swap the palette for your own with [tweakcn](https://tweakcn.com). Every shadcn and
-MagicUI component inherits it automatically.
-
-## Backend — Convex, auth, billing: an engine, not a template
-
-The backend ships **wired**: schema, a `waitlist` reference domain, Better Auth through
-the first-party `@convex-dev/better-auth` component, and Stripe billing through the
-first-party `@convex-dev/stripe` component. Deliberately **no auth screens and no
-billing screens** — you start from your product's needs, and your agent builds UI
-against the engine's seams, guided by the skills. The one shipped UI flow is the
-waitlist, kept as the documented reference implementation.
-
-What the repo cannot ship is `convex/_generated/`, because that comes from
-`npx convex dev`, which opens a browser and needs **you**. So it is built to be useful
-before that happens:
+## Keeping it fresh
 
 ```bash
-pnpm onboard     # where you are in the sequence, and the one command to run next
+# in your agent
+run the upstream-sync skill
 ```
 
-```
-  done    1. Convex package
-  done    2. Backend source (schema, waitlist, auth, billing)
-  NEXT    3. Connect a deployment   (needs you — opens a browser)
-  waiting 4. Generated types
-  waiting 5. Type the API seam
-  waiting 6. Auth secrets
-  waiting 7. Stripe keys            (needs you — `stripe sandbox create` works with no account)
-  waiting 8. Stripe webhook + price
-```
+Checks every tool for new versions, flags anything that would break, and re-runs the
+health check to prove nothing broke.
 
-A fresh clone builds green with no Convex account, no auth secrets, and no Stripe keys.
-Backend-driven components render "not connected yet" instead of crashing, the auth proxy
-answers 503 with the onboarding pointer, `pnpm health` reports DEGRADED rather than
-broken, and the frontend runs untyped through `anyApi` until `npx convex dev` exists —
-after which one line in `src/lib/convex-api.ts` turns on full end-to-end types. Nothing
-fakes a `_generated/` directory; a stub would typecheck and then lie.
+A template is out of date the day you download it. This one updates itself.
 
-### The seams your agent builds against
+---
 
-- **Session**: `api.auth.getCurrentUser` (reactive, null when signed out) ·
-  `authClient.signUp.email / signIn.email / signOut` · server-side `preloadAuthQuery` /
-  `fetchAuthMutation`. Adding an auth method = one plugin toggle in `convex/auth.ts` +
-  its client half in `src/lib/auth-client.ts`.
-- **Billing**: `api.billing.createCheckout({ plan })` → redirect to Stripe's hosted
-  page · `api.billing.createPortal()` for manage/cancel · `api.billing.getEntitlement`
-  as the only truth, flipped reactively by the component-verified webhook. The browser
-  never names an amount or a price ID — plans resolve server-side from Convex env.
+## FAQ
 
-Rules with teeth: secrets (`BETTER_AUTH_SECRET`, `STRIPE_SECRET_KEY`,
-`STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`) live in Convex env only — `pnpm health`
-fails CRITICAL on any of them in `.env.local`, and on any live Stripe key there.
-`better-auth` is pinned **exact** (`1.6.15`): `1.6.25` is inside the adapter's peer
-range and still breaks its types — proven in this repo, recorded in `skills.lock.json`.
+**Do I need to know Next.js?**
+No. Your agent does. It's useful when things go wrong, but you don't need it on day one.
 
-Deep references: `.agents/skills/convex-structure/references/better-auth-wiring.md` and
-`references/stripe-billing.md`. Also install Better Auth's official skill pack
-(`better-auth-best-practices`) via the skills CLI
-([instructions](https://better-auth.com/docs/ai-resources/skills)) — not vendored, so it
-stays current on its own; the `stripe@claude-plugins-official` plugin is declared in
-`.claude/settings.json` and its skills ship per-tool for Codex/Cursor too.
+**What does it cost to run?**
+Nothing until you have users. Convex, Resend, PostHog and Render all have free tiers.
+Stripe takes a cut of sales only.
 
-Why Better Auth over Convex Auth or Clerk: it is the community default, the
-`@convex-dev/better-auth` bridge is first-party, organizations, 2FA and SSO ship as
-plugins (so there is no later forced migration), and it is roughly 95% automatable by
-an agent versus about 70% for Clerk, whose dashboard steps cannot be scripted. Convex
-Auth is documented as the lighter alternative; Clerk as the choice when you want
-someone else on-call for auth. Risks — the Vercel acquisition, adapter version lag, a
-past DoS advisory — are recorded in `skills.lock.json` rather than glossed over.
+**Can I use my own design?**
+Yes. Change `src/app/globals.css` and everything follows.
 
-Conventions that keep an agent from guessing: one file per domain in `convex/`,
-CRUD-consistent function names, mandatory `args` and `returns` validators, identity
-from the authenticated context and never from an argument, indexes over `.filter()`,
-and a fixed data-access decision tree. All in
-`.agents/skills/convex-structure/SKILL.md`.
+**Do I have to connect all of it?**
+No. Connect what you need, when you need it. Nothing breaks while it's disconnected —
+things say "not connected yet" instead of crashing.
 
-## Security
+**Windows?**
+Yes. Every command is Node, tested on Windows, macOS and Linux in CI.
 
-Headers ship on: CSP, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
-`Permissions-Policy`, HSTS. Secrets rules, supply-chain rules, and the review checklist
-for third-party component code are in `.agents/skills/frontend-security/SKILL.md`.
+---
 
-Two honest caveats are documented there: the CSP includes `'unsafe-inline'` for scripts
-because Next's bootstrap requires it, and a strict CSP will break third-party embeds
-until you add their origin explicitly.
-
-## Staying current
-
-Run the `upstream-sync` skill monthly. It diffs every vendored skill against its
-upstream, checks MCP package versions, verifies registry URLs still resolve, flags
-major bumps as breaking, and finishes by running `setup-health` to prove nothing broke.
-
-A template is stale the day you download it. This one can update itself.
-
-## License
-
-MIT
+MIT. Built by [@moasq](https://github.com/moasq).

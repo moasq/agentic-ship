@@ -41,6 +41,7 @@ Windows. The buyer may be on any of the three.
 
 | Command | Does |
 | --- | --- |
+| `pnpm verify` | **the definition of done** — health + lint + build in one command |
 | `pnpm health` | machine-checkable half of `setup-health` — pins, SSOT, tokens, env leaks, backend status |
 | `pnpm onboard` | where the backend setup stands and the one command to run next |
 | `pnpm setup:env` | create `.env.local` from `.env.example` |
@@ -268,5 +269,19 @@ Full reasoning: `.agents/skills/frontend-security/SKILL.md`.
 
 ## Before you say you are done
 
-`pnpm build` passes, `pnpm health` reports HEALTHY or DEGRADED, and `setup-health`
-reports the same with known fallbacks. Nothing else counts as verification.
+```bash
+pnpm verify
+```
+
+Health, lint and build, in one command. **Every completion runs it** — a feature, a fix,
+a refactor, a repair. Not "at the end of the session", not "before the commit": before
+you tell the user a task is finished. A change you have not built is a change you have
+not made.
+
+In Claude Code this is enforced by a `Stop` hook, so declaring completion with a red
+build is blocked rather than trusted. Other tools have no hooks — there this rule **is**
+the enforcement, and CI is the backstop. Do not treat the absence of a hook as
+permission to skip it.
+
+If `pnpm verify` fails, the failure is the work. Fix it, or report it verbatim and stop
+— never describe a task as complete with a known-failing build.

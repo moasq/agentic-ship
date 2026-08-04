@@ -195,7 +195,9 @@ Full flow, rules R1–R8, and the acceptance test:
 
 ## 8. Build proof
 
-- `pnpm build` completes. This is the only check that proves the others were real.
+- `pnpm verify` — health, lint and build in one command. This is the only check that
+  proves the others were real, and it is the same command the Claude Code `Stop` hook
+  runs before allowing a task to be called complete.
 
 ## References
 

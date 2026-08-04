@@ -27,6 +27,31 @@ behind a `pnpm` name, so none of it assumes a POSIX shell.
 `references/platform-notes.md` has the rules and the Windows-specific traps (junctions,
 the `npx` launcher, case sensitivity).
 
+## What is Claude-only, and why that is fine
+
+Hooks, slash commands and subagents live under `.claude/` and **only Claude Code reads
+them**. Codex and Cursor ignore all three. That is why this bundle puts nothing
+load-bearing in them:
+
+| Mechanism | Where the rule really lives | What `.claude/` adds |
+| --- | --- | --- |
+| "nothing is done until the build is green" | `AGENTS.md` — every tool reads it | a `Stop` hook running `pnpm verify --hook`, which **blocks** a completion with a red build instead of trusting it |
+| procedures (setup, components, security, SEO, backend) | `.agents/skills/*/SKILL.md` — plain markdown any agent can follow | native invocation through the `.claude/skills` symlink |
+| tool wiring | `.mcp.json` (+ the generated `.cursor/mcp.json`, + the Codex TOML) | plugin declarations in `.claude/settings.json` |
+
+**No slash commands and no subagents are shipped, deliberately.** A command that wraps a
+skill is the same instruction written twice, and the moment they disagree the bundle has
+lied to someone. Skills work everywhere; commands work in one tool. One source of truth
+wins.
+
+The Stop hook is the one exception, because it does something a document cannot: it is
+deterministic. A rule in `AGENTS.md` asks an agent to check its work; the hook makes the
+check a precondition of finishing. Tools without hooks fall back to the written rule plus
+CI, which is weaker but not absent.
+
+Hook details: `node scripts/verify.mjs --quiet --hook` — exit 2 blocks the stop, and it
+honors `stop_hook_active` so a failure it cannot fix never traps the user in a loop.
+
 ## Codex — global MCP config
 
 Codex configures MCP globally, not per repo. Paste into `~/.codex/config.toml`:

@@ -1,95 +1,22 @@
-import { CostTable } from "@/components/blocks/cost-table";
-import { Hero } from "@/components/blocks/hero";
-import { SkillGrid } from "@/components/blocks/skill-grid";
-import { WaitlistPanel } from "@/components/features/waitlist/waitlist-panel";
-
-// Routes stay thin: data lives here, blocks take props.
-const skills = [
-  {
-    name: "setup-health",
-    useWhen:
-      "After install, after changing .mcp.json, or when generation starts misbehaving. Every failure comes with a fallback.",
-  },
-  {
-    name: "ui-system",
-    useWhen:
-      "Starting a project, changing the theme, or when the UI starts looking like every other AI-built site.",
-  },
-  {
-    name: "component-picker",
-    useWhen:
-      "Before adding any interface. shadcn for structure, MagicUI for motion, 21st.dev for marketing sections.",
-  },
-  {
-    name: "asset-pipeline",
-    useWhen:
-      "Adding images, illustrations, icons or 3D. One treatment across every asset is what reads as a brand.",
-  },
-  {
-    name: "frontend-security",
-    useWhen:
-      "Before shipping, after adding dependencies, after pasting code from a registry or the web.",
-  },
-  {
-    name: "seo-blog",
-    useWhen:
-      "Writing an article or auditing a page's search surface. Native MDX, no CMS to keep alive.",
-  },
-  {
-    name: "convex-structure",
-    useWhen:
-      "Before writing backend code, adding a table, or wiring a component to data. Fixed rules so the agent never has to guess.",
-  },
-  {
-    name: "upstream-sync",
-    useWhen:
-      "Monthly, or when a tool ships a major version. This is what keeps the bundle from going stale.",
-  },
-];
-
-const costRows = [
-  { tool: "Project scaffold", replacedBy: "this repo + setup-health" },
-  { tool: "Design harness", replacedBy: "ui-system + tokens in globals.css" },
-  {
-    tool: "Component generation",
-    replacedBy: "component-picker + shadcn/MagicUI MCP",
-  },
-  { tool: "Deploy button", replacedBy: "your own host, your own repo" },
-  {
-    tool: "Credit meter",
-    replacedBy: "the coding subscription you already pay for",
-  },
-];
-
+/**
+ * Your home page. Replace all of it — nothing here is load-bearing.
+ *
+ * There is deliberately no starter design: a demo landing page is something you would
+ * have to delete before you could start, and half of it would survive into production.
+ */
 export default function Home() {
   return (
-    <main className="flex-1">
-      <Hero
-        eyebrow="Frontend bundle · v0.1"
-        title="The foundation your coding agent already knows how to use."
-        description="An agent-ready Next.js repo: design tokens that stop the generated look, component rules, security headers on by default, and seven skills that keep themselves up to date."
-        primaryCta={{ label: "Read the setup", href: "#skills" }}
-        secondaryCta={{
-          label: "View on GitHub",
-          href: "https://github.com/moasq/shipkit",
-        }}
-      />
-      <div id="skills">
-        <SkillGrid
-          title="Eight skills, one source of truth"
-          description="Instructions live in AGENTS.md. Procedures live in .agents/skills/. Tool wiring lives in .mcp.json. Three kinds of file, three jobs, no overlap."
-          skills={skills}
-        />
+    <main className="flex flex-1 items-center justify-center px-6 py-24">
+      <div className="w-full max-w-md">
+        <h1 className="font-semibold text-2xl tracking-tight">Ready.</h1>
+        <p className="mt-2 text-muted-foreground text-sm/6">
+          Open this folder in your coding agent and describe what you want to build. It will read{" "}
+          <code className="font-mono text-xs">AGENTS.md</code> and follow the rules there.
+        </p>
+        <p className="mt-6 font-mono text-muted-foreground text-xs">
+          pnpm health · pnpm onboard · pnpm verify
+        </p>
       </div>
-      <CostTable
-        title="What the hosted builders actually sell"
-        description="Not the model — the harness around it. Scaffold, design system, component library, deploy. Build that harness once and the monthly credit meter goes away."
-        rows={costRows}
-        footnote="Honest version: if you do not already pay for a coding agent, a hosted builder is probably the better deal. This bundle is for people who do."
-      />
-      <section className="px-6 py-16 sm:py-24">
-        <WaitlistPanel />
-      </section>
     </main>
   );
 }
