@@ -167,22 +167,47 @@ this repo overrides all four:
 Swap the palette for your own with [tweakcn](https://tweakcn.com). Every shadcn and
 MagicUI component inherits it automatically.
 
-## Backend — Convex + Better Auth
+## Backend — Convex
 
-Specced and rule-enforced; the scaffold is one command away because it needs a Convex
-login, which is yours to do:
+The backend ships as source: `convex/schema.ts`, a `waitlist` domain, and the
+`requireUser` / `requireOwner` auth seam. What it cannot ship is `convex/_generated/`,
+because that comes from `npx convex dev`, which opens a browser and needs **you**.
+
+So the repo is built to be useful before that happens:
 
 ```bash
-pnpm add convex@latest @convex-dev/better-auth
-pnpm add better-auth@~1.6.15          # exact-range pin: the adapter lags majors
-npx convex dev                         # opens a browser, creates/links the project
-pnpm secret                            # prints a random secret — paste it below
+pnpm onboard     # where you are in the sequence, and the one command to run next
+```
+
+```
+  done    1. Convex package
+  done    2. Backend source
+  NEXT    3. Connect a deployment   (needs you — opens a browser)
+  waiting 4. Generated types
+  waiting 5. Type the API seam
+```
+
+A fresh clone builds green with no Convex account. The waitlist renders and says
+"backend not connected yet" instead of crashing, `pnpm health` reports the backend as
+DEGRADED rather than broken, and the frontend runs untyped through `anyApi` — a public
+export of `convex/server`. After `npx convex dev`, one line in `src/lib/convex-api.ts`
+turns on full end-to-end types. That seam is the only place the frontend imports Convex
+function references from.
+
+Nothing here fakes a `_generated/` directory. A stub would typecheck and then lie.
+
+### Auth — Better Auth
+
+```bash
+pnpm add @convex-dev/better-auth better-auth@~1.6.15   # exact-range pin: adapter lags majors
+pnpm secret                                            # prints a random secret
 npx convex env set BETTER_AUTH_SECRET <paste>
 npx convex env set SITE_URL http://localhost:3000
 ```
 
-Then run `setup-health` — its Convex section verifies the connection, attempts
-`convex login` when it is missing, and falls back to the dashboard if that fails.
+Secrets go in Convex env, never `.env.local` — `pnpm health` treats one found there as
+CRITICAL. The waitlist needs no auth, so this step can wait until you have a screen that
+does.
 
 Also install Better Auth's **official skill pack** (`better-auth-best-practices`) via
 the skills CLI — instructions at

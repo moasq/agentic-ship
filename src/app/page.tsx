@@ -1,6 +1,7 @@
 import { CostTable } from "@/components/blocks/cost-table";
 import { Hero } from "@/components/blocks/hero";
 import { SkillGrid } from "@/components/blocks/skill-grid";
+import { WaitlistPanel } from "@/components/features/waitlist/waitlist-panel";
 
 // Routes stay thin: data lives here, blocks take props.
 const skills = [
@@ -33,6 +34,11 @@ const skills = [
     name: "seo-blog",
     useWhen:
       "Writing an article or auditing a page's search surface. Native MDX, no CMS to keep alive.",
+  },
+  {
+    name: "convex-structure",
+    useWhen:
+      "Before writing backend code, adding a table, or wiring a component to data. Fixed rules so the agent never has to guess.",
   },
   {
     name: "upstream-sync",
@@ -70,7 +76,7 @@ export default function Home() {
       />
       <div id="skills">
         <SkillGrid
-          title="Seven skills, one source of truth"
+          title="Eight skills, one source of truth"
           description="Instructions live in AGENTS.md. Procedures live in .agents/skills/. Tool wiring lives in .mcp.json. Three kinds of file, three jobs, no overlap."
           skills={skills}
         />
@@ -81,6 +87,9 @@ export default function Home() {
         rows={costRows}
         footnote="Honest version: if you do not already pay for a coding agent, a hosted builder is probably the better deal. This bundle is for people who do."
       />
+      <section className="px-6 py-16 sm:py-24">
+        <WaitlistPanel />
+      </section>
     </main>
   );
 }

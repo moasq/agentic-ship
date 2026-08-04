@@ -154,7 +154,37 @@ for (const file of sourceFiles) {
 add("no raw hex / arbitrary color values", rawColor.length ? "FAIL" : "PASS", rawColor.length ? `${rawColor.length} file(s): ${rawColor.slice(0, 3).join(", ")} — these must become tokens` : "");
 add("no server env in client components", leaks.length ? "CRITICAL" : "PASS", leaks.length ? leaks.slice(0, 3).join("; ") : "");
 
-/* ---------- 8. env hygiene ---------- */
+/* ---------- 8. convex backend ---------- */
+
+// Connecting Convex is a human step (`npx convex dev` opens a browser). Not being
+// connected yet is NOT a failure — it is a stage of onboarding, reported as such.
+if (!existsSync(join(root, "convex", "schema.ts"))) {
+  add("convex backend", "SKIP", "frontend only — no convex/ in this repo");
+} else {
+  const envLocal = read(".env.local") ?? "";
+  const envHas = (key) => new RegExp(`^\\s*${key}\\s*=\\s*\\S`, "m").test(envLocal);
+  const connected = envHas("CONVEX_DEPLOYMENT");
+  const generated = existsSync(join(root, "convex", "_generated", "api.d.ts")) || existsSync(join(root, "convex", "_generated", "api.js"));
+
+  add("convex deployment", connected ? "PASS" : "WARN", connected ? "" : "not connected yet — run `pnpm onboard`, then `npx convex dev` (opens a browser, needs you)");
+  add("convex/_generated", generated ? "PASS" : "WARN", generated ? "" : "created by `npx convex dev`; commit it once it exists");
+  add("NEXT_PUBLIC_CONVEX_URL", envHas("NEXT_PUBLIC_CONVEX_URL") ? "PASS" : "WARN", envHas("NEXT_PUBLIC_CONVEX_URL") ? "" : "written by `npx convex dev`; until then Convex components render their not-connected state");
+
+  const seam = read("src/lib/convex-api.ts") ?? "";
+  const typed = /^\s*(?:import|export)[^\n]*_generated\/api/m.test(seam);
+  add("convex api seam", typed ? "PASS" : "WARN", typed ? "typed against generated api" : "running untyped via anyApi — after `npx convex dev`, swap the one line in src/lib/convex-api.ts");
+
+  // Action secrets belong in Convex env. Finding one in .env.local means it is one
+  // `git add` away from being public.
+  const misplaced = ["BETTER_AUTH_SECRET", "CONVEX_DEPLOY_KEY"].filter((k) => envHas(k));
+  add("no backend secrets in .env.local", misplaced.length ? "CRITICAL" : "PASS", misplaced.length ? `${misplaced.join(", ")} must live in Convex env — \`npx convex env set\` — not in .env.local` : "");
+
+  const authRoute = existsSync(join(root, "src", "app", "api", "auth", "[...all]", "route.ts"));
+  const authWired = existsSync(join(root, "convex", "auth.ts"));
+  if (authWired) add("better auth proxy route", authRoute ? "PASS" : "CRITICAL", authRoute ? "" : "convex/auth.ts exists but src/app/api/auth/[...all]/route.ts does not — every sign-in fails with no useful error");
+}
+
+/* ---------- 9. env hygiene ---------- */
 
 const gitignore = read(".gitignore") ?? "";
 add(".env* gitignored", /^\.env\*/m.test(gitignore) ? "PASS" : "CRITICAL", /^\.env\*/m.test(gitignore) ? "" : "add `.env*` to .gitignore immediately");

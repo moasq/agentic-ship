@@ -41,7 +41,8 @@ Windows. The buyer may be on any of the three.
 
 | Command | Does |
 | --- | --- |
-| `pnpm health` | machine-checkable half of `setup-health` — pins, SSOT, tokens, env leaks |
+| `pnpm health` | machine-checkable half of `setup-health` — pins, SSOT, tokens, env leaks, backend status |
+| `pnpm onboard` | where the backend setup stands and the one command to run next |
 | `pnpm setup:env` | create `.env.local` from `.env.example` |
 | `pnpm link:skills` | make `.claude/skills` resolve to `.agents/skills` (junction on Windows) |
 | `pnpm sync:mcp` · `pnpm check:mcp` | write / verify the `.cursor/mcp.json` mirror |
@@ -163,7 +164,16 @@ Full detail and the fixed feature-building sequence: `.agents/skills/convex-stru
 - Action secrets live in **Convex env** (`npx convex env set`), never in `.env.local`.
   The only Convex values Next sees are `NEXT_PUBLIC_CONVEX_URL` and
   `NEXT_PUBLIC_CONVEX_SITE_URL` — both URLs, both public by design.
-- `convex/_generated/` is committed and never hand-edited.
+- `convex/_generated/` is committed and never hand-edited. **It does not exist on a
+  fresh clone** — `npx convex dev` creates it, and that command opens a browser, so it
+  is the buyer's step and never yours. Until then the frontend runs untyped through
+  `anyApi` and the app still builds. Never fake, stub, or hand-write `_generated/`.
+- The frontend imports function references from **`src/lib/convex-api.ts` only** — one
+  seam, one line to change when the generated types arrive.
+- A component that calls a Convex hook must not render when there is no
+  `ConvexProvider` in the tree. Branch on `isConvexConfigured` in a parent; `"skip"`
+  does not help, because the failure is a missing client, not a missing argument.
+- Not-yet-connected is a WARN, never an error. `pnpm build` stays green with no backend.
 
 ## Security rules
 

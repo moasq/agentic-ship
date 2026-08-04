@@ -109,28 +109,43 @@ Run separately, because it needs the network:
 
 - `pnpm audit --prod` reports no high or critical advisories.
 
-## 7. Convex backend
+## 7. Convex backend — `pnpm health`, then `pnpm onboard`
 
-Skip this whole section with `SKIPPED — phase 1 only` if `convex/` does not exist.
+Skip this whole section with `SKIPPED — frontend only` if `convex/` does not exist.
 
-**7.1 Present**
+**7.1 Not connected is a STAGE, not a failure**
 
-- `convex/schema.ts` exists, and `convex/_generated/` is committed.
-- `.env.local` has `CONVEX_DEPLOYMENT`, `NEXT_PUBLIC_CONVEX_URL`, and
-  `NEXT_PUBLIC_CONVEX_SITE_URL`.
+The backend ships as source. `convex/_generated/` does not, because only
+`npx convex dev` can produce it and that command opens a browser. Connecting is the
+buyer's manual step.
 
-**7.2 Connected? — try to fix it, in this order**
+So on a fresh clone, all of this is expected and must be reported as **WARN**:
 
-Run `npx convex dev --once`. If it fails, attempt each step and re-test:
+- `CONVEX_DEPLOYMENT` / `NEXT_PUBLIC_CONVEX_URL` missing from `.env.local`
+- `convex/_generated/` missing
+- `src/lib/convex-api.ts` still exporting `anyApi` instead of the generated `api`
 
-1. `npx convex dev --once` — writes env vars when the project already exists.
-2. `npx convex login` — **this opens a browser and needs the human.** Say so out loud
-   and wait. Do not spin or retry silently.
-3. `npx convex dev --once` again — offers to create or link a project.
+`pnpm build` must still be green in that state. If it is not, that is the real bug.
 
-Still failing → **FALLBACK:** create or link the project by hand at
-`dashboard.convex.dev`, paste the deployment name into `.env.local`, re-run step 1.
+**7.2 Onboard the human — never attempt the login yourself**
+
+`pnpm onboard` prints the sequence, marks where they are, and gives the one next
+command. Read it out and stop at the human step:
+
+1. `pnpm add convex@latest`
+2. backend source — ships with ShipKit
+3. **`npx convex dev`** — opens a browser, creates or links the project, writes the env
+   vars, generates `_generated/`. **Say out loud that this one needs them. Then wait.**
+   Do not spin, do not retry, do not try `convex login` on their behalf.
+4. commit `convex/_generated/`
+5. swap the one line in `src/lib/convex-api.ts` to the generated `api`
+
+Login failing → **FALLBACK:** create or link the project by hand at
+`dashboard.convex.dev`, paste the deployment name into `.env.local`, re-run step 3.
 Reference: `docs.convex.dev/quickstart`.
+
+**Never** fabricate, stub, or hand-write `convex/_generated/` to make a check pass. A
+stub typechecks and then lies about the shape of every function.
 
 **7.3 Convex MCP**
 

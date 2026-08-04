@@ -13,12 +13,14 @@
     "sync:mcp": "node scripts/sync-mcp.mjs",
     "check:mcp": "node scripts/sync-mcp.mjs --check",
     "secret": "node scripts/gen-secret.mjs",
-    "health": "node scripts/health.mjs"
+    "health": "node scripts/health.mjs",
+    "onboard": "node scripts/onboard.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "convex": "^1.43.0",
     "lucide-react": "^1.28.0",
     "next": "16.3.0",
     "react": "19.2.8",

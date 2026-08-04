@@ -152,8 +152,21 @@
     }
   ],
   "backend": {
-    "$comment": "Phase 2. Deps are NOT installed yet — convex/ scaffolding requires a Convex login, which is a human step. Run: /plugin install convex@claude-plugins-official, then npx convex dev.",
-    "status": "specced, not scaffolded",
+    "$comment": "Phase 2. Backend SOURCE ships (convex/schema.ts, convex/waitlist.ts, convex/lib/auth.ts). convex/_generated/ does NOT and cannot: only `npx convex dev` produces it, and that opens a browser, so it is the buyer's manual step. `npx convex codegen` needs CONVEX_DEPLOYMENT too — verified 2026-08-04, not assumed.",
+    "status": "scaffolded; awaiting the buyer's `npx convex dev`",
+    "convex": "^1.43.0",
+    "preLoginContract": {
+      "buildsGreen": true,
+      "mechanism": "src/lib/convex-api.ts exports anyApi (public export of convex/server) until convex/_generated/api exists; tsconfig excludes convex/ so the Next build never typechecks imports of a directory that is not there yet.",
+      "afterLogin": "one line in src/lib/convex-api.ts switches to the generated api, enabling end-to-end types",
+      "onboarding": "pnpm onboard prints the sequence and the single next command; pnpm health reports every unconnected piece as WARN, never FAIL",
+      "rule": "Never fabricate or stub convex/_generated/. A stub typechecks and then lies about the shape of every function."
+    },
+    "demoDomain": {
+      "choice": "waitlist",
+      "reason": "one table, one indexed dedupe, an O(1) counter, and no auth required — it exercises the rules without needing a session. Swapping to notes is one domain file.",
+      "security": "emails are never returned by a public function; count reads a server-maintained counter document so a stranger-growable table is never scanned; listRecent is an internalQuery and unreachable from the browser."
+    },
     "auth": {
       "choice": "better-auth",
       "adapter": "@convex-dev/better-auth",

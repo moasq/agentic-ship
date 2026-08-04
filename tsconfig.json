@@ -30,5 +30,6 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "$comment:exclude": "convex/ typechecks itself against its own generated types, via `npx convex dev --typecheck`. Keeping it out of the Next build means `pnpm build` stays green before the buyer has run `convex dev` — convex/_generated/ does not exist until then.",
+  "exclude": ["node_modules", "convex"]
 }

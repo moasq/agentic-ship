@@ -123,7 +123,30 @@ choice to be deliberate.
 - Convex hooks live in `components/features/<domain>/` and in routes.
 - A route loads data and passes it down; a block renders it. That is what keeps blocks
   standalone-renderable with mock props.
-- The provider (`ConvexBetterAuthProvider`) mounts once in `src/app/layout.tsx`.
+- The provider mounts once, in `src/app/providers.tsx`, rendered by the root layout.
+
+**Function references come from `src/lib/convex-api.ts` and nowhere else.** That file is
+the whole reason a fresh clone builds with no Convex account: until `npx convex dev` has
+run, `convex/_generated/` does not exist and the seam exports `anyApi` (a public export
+of `convex/server`) — correct at runtime, untyped. After the buyer connects, one line
+there switches to the generated `api` and every argument and return value is checked.
+
+**A component that calls a Convex hook must not render without a `ConvexProvider` in the
+tree.** `useQuery` throws on a missing client, and passing `"skip"` does not save you —
+the failure is the absent provider, not the argument. Branch in the parent:
+
+```tsx
+export function WaitlistPanel() {
+  if (!isConvexConfigured) return <WaitlistForm count={null} state="not-connected" action={() => {}} />;
+  return <WaitlistLive />;   // hooks live in here, called unconditionally
+}
+```
+
+Every Convex-backed component needs an honest **not-connected** state. "The backend is
+not wired up yet" is a real thing to render; a crash is not.
+
+Reference implementation in this repo: `convex/waitlist.ts` →
+`src/components/features/waitlist/waitlist-panel.tsx` → `blocks/waitlist-form.tsx`.
 
 ## 7. Auth seam
 
