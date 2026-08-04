@@ -42,3 +42,6 @@ next-env.d.ts
 
 # but ship the template
 !.env.example
+
+# Fontshare faces are licensed but NOT redistributable - each machine runs `pnpm font`
+src/fonts/

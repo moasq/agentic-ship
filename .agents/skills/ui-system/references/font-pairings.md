@@ -16,9 +16,11 @@ default faces of AI-generated sites.
 
 - **General Sans** (display) · **Source Serif 4** (body accents, pull quotes)
 - License: General Sans is Fontshare (ITF) — free for commercial use but **not
-  redistributable**: ship the fetch script, never the font files. Source Serif 4 is OFL.
-- Load: General Sans via `next/font/local` after the fetch script downloads it;
-  Source Serif 4 via `next/font/google`.
+  redistributable**: the files are never committed (`src/fonts/` is gitignored) and
+  every machine fetches its own with `pnpm font general-sans 500,600,700`. The script
+  prints the exact `next/font/local` block to paste. Source Serif 4 is OFL.
+- Load: General Sans via `next/font/local` from `src/fonts/`; Source Serif 4 via
+  `next/font/google`.
 
 ## Pairing C — editorial landing
 

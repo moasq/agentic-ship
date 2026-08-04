@@ -1,4 +1,24 @@
 import type { NextConfig } from "next";
+import createMDX from "@next/mdx";
+
+/**
+ * Convex talks to its deployment over HTTPS and a WebSocket. With a strict
+ * `connect-src 'self'` the browser blocks that the moment the backend is connected —
+ * silently, as a CSP violation in the console rather than an app error.
+ *
+ * So the deployment origin is added to the policy when it exists, and only then. The
+ * policy is never loosened to a wildcard to make a connection work; the origin is named.
+ */
+const convexOrigins = (() => {
+  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+  if (!url) return [];
+  try {
+    const { origin, host } = new URL(url);
+    return [origin, `wss://${host}`];
+  } catch {
+    return [];
+  }
+})();
 
 /**
  * Security headers ship on by default.
@@ -16,7 +36,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://images.unsplash.com https://images.pexels.com",
       "font-src 'self' data:",
-      "connect-src 'self'",
+      ["connect-src 'self'", ...convexOrigins].join(" "),
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -37,6 +57,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Articles are `page.mdx` files under src/app/blog/. MDX is compiled by Next's own
+  // plugin — no CMS, no third-party renderer, no runtime dependency.
+  pageExtensions: ["ts", "tsx", "mdx"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
@@ -48,4 +71,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default createMDX({})(nextConfig);

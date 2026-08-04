@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { NumberTicker } from "@/components/magicui/number-ticker";
 
 export type WaitlistState = "idle" | "submitting" | "added" | "already" | "error" | "not-connected";
 
@@ -65,8 +66,10 @@ export function WaitlistForm({
           {message}
         </span>
         {count !== null && (
-          <span className="shrink-0 font-mono text-muted-foreground text-xs tabular-nums">
-            {count.toLocaleString()} waiting
+          <span className="shrink-0 font-mono text-muted-foreground text-xs">
+            {/* The vendor file ships text-black/dark:text-white; the token wins via cn()
+                at the call site — components/magicui/ stays diffable against upstream. */}
+            <NumberTicker value={count} className="font-mono text-muted-foreground text-xs" /> waiting
           </span>
         )}
       </div>

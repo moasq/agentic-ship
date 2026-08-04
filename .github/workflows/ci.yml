@@ -1,0 +1,48 @@
+name: ci
+
+# The bundle claims to work on macOS, Linux and Windows. This is the proof.
+#
+# Windows is the job that matters. A `git checkout` there cannot create the
+# `.claude/skills` symlink and writes a plain text file containing the path instead —
+# silently. If `postinstall` did not repair that with a directory junction, the
+# `.claude/skills resolves` check in `pnpm health` fails here and nowhere else.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false # one OS failing must not hide the state of the others
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # Also runs postinstall: link-skills + sync-mcp.
+      - run: pnpm install --frozen-lockfile
+
+      # Single source of truth, version pins, design tokens, env hygiene, backend stage.
+      # Convex is expected to be unconnected in CI — that is a WARN, and DEGRADED exits 0.
+      - run: pnpm health
+
+      # The generated mirror must match its source on every platform. On Windows this
+      # also catches CRLF normalization breaking the byte comparison.
+      - run: pnpm check:mcp
+
+      - run: pnpm lint
+
+      - run: pnpm build

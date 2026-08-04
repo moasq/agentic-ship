@@ -23,7 +23,7 @@ and never reaches for the flashy source when the plain one is correct.
 | Need | Source | Install | Never |
 | --- | --- | --- | --- |
 | Structure and behavior — forms, dialogs, tables, nav, inputs, menus | **shadcn/ui** | shadcn MCP, or `npx shadcn@latest add <name>` | hand-rolled primitives; unstyled HTML for interactive controls |
-| Motion and delight — marquee, number ticker, shine border, particles, animated beam | **MagicUI** | `npx shadcn@latest add @magicui/<name>` (registry pinned in `components.json`) | more than two motion pieces per viewport |
+| Motion and delight — marquee, number ticker, shine border, particles, animated beam | **MagicUI** | `npx shadcn@latest add @magicui/<name>` (registry pinned in `components.json`), then move the file from `components/ui/` to `components/magicui/` — the CLI drops everything at the `ui` alias | more than two motion pieces per viewport |
 | Marketing sections — heroes, pricing tables, testimonials, CTA blocks, bento grids | **21st.dev** | 21st MCP if the key is set, otherwise browse 21st.dev and paste the component prompt | shipping community code without the review in step 6 |
 | Icons | **Lucide** | ships with shadcn | mixing icon sets; inconsistent stroke widths |
 | Anything already in `src/components/blocks` | **compose it** | import and pass props | duplicating a block to change one string |

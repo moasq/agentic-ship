@@ -1,0 +1,56 @@
+export const metadata = {
+  title: "Why every AI-generated site looks the same",
+  description:
+    "Four defaults account for most of the sameness in AI-built interfaces. Each one is a single line to override, and this is what to replace them with.",
+  alternates: { canonical: "/blog/why-ai-sites-look-the-same" },
+  openGraph: {
+    type: "article",
+    publishedTime: "2026-08-04",
+    title: "Why every AI-generated site looks the same",
+    description: "Four defaults account for most of the sameness in AI-built interfaces.",
+  },
+};
+
+# Why every AI-generated site looks the same
+
+You can usually tell within a second. Not because the code is bad — the code is often
+fine — but because four defaults survive untouched in almost every generated project,
+and those four defaults are most of what you are actually looking at.
+
+## 1. The untouched neutral palette
+
+Component libraries ship a neutral grey palette so their examples read cleanly on any
+background. It is a starting point, and it gets treated as a finished decision. Every
+project that skips this step shares a face.
+
+Pick one accent with intent and define it as a token. One line changes every component
+that inherits from it, including ones you have not installed yet.
+
+## 2. Four fonts
+
+Inter, Geist, Space Grotesk, Poppins. Excellent typefaces, all of them — and collectively
+the loudest signal that nobody chose. A typeface with a different skeleton changes the
+impression of a page more than any amount of layout work.
+
+If a face appears in a framework's default template, it is doing branding for the
+framework, not for you.
+
+## 3. One radius everywhere
+
+`rounded-lg` on the card, the button, the input, the badge, the image. Real design
+systems vary radius by element size — a large surface and a small control should not
+share a corner. Pick one base radius, derive the rest, and stop deciding per component.
+
+## 4. The violet-to-blue gradient
+
+On white, at the top, behind the headline. It was a good idea in about 2021.
+
+## The part that actually matters
+
+None of these are hard to fix. They are defaults, and defaults survive because nobody
+is assigned to overrule them. That is the real failure mode of generated interfaces:
+not that a model made a bad choice, but that it made **no** choice and shipped anyway.
+
+Write the four decisions down as tokens before you generate anything. Then every
+component your agent installs afterwards inherits them, and the question never comes up
+again.
