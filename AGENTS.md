@@ -42,8 +42,13 @@ Windows. The buyer may be on any of the three.
 | Command | Does |
 | --- | --- |
 | `pnpm verify` | **the definition of done** — health + lint + build in one command |
+| `pnpm verify:full` | verify + unit tests + e2e — what CI runs; use before a PR or deploy |
+| `pnpm test` · `pnpm test:e2e` | gate G2 (vitest, in-memory) · gate G3 (Playwright, production build) |
+| `pnpm heal` | tier-1 deterministic repairs (links, mirrors, env, lockfile), then health as proof |
+| `pnpm preflight [--prod]` | **the go-live gate** — live keys, email flips, no seed backdoor |
 | `pnpm health` | machine-checkable half of `setup-health` — pins, SSOT, tokens, env leaks, backend status |
 | `pnpm onboard` | where the backend setup stands and the one command to run next |
+| `pnpm font` · `pnpm asset` | fetch a licensed font / an allowlisted image, cross-platform |
 | `pnpm setup:env` | create `.env.local` from `.env.example` |
 | `pnpm link:skills` | make `.claude/skills` resolve to `.agents/skills` (junction on Windows) |
 | `pnpm sync:mcp` · `pnpm check:mcp` | write / verify the `.cursor/mcp.json` mirror |
@@ -72,6 +77,8 @@ write literally.
 | `frontend-security` | before shipping, after adding dependencies, after pasting code |
 | `seo-blog` | writing an article or auditing a page's search surface |
 | `convex-structure` | before writing backend code, adding a table, or wiring a component to data |
+| `testing` | writing tests, any red gate, or when a repair is needed — gates, data rules, healer guardrails |
+| `production-preflight` | before the first deploy and after any change touching money, email, or auth |
 | `upstream-sync` | monthly, or when a tool ships a major version |
 
 Convex-the-product is taught by the official `convex` plugin's skills (schema-builder,
@@ -277,6 +284,35 @@ Detail: `.agents/skills/convex-structure/references/deploy-render.md`.
   work — add that origin explicitly.
 
 Full reasoning: `.agents/skills/frontend-security/SKILL.md`.
+
+## Production rules
+
+The kit's defaults are deliberately test-safe; going live is a set of **deliberate
+flips**, gated by `pnpm preflight` and the `production-preflight` skill:
+
+- Live Stripe keys exist **only** in the prod Convex deployment's env. A live key on a
+  dev machine or in Render is a CRITICAL, and preflight `--prod` fails if prod still
+  holds a test key — that is production taking test payments.
+- Email leaves `testMode` **together with** `requireEmailVerification: true`, after a
+  sending domain is verified. Never one without the other.
+- `ALLOW_TEST_SEED` must not exist on prod. Preflight fails if it does.
+- `src/lib/site.ts` placeholders must be replaced before launch — they are the
+  `<title>`, the OG card and llms.txt.
+- Prod incidents: rollback first (last green deploy in Render), diagnose locally
+  through the gates second. Never a patch loop against production.
+
+## SEO / AEO rules
+
+- Every route exports real metadata; identity derives from `src/lib/site.ts`.
+- `robots.ts` **allows AI crawlers by name, deliberately** — being cited is
+  distribution. Opting out is editing one list, not deleting the file.
+- `llms.txt` and `sitemap.xml` are generated from the same typed sources and are
+  asserted by e2e in the **rendered response** — metadata that exists in code but not
+  in the response is the failure mode the smoke pack exists to catch.
+- The OG image is code (`src/app/opengraph-image.tsx`), derived from `site.ts`. If the
+  theme changes in `globals.css`, mirror the two colors there.
+- Articles: question-shaped headings, the direct answer in the first paragraph, stable
+  anchors, real dates. Detail: the `seo-blog` skill.
 
 ## Before you say you are done
 

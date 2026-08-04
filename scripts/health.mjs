@@ -101,6 +101,26 @@ const mcpRaw = read(".mcp.json");
 const mirrorRaw = read(".cursor/mcp.json");
 add(".cursor/mcp.json mirror", mcpRaw !== null && mcpRaw === mirrorRaw ? "PASS" : "FAIL", mcpRaw === mirrorRaw ? "" : "generated file drifted or is missing — run `pnpm sync:mcp`, never edit it directly");
 
+// Every server must have lockfile provenance, and every lockfile entry must still be
+// wired (21st is the documented off-by-default exception). Catches the exact failure
+// `npx playwright init-agents` caused once: it OVERWRITES .mcp.json wholesale.
+{
+  const mcpNames = Object.keys(json(".mcp.json")?.mcpServers ?? {});
+  const lockNames = (json("skills.lock.json")?.mcp ?? []).map((entry) => entry.name);
+  const unlocked = mcpNames.filter((name) => !lockNames.includes(name));
+  const unwired = lockNames.filter((name) => !mcpNames.includes(name) && name !== "21st");
+  add(
+    "mcp servers match lockfile",
+    unlocked.length || unwired.length ? "FAIL" : "PASS",
+    [
+      unlocked.length ? `no provenance for: ${unlocked.join(", ")} — add skills.lock.json entries` : "",
+      unwired.length ? `in lockfile but missing from .mcp.json: ${unwired.join(", ")} — a tool overwrote it (init-agents does); restore and pnpm sync:mcp` : "",
+    ]
+      .filter(Boolean)
+      .join("; "),
+  );
+}
+
 if (process.platform === "win32") {
   add("MCP launcher on Windows", "WARN", "if a server never starts, wrap it: \"command\": \"cmd\", \"args\": [\"/c\", \"npx\", ...] — see references/platform-notes.md");
 }
@@ -200,8 +220,10 @@ if (!existsSync(join(root, "convex", "schema.ts"))) {
   const emailSrc = read("convex/email.ts") ?? "";
   const authSrc = read("convex/auth.ts") ?? "";
   if (emailSrc) {
-    const testMode = /testMode:\s*true/.test(emailSrc);
-    const requireVerify = /requireEmailVerification:\s*true/.test(authSrc);
+    // Line-anchored: comments discussing these flags must never satisfy the check
+    // (the comment-vs-code bug class — heal-ledger.md).
+    const testMode = /^\s*testMode:\s*true/m.test(emailSrc);
+    const requireVerify = /^\s*requireEmailVerification:\s*true/m.test(authSrc);
     // Both directions are broken states, and both are silent in production.
     if (testMode && requireVerify) {
       add("email testMode interlock", "CRITICAL", "requireEmailVerification is ON while convex/email.ts is still in testMode — Resend refuses real addresses, so every genuine signup is locked out");

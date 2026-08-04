@@ -10,6 +10,8 @@
     { "name": "frontend-security", "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
     { "name": "seo-blog",          "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
     { "name": "upstream-sync",     "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
+    { "name": "testing",             "upstream": "original", "patched": false, "lastSync": "2026-08-04", "note": "Gates G0–G3, test-data tiers, the three-tier heal loop. Companion files: vitest.config.ts, playwright.config.ts, e2e/, scripts/heal.mjs, .agents/heal-ledger.md, and the official Playwright agents in .claude/agents (regenerate: npx playwright init-agents --loop=claude — WARNING: that command overwrites .mcp.json; health catches it via the lockfile-match check)." },
+    { "name": "production-preflight", "upstream": "original", "patched": false, "lastSync": "2026-08-04", "note": "The go-live gate. Machine half: scripts/preflight.mjs (--prod audits the prod Convex env: live Stripe keys, email flips, EMAIL_FROM, SITE_URL, BETTER_AUTH_SECRET, and that ALLOW_TEST_SEED is ABSENT). Judgment half in the skill: prod webhooks, one refunded live checkout, rollback story." },
     {
       "name": "convex-structure",
       "upstream": "original",
@@ -107,6 +109,15 @@
       "upstream": "https://github.com/render-oss/render-plugin-claude-code (.mcp.json)",
       "official": true,
       "verified": "2026-08-04"
+    },
+    {
+      "name": "playwright-test",
+      "package": "@playwright/test (CLI: run-test-mcp-server)",
+      "pinned": "1.62.x",
+      "upstream": "https://playwright.dev/docs/test-agents",
+      "official": true,
+      "verified": "2026-08-04",
+      "note": "Written by `npx playwright init-agents --loop=claude` alongside the planner/generator/healer agents in .claude/agents. That command OVERWRITES .mcp.json — after running it, restore the server list and `pnpm sync:mcp`; the health lockfile-match check catches the damage."
     },
     {
       "name": "21st",

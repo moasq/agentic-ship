@@ -45,3 +45,7 @@ next-env.d.ts
 
 # Fontshare faces are licensed but NOT redistributable - each machine runs `pnpm font`
 src/fonts/
+
+# playwright
+/test-results/
+/playwright-report/

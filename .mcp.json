@@ -35,6 +35,10 @@
     "render": {
       "type": "http",
       "url": "https://mcp.render.com/mcp"
+    },
+    "playwright-test": {
+      "command": "npx",
+      "args": ["playwright", "run-test-mcp-server"]
     }
   }
 }

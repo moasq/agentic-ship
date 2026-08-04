@@ -48,6 +48,8 @@ pre-built for you to tear out.
 | `pnpm health` | Is anything wrong? |
 | `pnpm onboard` | What do I need to connect next? |
 | `pnpm verify` | Is my work actually finished? |
+| `pnpm heal` | Can it fix itself? (links, mirrors, lockfile — then proves it) |
+| `pnpm preflight` | Am I actually ready to launch? |
 
 `pnpm health` prints a table. Every failure comes with the exact fix, so you never get a
 red line without being told what to do about it.
@@ -70,8 +72,16 @@ ready for that piece.
 | Put it online | Render | connect the repo |
 | A blog that ranks | MDX + sitemap + metadata | write the article |
 
-Every one of these is the **official** integration, not a homemade version. `pnpm onboard`
-walks you through them one at a time and tells you which step needs you.
+Every one of these is the **official** integration, not a homemade version — including
+the MCP servers your agent uses to talk to them, declared once in `.mcp.json` for every
+tool (Claude Code, Cursor, Codex alike). `pnpm onboard` walks you through them one at a
+time and tells you which step needs you.
+
+**Tested, not hoped:** the kit ships its own test gates — unit tests, and a browser
+suite that checks every page, every security header, and the SEO surface on a real
+production build. CI runs all of it on macOS, Linux and Windows. And before you launch,
+`pnpm preflight --prod` refuses to pass while production still has test payment keys, a
+dead email setup, or a test-data backdoor.
 
 ---
 

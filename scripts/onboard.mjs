@@ -102,7 +102,17 @@ const steps = [
     command: "connect the repo at render.com — it detects render.yaml — then set CONVEX_DEPLOY_KEY (Convex dashboard → prod → Deploy Keys) and NEXT_PUBLIC_POSTHOG_KEY in Render",
     note: "render.yaml is the whole topology, committed. The build runs `npx convex deploy --cmd 'pnpm build'` so backend and frontend ship together. Backend secrets live in the PROD Convex deployment's env — Render never sees them. Move SITE_URL and the Stripe/Resend webhook URLs to prod values: references/deploy-render.md.",
   },
+  {
+    title: "Go live — production preflight",
+    done: false,
+    verifyInstead: "pnpm preflight --prod prints READY",
+    command: "pnpm preflight --prod",
+    note: "the launch gate: live Stripe keys in prod (not test), email out of testMode WITH verification on, real EMAIL_FROM, https SITE_URL, and no ALLOW_TEST_SEED backdoor. The judgment half (prod webhooks, one refunded live checkout, rollback story) is in the production-preflight skill.",
+  },
 ];
+
+// Vendor MCP servers (stripe, resend, posthog, render in .mcp.json) authenticate with
+// a browser OAuth the first time your agent uses them — that is you, not a script.
 
 const firstOpen = steps.findIndex((s) => !s.done);
 

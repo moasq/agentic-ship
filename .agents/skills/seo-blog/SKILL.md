@@ -49,9 +49,36 @@ Emit JSON-LD as a typed object, not a hand-written script string:
 ## Machine surfaces
 
 - `src/app/sitemap.ts` — generated from the article list, never hand-maintained
-- `src/app/robots.ts` — points at the sitemap
-- OG images generated with `next/og` from the article title, so every post gets a
-  branded card with zero manual work
+- `src/app/robots.ts` — points at the sitemap and **allows AI crawlers by name**
+  (GPTBot, ClaudeBot, PerplexityBot, Google-Extended). Deliberate: being cited by
+  answer engines is distribution. Opting out = editing that one list.
+- `src/app/llms.txt/route.ts` — the AEO counterpart of the sitemap, generated from the
+  SAME typed article index + `site.ts`, so it cannot go stale separately
+- `src/app/opengraph-image.tsx` — the share card as code (`next/og`), derived from
+  `site.ts`; never a stale export
+- All of it is **asserted in the rendered response** by `pnpm test:e2e` — title,
+  description, OG tags, robots, llms.txt, sitemap, the OG image answering 200.
+  Metadata that exists in code but not in the response is the classic failure.
+
+## AEO — writing to be cited, not just ranked
+
+- Headings phrased as the **question people actually ask**; the direct answer in the
+  first paragraph under each — standalone, quotable, no "as we'll see below".
+- Stable anchors on every H2/H3; renamed headings keep old anchors via explicit ids.
+- Real dates: `publishedAt` in the index, surfaced as `<time>` and in JSON-LD.
+  Answer engines weight freshness and specificity over volume.
+- One idea per section. A section an engine can quote whole is a section that gets
+  cited.
+
+## Core Web Vitals
+
+Performance is a ranking input. The budget check is manual until CI wiring is earned:
+
+```bash
+npx -y @lhci/cli autorun --collect.url=http://localhost:3100 --collect.startServerCommand="pnpm start --port 3100"
+```
+
+Targets: LCP < 2.5s · CLS < 0.1 · INP < 200ms. A blown budget is a defect, not a vibe.
 
 ## Checklist the skill enforces before publishing
 

@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
 import { getArticles } from "@/lib/blog";
+import { site } from "@/lib/site";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const siteUrl = site.url;
 
 // Generated from the filesystem, never hand-maintained. Publishing an article is
 // creating its page.mdx — the sitemap follows, with no second list to forget.
