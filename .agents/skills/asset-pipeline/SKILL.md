@@ -17,6 +17,21 @@ look like a brand. The treatment matters more than the photo.
 | Icons | Lucide | ships with shadcn, so consistency is free | one set, one stroke width |
 | 3D | Spline embed | the practical default for web 3D | below the fold, lazy-loaded, only if it earns its bytes |
 
+## Downloading
+
+```bash
+pnpm asset "https://images.unsplash.com/photo-…" hero-workspace
+```
+
+Saves to `public/images/<name>.<ext>`, then serve it through `next/image`. Pure Node,
+so it behaves the same on macOS, Linux and Windows — never `curl -o`, which does not
+exist on a stock Windows box (`references/platform-notes.md` in the setup-health skill).
+
+The script refuses anything outside the source allowlist, which mirrors
+`images.remotePatterns` in `next.config.ts`. Adding a source is a **human decision**:
+update `next.config.ts` first — and the CSP `img-src` with it — then the script's list.
+Refusing beats silently trusting a new host.
+
 Keep a `credits.md` even when attribution is not required. It costs nothing and it
 answers the question a client will eventually ask.
 
