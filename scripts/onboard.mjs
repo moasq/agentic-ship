@@ -35,9 +35,9 @@ const steps = [
   },
   {
     title: "Backend source",
-    done: has("convex/schema.ts"),
-    command: "ships with ShipKit — see convex/schema.ts",
-    note: "schema, waitlist domain, and the requireUser auth seam",
+    done: has("convex/schema.ts") && has("convex/auth.ts") && has("convex/billing.ts"),
+    command: "ships with ShipKit — schema, waitlist, auth, billing",
+    note: "auth = Better Auth via the official component; billing = Stripe via @convex-dev/stripe. Both idle safely until connected.",
   },
   {
     title: "Connect a deployment",
@@ -59,10 +59,26 @@ const steps = [
     note: "one line. Until then the app runs untyped against Convex, which is why a fresh clone builds with no account.",
   },
   {
-    title: "Auth (optional, later)",
-    done: Boolean(deps["@convex-dev/better-auth"]),
-    command: "pnpm add @convex-dev/better-auth better-auth@~1.6.15",
-    note: "the waitlist needs no auth. Wiring: .agents/skills/convex-structure/references/better-auth-wiring.md",
+    title: "Auth secrets",
+    done: false, // reading Convex env needs a connected deployment; verified there by setup-health §7.4
+    verifyInstead: "npx convex env list   → BETTER_AUTH_SECRET and SITE_URL present",
+    command: "pnpm secret, then: npx convex env set BETTER_AUTH_SECRET <paste>  ·  npx convex env set SITE_URL http://localhost:3000",
+    note: "Convex env, never .env.local — pnpm health treats either name in .env.local as CRITICAL. After this, sign-up on /billing works.",
+  },
+  {
+    title: "Stripe keys",
+    done: false,
+    verifyInstead: "npx convex env list   → STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET present",
+    human: true,
+    command: "stripe sandbox create   (works with NO Stripe account) — then: npx convex env set STRIPE_SECRET_KEY <rk_or_sk>  ·  npx convex env set STRIPE_WEBHOOK_SECRET <whsec_>",
+    note: "sandbox first by decision: you can watch a test payment land before creating any account. Prefer a restricted key (rk_). Webhook secret comes from the next step.",
+  },
+  {
+    title: "Stripe webhook + price",
+    done: false,
+    verifyInstead: "a test checkout flips /billing to `pro` with no reload",
+    command: "stripe listen --forward-to <deployment>.convex.site/stripe/webhook   ·   create a price, then: npx convex env set STRIPE_PRICE_PRO price_...",
+    note: "the printed whsec_ is the STRIPE_WEBHOOK_SECRET above. In prod: add the convex.site URL in the Stripe dashboard instead. Fulfillment rides the webhook, never the redirect.",
   },
 ];
 
@@ -81,6 +97,9 @@ if (firstOpen === -1) {
 
 const next = steps[firstOpen];
 console.log(`\nNext: ${next.title}\n\n  ${next.command}\n\n  ${next.note}\n`);
+if (next.verifyInstead) {
+  console.log(`  This script cannot see Convex env, so it cannot mark this step done itself.\n  Verify with:  ${next.verifyInstead}\n`);
+}
 if (next.human) {
   console.log("  This one is yours — no script can log in for you. Run it, finish in the\n  browser, then run `pnpm onboard` again.\n");
 }

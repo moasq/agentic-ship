@@ -145,6 +145,23 @@
       "note": "Official skills are NOT vendored into .agents/skills — they arrive through the plugin and update themselves. That is upstream-sync by delegation. Our convex-structure skill covers only what the official ones cannot know: this repo's conventions."
     },
     {
+      "name": "stripe",
+      "marketplace": "claude-plugins-official",
+      "source": "git-subdir github.com/stripe/ai providers/claude/plugin (sha-pinned by Anthropic)",
+      "version": "0.4.5",
+      "official": true,
+      "verified": "2026-08-04",
+      "declaredIn": ".claude/settings.json",
+      "bundles": [
+        "stripe-best-practices skill (API selection, security, restricted keys, webhooks)",
+        "stripe-docs / stripe-projects / stripe-directory / upgrade-stripe / connect-recommend skills",
+        "remote MCP https://mcp.stripe.com (OAuth — no key stored anywhere)",
+        "company-researcher agent"
+      ],
+      "crossTool": "stripe/ai ships the SAME skills as providers for codex, cursor, grok, kiro — the cross-tool requirement is solved upstream by Stripe.",
+      "note": "While on an unclaimed `stripe sandbox create` environment, use the CLI, not the MCP (Stripe's own guidance)."
+    },
+    {
       "name": "shadcn / magicui / tailwind / zustand plugins",
       "status": "none exist",
       "verified": "2026-08-03",
@@ -152,9 +169,25 @@
     }
   ],
   "backend": {
-    "$comment": "Phase 2. Backend SOURCE ships (convex/schema.ts, convex/waitlist.ts, convex/lib/auth.ts). convex/_generated/ does NOT and cannot: only `npx convex dev` produces it, and that opens a browser, so it is the buyer's manual step. `npx convex codegen` needs CONVEX_DEPLOYMENT too — verified 2026-08-04, not assumed.",
-    "status": "scaffolded; awaiting the buyer's `npx convex dev`",
+    "$comment": "Phases 2+3. Backend SOURCE ships in full: schema, waitlist, Better Auth wiring (convex/auth.ts, auth.config.ts, convex.config.ts, http.ts, the /api/auth proxy) and the Stripe billing seam (convex/billing.ts). convex/_generated/ does NOT and cannot ship: only `npx convex dev` produces it, and that opens a browser, so it is the buyer's manual step. `npx convex codegen` needs CONVEX_DEPLOYMENT too — verified 2026-08-04, not assumed.",
+    "status": "implemented; awaiting the buyer's `npx convex dev` + Stripe keys",
     "convex": "^1.43.0",
+    "stripe": {
+      "component": "@convex-dev/stripe",
+      "version": "0.1.6",
+      "upstream": "https://github.com/get-convex/stripe",
+      "official": true,
+      "verified": "2026-08-04",
+      "apiVersion": "2026-04-22.dahlia",
+      "apiVersionNote": "Stripe's current is 2026-07-29.dahlia; the component documents 2026-04-22.dahlia and we pin what the component pins. upstream-sync flags the drift — API versions change webhook payload shapes, never blind-bump.",
+      "decisions": {
+        "mode": "subscription (exercises renewal/cancel/expiry; one-time is a subset)",
+        "checkout": "Stripe-hosted page only — card data never touches this origin (SAQ A). Embedded Payment Element requires a deliberate CSP review first.",
+        "sandboxFirst": "stripe sandbox create works with no Stripe account; live mode is a later deliberate step.",
+        "plans": "browser sends a plan KEY (\"pro\"), never a price ID or amount; price IDs live in Convex env as STRIPE_PRICE_* set at onboarding"
+      },
+      "secrets": "STRIPE_SECRET_KEY (prefer rk_), STRIPE_WEBHOOK_SECRET — Convex env only; pnpm health CRITICALs on either in .env.local and on any sk_live/rk_live there"
+    },
     "preLoginContract": {
       "buildsGreen": true,
       "mechanism": "src/lib/convex-api.ts exports anyApi (public export of convex/server) until convex/_generated/api exists; tsconfig excludes convex/ so the Next build never typechecks imports of a directory that is not there yet.",
@@ -173,11 +206,12 @@
       "adapterUpstream": "https://labs.convex.dev/better-auth",
       "official": true,
       "verified": "2026-08-03",
+      "adapterVersion": "0.12.5",
       "pins": {
         "convex": ">=1.25.0",
-        "better-auth": "~1.6.15"
+        "better-auth": "1.6.15 EXACT"
       },
-      "pinReason": "The Convex adapter is known to lag Better Auth major releases (the v1.6 contract change broke integrations). upstream-sync flags majors as breaking rather than bumping.",
+      "pinReason": "PROVEN 2026-08-04, not theoretical: better-auth 1.6.25 sits INSIDE the adapter's declared peer range (>=1.6.11 <1.7.0) and still breaks the adapter's types (AuthClient useSession data resolves to never; build fails). 1.6.15 is what the adapter repo itself develops against. Exact pin — even a tilde re-admits the breakage. upstream-sync may move the pin only after building against the candidate version.",
       "risks": [
         "Better Auth joined Vercel (Jul 2026); Convex is a competitor. Integration remains actively promoted by Convex as of Aug 2026, and both projects are open source. The auth seam keeps a swap to Clerk or Convex Auth an afternoon's work.",
         "A DoS advisory was reported against @convex-dev/better-auth. pnpm audit runs in setup-health."

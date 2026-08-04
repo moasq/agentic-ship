@@ -167,13 +167,18 @@ this repo overrides all four:
 Swap the palette for your own with [tweakcn](https://tweakcn.com). Every shadcn and
 MagicUI component inherits it automatically.
 
-## Backend — Convex
+## Backend — Convex, auth, billing: an engine, not a template
 
-The backend ships as source: `convex/schema.ts`, a `waitlist` domain, and the
-`requireUser` / `requireOwner` auth seam. What it cannot ship is `convex/_generated/`,
-because that comes from `npx convex dev`, which opens a browser and needs **you**.
+The backend ships **wired**: schema, a `waitlist` reference domain, Better Auth through
+the first-party `@convex-dev/better-auth` component, and Stripe billing through the
+first-party `@convex-dev/stripe` component. Deliberately **no auth screens and no
+billing screens** — you start from your product's needs, and your agent builds UI
+against the engine's seams, guided by the skills. The one shipped UI flow is the
+waitlist, kept as the documented reference implementation.
 
-So the repo is built to be useful before that happens:
+What the repo cannot ship is `convex/_generated/`, because that comes from
+`npx convex dev`, which opens a browser and needs **you**. So it is built to be useful
+before that happens:
 
 ```bash
 pnpm onboard     # where you are in the sequence, and the one command to run next
@@ -181,40 +186,45 @@ pnpm onboard     # where you are in the sequence, and the one command to run nex
 
 ```
   done    1. Convex package
-  done    2. Backend source
+  done    2. Backend source (schema, waitlist, auth, billing)
   NEXT    3. Connect a deployment   (needs you — opens a browser)
   waiting 4. Generated types
   waiting 5. Type the API seam
+  waiting 6. Auth secrets
+  waiting 7. Stripe keys            (needs you — `stripe sandbox create` works with no account)
+  waiting 8. Stripe webhook + price
 ```
 
-A fresh clone builds green with no Convex account. The waitlist renders and says
-"backend not connected yet" instead of crashing, `pnpm health` reports the backend as
-DEGRADED rather than broken, and the frontend runs untyped through `anyApi` — a public
-export of `convex/server`. After `npx convex dev`, one line in `src/lib/convex-api.ts`
-turns on full end-to-end types. That seam is the only place the frontend imports Convex
-function references from.
+A fresh clone builds green with no Convex account, no auth secrets, and no Stripe keys.
+Backend-driven components render "not connected yet" instead of crashing, the auth proxy
+answers 503 with the onboarding pointer, `pnpm health` reports DEGRADED rather than
+broken, and the frontend runs untyped through `anyApi` until `npx convex dev` exists —
+after which one line in `src/lib/convex-api.ts` turns on full end-to-end types. Nothing
+fakes a `_generated/` directory; a stub would typecheck and then lie.
 
-Nothing here fakes a `_generated/` directory. A stub would typecheck and then lie.
+### The seams your agent builds against
 
-### Auth — Better Auth
+- **Session**: `api.auth.getCurrentUser` (reactive, null when signed out) ·
+  `authClient.signUp.email / signIn.email / signOut` · server-side `preloadAuthQuery` /
+  `fetchAuthMutation`. Adding an auth method = one plugin toggle in `convex/auth.ts` +
+  its client half in `src/lib/auth-client.ts`.
+- **Billing**: `api.billing.createCheckout({ plan })` → redirect to Stripe's hosted
+  page · `api.billing.createPortal()` for manage/cancel · `api.billing.getEntitlement`
+  as the only truth, flipped reactively by the component-verified webhook. The browser
+  never names an amount or a price ID — plans resolve server-side from Convex env.
 
-```bash
-pnpm add @convex-dev/better-auth better-auth@~1.6.15   # exact-range pin: adapter lags majors
-pnpm secret                                            # prints a random secret
-npx convex env set BETTER_AUTH_SECRET <paste>
-npx convex env set SITE_URL http://localhost:3000
-```
+Rules with teeth: secrets (`BETTER_AUTH_SECRET`, `STRIPE_SECRET_KEY`,
+`STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`) live in Convex env only — `pnpm health`
+fails CRITICAL on any of them in `.env.local`, and on any live Stripe key there.
+`better-auth` is pinned **exact** (`1.6.15`): `1.6.25` is inside the adapter's peer
+range and still breaks its types — proven in this repo, recorded in `skills.lock.json`.
 
-Secrets go in Convex env, never `.env.local` — `pnpm health` treats one found there as
-CRITICAL. The waitlist needs no auth, so this step can wait until you have a screen that
-does.
-
-Also install Better Auth's **official skill pack** (`better-auth-best-practices`) via
-the skills CLI — instructions at
-[better-auth.com/docs/ai-resources/skills](https://better-auth.com/docs/ai-resources/skills).
-It is not vendored here for the same reason the Convex skills aren't: official packs
-stay current on their own. setup-health warns when it is missing; the exact ShipKit
-wiring lives in `.agents/skills/convex-structure/references/better-auth-wiring.md`.
+Deep references: `.agents/skills/convex-structure/references/better-auth-wiring.md` and
+`references/stripe-billing.md`. Also install Better Auth's official skill pack
+(`better-auth-best-practices`) via the skills CLI
+([instructions](https://better-auth.com/docs/ai-resources/skills)) — not vendored, so it
+stays current on its own; the `stripe@claude-plugins-official` plugin is declared in
+`.claude/settings.json` and its skills ship per-tool for Codex/Cursor too.
 
 Why Better Auth over Convex Auth or Clerk: it is the community default, the
 `@convex-dev/better-auth` bridge is first-party, organizations, 2FA and SSO ship as

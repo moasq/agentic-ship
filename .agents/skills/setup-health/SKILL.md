@@ -173,6 +173,26 @@ it with a cheap read (list tables).
   Fallback: https://better-auth.com/llms.txt pasted into context. Details:
   `references/connections.md` § Better Auth.
 
+**7.5 Billing — Stripe via `@convex-dev/stripe`**
+
+Full flow, rules R1–R8, and the acceptance test:
+`.agents/skills/convex-structure/references/stripe-billing.md`.
+
+- `pnpm health` covers the static half: Stripe secrets or `STRIPE_PRICE_*` in
+  `.env.local` → CRITICAL; any `sk_live`/`rk_live` there → CRITICAL.
+- `npx convex env list` shows `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and one
+  `STRIPE_PRICE_*` per plan in `convex/billing.ts` → else WARN with the `pnpm onboard`
+  pointer. Not-configured is a stage, not a failure.
+- The webhook endpoint is the component's: `<deployment>.convex.site/stripe/webhook`.
+  Local testing goes through `stripe listen --forward-to` that URL — never a
+  hand-rolled receiver.
+- **Stripe plugin** (`stripe@claude-plugins-official`) declared in
+  `.claude/settings.json`; its MCP is remote OAuth (`mcp.stripe.com`) — no key check
+  applies. On an unclaimed `stripe sandbox create` environment, probe the CLI
+  (`stripe whoami --format json`), not the MCP — Stripe's own guidance.
+- Acceptance: a `4242 4242 4242 4242` checkout flips `api.billing.getEntitlement`
+  with no reload. Anything else is not a working billing setup.
+
 ## 8. Build proof
 
 - `pnpm build` completes. This is the only check that proves the others were real.

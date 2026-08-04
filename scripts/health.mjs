@@ -176,8 +176,13 @@ if (!existsSync(join(root, "convex", "schema.ts"))) {
 
   // Action secrets belong in Convex env. Finding one in .env.local means it is one
   // `git add` away from being public.
-  const misplaced = ["BETTER_AUTH_SECRET", "CONVEX_DEPLOY_KEY"].filter((k) => envHas(k));
-  add("no backend secrets in .env.local", misplaced.length ? "CRITICAL" : "PASS", misplaced.length ? `${misplaced.join(", ")} must live in Convex env — \`npx convex env set\` — not in .env.local` : "");
+  const misplaced = ["BETTER_AUTH_SECRET", "CONVEX_DEPLOY_KEY", "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRICE_\\w+"].filter((k) => envHas(k));
+  const misplacedNames = misplaced.map((k) => k.replace("\\w+", "*"));
+  add("no backend secrets in .env.local", misplaced.length ? "CRITICAL" : "PASS", misplaced.length ? `${misplacedNames.join(", ")} must live in Convex env — \`npx convex env set\` — not in .env.local` : "");
+
+  // R7: live Stripe credentials have no business on a dev machine's env file at all.
+  const liveKey = /\b(sk|rk)_live_[A-Za-z0-9]/.test(envLocal);
+  add("no live Stripe key in .env.local", liveKey ? "CRITICAL" : "PASS", liveKey ? "sk_live/rk_live found — live keys belong in the PROD deployment's Convex env only" : "");
 
   const authRoute = existsSync(join(root, "src", "app", "api", "auth", "[...all]", "route.ts"));
   const authWired = existsSync(join(root, "convex", "auth.ts"));

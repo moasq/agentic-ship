@@ -1,16 +1,22 @@
-# Better Auth × Convex — the exact wiring
+# Better Auth × Convex — the wiring, as implemented
 
-Verified against the official guide: https://labs.convex.dev/better-auth/framework-guides/next
-(2026-08-03). Product-level Better Auth knowledge comes from the official
-`better-auth/skills` pack — this reference covers only the ShipKit wiring.
+Status: **implemented in this repo** (2026-08-04), verified against the official
+example at `get-convex/better-auth/examples/next` — not against memory. Product-level
+Better Auth knowledge comes from the official `better-auth/skills` pack; this reference
+covers only the ShipKit wiring.
 
-## Requirements and pins
+## Pins — exact, with the receipt
 
 ```bash
-# convex >= 1.25.0 required by the component
-pnpm add convex@latest @convex-dev/better-auth
-pnpm add better-auth@~1.6.15   # EXACT-RANGE PIN — adapter lags Better Auth majors
+pnpm add @convex-dev/better-auth        # 0.12.5 installed
+pnpm add better-auth@1.6.15             # EXACT — see below
 ```
+
+**Why exact and not a range:** better-auth `1.6.25` sits *inside* the adapter's declared
+peer range (`>=1.6.11 <1.7.0`) and still breaks the adapter's types — `AuthClient`'s
+`useSession().data` resolves to `never` and the build fails. Proven in this repo on
+2026-08-04, recorded in `skills.lock.json`. `1.6.15` is what the adapter repo itself
+develops against. Only `upstream-sync` moves this pin, by building against the candidate.
 
 ## Secrets — Convex env, never Next env
 
@@ -20,26 +26,39 @@ npx convex env set BETTER_AUTH_SECRET <paste the printed value>
 npx convex env set SITE_URL http://localhost:3000
 ```
 
-`.env.local` additionally needs `NEXT_PUBLIC_CONVEX_SITE_URL` (the `.convex.site` URL —
-auth proxy target). `npx convex dev` writes the deployment values.
+`pnpm health` CRITICALs if either name appears in `.env.local`.
+`npx convex dev` writes the deployment values (`NEXT_PUBLIC_CONVEX_URL`,
+`NEXT_PUBLIC_CONVEX_SITE_URL`) into `.env.local` itself — both URLs, public by design.
 
-## The eight files
+## The eight files — all present
 
 | File | Job |
 | --- | --- |
-| `convex/convex.config.ts` | `app.use(betterAuth)` — register the component |
-| `convex/auth.config.ts` | declare the auth provider. **The footgun file** — missing = "works locally, 401s in prod" |
-| `convex/auth.ts` | `createClient` → `authComponent`; `createAuth` → `betterAuth({...})` with the Convex adapter + convex plugin. **Organizations / 2FA / SSO are plugin toggles here** — config-only change, no rewrite |
-| `convex/http.ts` | `authComponent.registerRoutes(http, createAuth)` |
-| `src/lib/auth-client.ts` | `createAuthClient` + `convexClient` plugin — components call this for sign-in/out/session |
-| `src/lib/auth-server.ts` | `preloadAuthQuery`, `fetchAuthMutation`, `fetchAuthAction` — the authenticated side of the data-access tree |
-| `src/app/api/auth/[...all]/route.ts` | proxies `/api/auth/*` to Convex — the ONE sanctioned Next API route |
-| `src/components/providers/convex-provider.tsx` | `ConvexBetterAuthProvider` replaces plain `ConvexProvider` |
+| `convex/convex.config.ts` | `app.use(betterAuth)` + `app.use(stripe)` — component registry |
+| `convex/auth.config.ts` | `getAuthConfigProvider()`. **The footgun file** — missing = "works locally, 401s in prod". `pnpm health` checks it |
+| `convex/auth.ts` | `createClient` → `authComponent`; `createAuthOptions` → email+password, `requireEmailVerification: false` until an email sender exists (Resend phase); `convex({ authConfig })` plugin. **Magic links / 2FA / orgs / SSO are plugin toggles here** — config, not rewrites |
+| `convex/http.ts` | `authComponent.registerRoutes(http, createAuth)` + the Stripe webhook |
+| `src/lib/auth-client.ts` | `createAuthClient` + `convexClient()` plugin, annotated with the adapter's own `AuthClient` type so plugin mismatches fail at the definition, not as an unreadable generic error at the provider |
+| `src/lib/auth-server.ts` | `convexBetterAuthNextJs(...)` → `handler`, `preloadAuthQuery`, `fetchAuthMutation`, … Pre-login it exports a 503 stub handler so a fresh clone builds green |
+| `src/app/api/auth/[...all]/route.ts` | `export const { GET, POST } = handler` — the ONE sanctioned Next API route |
+| `src/app/providers.tsx` | `ConvexBetterAuthProvider(client, authClient)`; renders plain children when no `NEXT_PUBLIC_CONVEX_URL` |
 
-## Verify
+Plugin symmetry rule: enabling an auth method touches **exactly two files** —
+`convex/auth.ts` (server plugin) and `src/lib/auth-client.ts` (client plugin). Anything
+more is being done wrong.
+
+## Session truth for UI (the engine ships no auth UI)
+
+- `api.auth.getCurrentUser` — reactive query, `null` when signed out, never throws.
+- `authClient.signUp.email / signIn.email / signOut` — the client actions.
+- Server side: `preloadAuthQuery` / `fetchAuthMutation` from `src/lib/auth-server.ts`.
+- Build screens when the product needs them, under the provider-safety rule in the
+  SKILL (branch on `isConvexConfigured` before hooks mount).
+
+## Verify (after the buyer's `npx convex dev`)
 
 ```bash
-npx convex dev --once   # deploys component + schema
+npx convex dev --once   # deploys components + schema, generates types
 pnpm build              # must be green with or without a session
 # then: sign-up → sign-in round trip; session visible in the Convex dashboard
 ```
@@ -47,13 +66,12 @@ pnpm build              # must be green with or without a session
 ## Provider-swap seam
 
 Domain code never names the auth vendor — it calls `requireUser` / `requireOwner` from
-`convex/lib/auth.ts`. A swap to Clerk or Convex Auth touches exactly three files:
-`convex/auth.ts`, `convex/auth.config.ts`, the provider component. Keep it that way.
+`convex/lib/auth.ts`. A swap to Clerk or Convex Auth touches `convex/auth.ts`,
+`convex/auth.config.ts`, and `src/app/providers.tsx`. Keep it that way.
 
 ## Known risks (recorded in skills.lock.json)
 
-- Better Auth joined Vercel (Jul 2026); Convex still promotes the combo — but the seam
+- Better Auth joined Vercel (Jul 2026); Convex still promotes the combo — the seam
   above is the insurance.
-- The adapter lags Better Auth majors → hence the `~1.6.x` pin; `upstream-sync` flags
-  majors as breaking.
+- In-range minor bumps can break the adapter's types (proven, above) → exact pin.
 - A DoS advisory was once filed against the adapter → `pnpm audit` runs in setup-health.

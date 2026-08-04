@@ -164,7 +164,40 @@ Full detail and the fixed feature-building sequence: `.agents/skills/convex-stru
 - Action secrets live in **Convex env** (`npx convex env set`), never in `.env.local`.
   The only Convex values Next sees are `NEXT_PUBLIC_CONVEX_URL` and
   `NEXT_PUBLIC_CONVEX_SITE_URL` — both URLs, both public by design.
-- `convex/_generated/` is committed and never hand-edited. **It does not exist on a
+- `convex/_generated/` is committed and never hand-edited.
+
+## Auth rules (Better Auth, wired)
+
+The engine ships auth wired, with **no auth UI** — build screens the product actually
+needs, against these seams, when the user asks for them:
+
+- Session truth is `api.auth.getCurrentUser` — reactive, null when signed out, never
+  throws. Client actions (sign in/up/out) go through `authClient` in
+  `src/lib/auth-client.ts`; RSC/Server Action data goes through `src/lib/auth-server.ts`
+  (`preloadAuthQuery`, `fetchAuthMutation`).
+- Adding an auth method = a plugin toggle in **both** `convex/auth.ts` and
+  `src/lib/auth-client.ts`. Never a new endpoint, never a custom credential flow.
+- `src/app/api/auth/[...all]/route.ts` is the one sanctioned Next API route. It answers
+  503 with the onboarding pointer until the backend is connected.
+- `better-auth` is pinned **exact** (`1.6.15`): 1.6.25 is inside the adapter's peer
+  range and still breaks its types — proven in this repo, recorded in
+  `skills.lock.json`. Only `upstream-sync` moves it, by building against the candidate.
+
+## Billing rules (Stripe, wired)
+
+Same shape: engine wired, **no billing UI shipped** — the seams and the rules are the
+product. Full flow and rule list: `.agents/skills/convex-structure/references/stripe-billing.md`.
+
+- The browser never names an amount or a price ID. It sends a **plan key** from
+  `PLANS` in `convex/billing.ts`; price IDs live in Convex env (`STRIPE_PRICE_*`).
+- Entitlement renders from `api.billing.getEntitlement` and nothing else — never the
+  success redirect, never a client-held flag. It is reactive: the webhook flips it.
+- Checkout is Stripe-hosted (`createCheckout` returns a URL to redirect to); managing
+  billing is Stripe's portal (`createPortal`). Card data never touches this origin.
+  An embedded Payment Element is a deliberate CSP change under `frontend-security`.
+- `/stripe/webhook` belongs to the `@convex-dev/stripe` component — never parse a
+  webhook body yourself, never add a second webhook route in front of it.
+- No money math in our code. Stripe computed it; read it from the synced tables. **It does not exist on a
   fresh clone** — `npx convex dev` creates it, and that command opens a browser, so it
   is the buyer's step and never yours. Until then the frontend runs untyped through
   `anyApi` and the app still builds. Never fake, stub, or hand-write `_generated/`.
