@@ -1,0 +1,21 @@
+{
+  "$comment": "Permissions only. All instructions live in AGENTS.md; all procedures live in .agents/skills/. Never duplicate rules here.",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install)",
+      "Bash(pnpm dev)",
+      "Bash(pnpm build)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm audit:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./.env.*.local)"
+    ]
+  }
+}

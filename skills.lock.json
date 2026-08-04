@@ -1,0 +1,71 @@
+{
+  "$comment": "Provenance manifest. Nothing enters this bundle without an entry. Run the upstream-sync skill monthly.",
+  "bundleVersion": "0.1.0",
+  "lastSync": "2026-08-03",
+  "skills": [
+    { "name": "setup-health",      "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
+    { "name": "ui-system",         "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
+    { "name": "component-picker",  "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
+    { "name": "asset-pipeline",    "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
+    { "name": "frontend-security", "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
+    { "name": "seo-blog",          "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
+    { "name": "upstream-sync",     "upstream": "original", "patched": false, "lastSync": "2026-08-03" }
+  ],
+  "mcp": [
+    {
+      "name": "shadcn",
+      "package": "shadcn",
+      "pinned": "latest",
+      "upstream": "https://ui.shadcn.com/docs/mcp",
+      "official": true,
+      "verified": "2026-08-03"
+    },
+    {
+      "name": "next-devtools",
+      "package": "next-devtools-mcp",
+      "pinned": "latest",
+      "upstream": "https://nextjs.org/docs/app/guides/mcp",
+      "official": true,
+      "verified": "2026-08-03",
+      "note": "Next 16+ also ships version-accurate docs at node_modules/next/dist/docs/"
+    },
+    {
+      "name": "magicui",
+      "package": "@magicuidesign/mcp",
+      "pinned": "latest",
+      "upstream": "https://github.com/magicuidesign/mcp",
+      "official": true,
+      "license": "MIT",
+      "verified": "2026-08-03"
+    },
+    {
+      "name": "context7",
+      "package": "@upstash/context7-mcp",
+      "pinned": "latest",
+      "upstream": "https://github.com/upstash/context7",
+      "official": true,
+      "verified": "2026-08-03"
+    },
+    {
+      "name": "21st",
+      "package": "remote",
+      "url": "https://21st.dev/api/mcp",
+      "enabledByDefault": false,
+      "requiresApiKey": "TWENTYFIRST_API_KEY",
+      "upstream": "https://github.com/21st-dev/magic-mcp",
+      "official": true,
+      "verified": "2026-08-03",
+      "note": "Magic MCP (@21st-dev/magic) was replaced by the unified 21st MCP; old keys were reset. OFF by default because the bundle's promise is fewer subscriptions. Fallback: browse 21st.dev and paste the component prompt."
+    }
+  ],
+  "registries": [
+    { "name": "@magicui", "url": "https://magicui.design/r/{name}.json", "verified": "2026-08-03" }
+  ],
+  "pins": {
+    "next": "16.x",
+    "react": "19.x",
+    "tailwindcss": "4.x",
+    "zustand": "5.x",
+    "shadcn-cli": "3.x"
+  }
+}

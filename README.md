@@ -1,36 +1,113 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ShipKit
 
-## Getting Started
+An agent-ready Next.js frontend foundation. Design tokens that stop the generated look,
+component rules your coding agent will actually follow, security headers on by default,
+and seven skills — including one that keeps the bundle from going stale.
 
-First, run the development server:
+Built for people who already pay for a coding agent and would rather not also pay for a
+hosted app builder.
+
+## What this replaces
+
+Hosted builders sell a **harness**, not a model — project scaffold, design system,
+component library, deploy button, preview. This repo is that harness, built once, in a
+repo you own.
+
+| Hosted builder feature | Here |
+| --- | --- |
+| Project scaffold | this repo + `setup-health` |
+| Design harness | `ui-system` + tokens in `globals.css` |
+| Component generation | `component-picker` + shadcn / MagicUI MCP |
+| Deploy button | your own host, your own repo |
+| Credit meter | the coding subscription you already pay for |
+
+**Honest version:** if you do not already pay for a coding agent, a hosted builder is
+probably the better deal. This is for people who do.
+
+## Stack
+
+Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind CSS v4 ·
+shadcn/ui · MagicUI · Zustand 5 · pnpm.
+
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.example .env.local
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then, in your coding agent, run the `setup-health` skill. It checks every connection
+and prints a fallback for anything that fails.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Single source of truth
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `AGENTS.md` — the only place rules live. Read by Codex, Cursor, Copilot, Gemini CLI,
+  Windsurf, Cline.
+- `CLAUDE.md` — one line: `@AGENTS.md`. Claude Code reads the same rules.
+- `.claude/skills` — a symlink to `.agents/skills`. One skills directory, both worlds.
+- `.mcp.json` — all tool wiring, committed, so everyone gets the same setup on clone.
+- `skills.lock.json` — provenance for every skill, server, and registry.
 
-## Learn More
+Instructions live in `AGENTS.md`. Procedures live in `.agents/skills/`. Tool wiring
+lives in `.mcp.json`. Three kinds of file, three jobs, no overlap.
 
-To learn more about Next.js, take a look at the following resources:
+## Skills
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Skill | Use it when |
+| --- | --- |
+| `setup-health` | after install, after changing `.mcp.json`, or when generation misbehaves |
+| `ui-system` | starting a project, changing the theme, or UI starts looking generated |
+| `component-picker` | before adding any new piece of interface |
+| `asset-pipeline` | adding images, illustrations, icons, or 3D |
+| `frontend-security` | before shipping, after adding dependencies, after pasting code |
+| `seo-blog` | writing an article or auditing a page's search surface |
+| `upstream-sync` | monthly, or when a tool ships a major version |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## MCP servers
 
-## Deploy on Vercel
+| Server | Official | Notes |
+| --- | --- | --- |
+| [shadcn](https://ui.shadcn.com/docs/mcp) | yes | components from the official registry and any pinned registry |
+| [next-devtools](https://nextjs.org/docs/app/guides/mcp) | yes | live build and runtime errors, plus version-accurate docs from `node_modules/next/dist/docs/` |
+| [magicui](https://github.com/magicuidesign/mcp) | yes, MIT | animated components |
+| [context7](https://github.com/upstash/context7) | yes | current docs for everything else |
+| [21st](https://github.com/21st-dev/magic-mcp) | yes | **off by default** — remote server, needs an API key. Fallback: browse 21st.dev and paste the component prompt |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Every server checked by `setup-health` has a documented fallback. Nothing here strands
+you because a hosted service is down.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Why the UI does not look AI-generated
+
+Roughly ninety percent of the sameness in AI-built sites comes from four defaults, and
+this repo overrides all four:
+
+1. The untouched shadcn neutral palette → replaced with a deliberate one.
+2. Inter, Geist, Space Grotesk, Poppins → banned as primary faces. Ships with IBM Plex.
+3. `rounded-lg` everywhere → one chosen radius, `0.375rem`.
+4. Violet-to-blue gradient on white → not present.
+
+Swap the palette for your own with [tweakcn](https://tweakcn.com). Every shadcn and
+MagicUI component inherits it automatically.
+
+## Security
+
+Headers ship on: CSP, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
+`Permissions-Policy`, HSTS. Secrets rules, supply-chain rules, and the review checklist
+for third-party component code are in `.agents/skills/frontend-security/SKILL.md`.
+
+Two honest caveats are documented there: the CSP includes `'unsafe-inline'` for scripts
+because Next's bootstrap requires it, and a strict CSP will break third-party embeds
+until you add their origin explicitly.
+
+## Staying current
+
+Run the `upstream-sync` skill monthly. It diffs every vendored skill against its
+upstream, checks MCP package versions, verifies registry URLs still resolve, flags
+major bumps as breaking, and finishes by running `setup-health` to prove nothing broke.
+
+A template is stale the day you download it. This one can update itself.
+
+## License
+
+MIT
