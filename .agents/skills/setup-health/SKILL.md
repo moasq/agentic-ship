@@ -47,6 +47,15 @@ For each entry in `.mcp.json`:
 The `21st` server is a **remote** server needing `TWENTYFIRST_API_KEY`.
 Missing key or 401 → report **WARN, not FAIL**. It is optional by design.
 
+Per-connection detail — probes, failure meanings, upstream links:
+`references/connections.md`.
+
+**Cross-tool mirror check:** `.cursor/mcp.json` must contain the same servers as
+`.mcp.json` (it is a generated mirror for Cursor — same `mcpServers` shape). Drift →
+regenerate the mirror from `.mcp.json`; never edit the mirror directly. Codex uses a
+global TOML instead — snippet and the full per-tool matrix in
+`references/agent-compatibility.md`.
+
 ## 4. Registries
 
 - `components.json` parses as JSON.
@@ -115,6 +124,11 @@ it with a cheap read (list tables).
   lags Better Auth majors; drift → run `upstream-sync`, never a blind bump.
 - `src/app/api/auth/[...all]/route.ts` exists — without it the proxy is dead and every
   sign-in fails with no useful error.
+- **Official Better Auth skills installed?** The `better-auth/skills` pack
+  (`better-auth-best-practices`) should be visible to the agent. Missing → WARN with
+  the install pointer: https://better-auth.com/docs/ai-resources/skills
+  Fallback: https://better-auth.com/llms.txt pasted into context. Details:
+  `references/connections.md` § Better Auth.
 
 ## 8. Build proof
 

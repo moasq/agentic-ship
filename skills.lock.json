@@ -15,7 +15,17 @@
       "upstream": "original",
       "patched": false,
       "lastSync": "2026-08-03",
+      "references": ["better-auth-wiring.md (steps verified against labs.convex.dev/better-auth 2026-08-03)"],
       "note": "Deliberately narrow: covers Convex INSIDE ShipKit only. Convex-the-product is taught by the official convex plugin's skills, which are not vendored here — they update themselves."
+    },
+    {
+      "name": "better-auth-best-practices",
+      "upstream": "https://github.com/better-auth/skills",
+      "official": true,
+      "vendored": false,
+      "installVia": "skills CLI — see https://better-auth.com/docs/ai-resources/skills",
+      "verified": "2026-08-03",
+      "note": "Official Better Auth skill pack. NOT vendored — installed by the buyer via the official CLI so it stays current. setup-health §7.4 checks presence and WARNs with the install pointer. Docs MCP + llms.txt (better-auth.com/llms.txt) are the fallbacks."
     }
   ],
   "mcp": [
@@ -67,6 +77,21 @@
   ],
   "registries": [
     { "name": "@magicui", "url": "https://magicui.design/r/{name}.json", "verified": "2026-08-03" }
+  ],
+  "mirrors": [
+    {
+      "path": ".cursor/mcp.json",
+      "generatedFrom": ".mcp.json",
+      "for": "Cursor (project-level MCP, same mcpServers shape)",
+      "rule": "Never edited directly. setup-health fails on drift.",
+      "verified": "2026-08-03"
+    },
+    {
+      "path": ".agents/skills/setup-health/references/agent-compatibility.md",
+      "generatedFrom": ".mcp.json",
+      "for": "Codex global ~/.codex/config.toml snippet + per-tool matrix",
+      "rule": "Update the TOML snippet whenever .mcp.json changes."
+    }
   ],
   "plugins": [
     {

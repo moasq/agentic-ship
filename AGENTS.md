@@ -13,6 +13,13 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 This file is the single source of truth for agents. `CLAUDE.md` imports it with one
 line; `.claude/skills` symlinks to `.agents/skills`. Never write rules in two places.
 
+Works with any agentic tool. Codex, Cursor, Windsurf, Cline, Copilot and Gemini CLI
+read this file natively; skills are plain markdown any agent can follow; Cursor gets
+MCP through the committed `.cursor/mcp.json` mirror; Codex gets a global TOML snippet.
+Per-tool matrix and sync rules: `.agents/skills/setup-health/references/agent-compatibility.md`.
+Skills with a `references/` folder keep their deep material there — load it only when
+the task needs it.
+
 Instructions live here. Procedures live in `.agents/skills/`. Tool wiring lives in
 `.mcp.json`. Plugin wiring lives in `.claude/settings.json` (the official `nextjs`
 plugin from the vercel/next.js repo is declared there). Provenance for all of it lives

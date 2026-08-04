@@ -1,0 +1,64 @@
+# Agent Compatibility — one repo, every agentic tool
+
+ShipKit's single-source-of-truth layout is deliberately tool-agnostic. What each tool
+reads, and what (if anything) it needs extra:
+
+| Tool | Rules | Skills | MCP | Plugins |
+| --- | --- | --- | --- | --- |
+| **Claude Code** | `CLAUDE.md` → `@AGENTS.md` | `.claude/skills` (symlink to `.agents/skills`) | `.mcp.json` | `.claude/settings.json` → nextjs, convex |
+| **Codex** | `AGENTS.md` (native) | `.agents/skills/*` — plain markdown, reference from AGENTS.md | global `~/.codex/config.toml` (snippet below) | n/a — MCP + skills cover it |
+| **Cursor** | `AGENTS.md` (native) | same markdown files | `.cursor/mcp.json` (committed mirror of `.mcp.json`) | n/a |
+| **Windsurf / Cline / Copilot / Gemini CLI** | `AGENTS.md` (native) | same markdown files | per-tool MCP config, same `mcpServers` shape | n/a |
+
+Three facts make this work:
+
+1. **AGENTS.md is the cross-tool standard.** Codex, Cursor, Copilot, Gemini CLI,
+   Windsurf and Cline all read it; Claude Code joins via the one-line `CLAUDE.md`
+   import. One rules file, every tool.
+2. **Skills are just markdown.** Any agent that can read files can follow
+   `.agents/skills/*/SKILL.md` — AGENTS.md's skills table tells it when to. The Claude
+   symlink only adds native invocation.
+3. **`mcpServers` JSON is a de-facto shared format.** Cursor's `.cursor/mcp.json` uses
+   the same shape as `.mcp.json` — the mirror is a copy, and setup-health checks the
+   two stay identical.
+
+## Codex — global MCP config
+
+Codex configures MCP globally, not per repo. Paste into `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.shadcn]
+command = "npx"
+args = ["-y", "shadcn@latest", "mcp"]
+
+[mcp_servers.next-devtools]
+command = "npx"
+args = ["-y", "next-devtools-mcp@latest"]
+
+[mcp_servers.magicui]
+command = "npx"
+args = ["-y", "@magicuidesign/mcp@latest"]
+
+[mcp_servers.context7]
+command = "npx"
+args = ["-y", "@upstash/context7-mcp"]
+
+[mcp_servers.convex]
+command = "npx"
+args = ["-y", "convex@latest", "mcp", "start"]
+```
+
+## What Claude plugins provide, and the non-Claude equivalent
+
+| Claude plugin | Non-Claude equivalent |
+| --- | --- |
+| `convex@claude-plugins-official` (skills + expert subagent + MCP + error monitor) | Convex MCP standalone (`npx convex mcp start`) + Convex's official AI rules from https://docs.convex.dev/ai + our `convex-structure` skill |
+| `nextjs@nextjs` (framework skills) | `node_modules/next/dist/docs/` (version-accurate, in-repo) + Next DevTools MCP |
+| Better Auth knowledge | official `better-auth/skills` pack (markdown — works everywhere) + https://better-auth.com/llms.txt |
+
+## Sync rules
+
+- `.cursor/mcp.json` is **generated from** `.mcp.json`, never edited directly. Drift
+  between the two is a setup-health failure.
+- Adding an MCP server = edit `.mcp.json`, copy to `.cursor/mcp.json`, append the TOML
+  snippet here. Three places, one commit, and the lockfile notes the addition.

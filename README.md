@@ -40,6 +40,20 @@ pnpm dev
 Then, in your coding agent, run the `setup-health` skill. It checks every connection
 and prints a fallback for anything that fails.
 
+## Works with any agent
+
+| Tool | Rules | Skills | MCP |
+| --- | --- | --- | --- |
+| Claude Code | `CLAUDE.md` → `@AGENTS.md` | `.claude/skills` symlink | `.mcp.json` + plugins |
+| Codex | `AGENTS.md` native | same markdown files | global TOML — snippet in `references/agent-compatibility.md` |
+| Cursor | `AGENTS.md` native | same markdown files | `.cursor/mcp.json` (committed mirror) |
+| Windsurf / Cline / Copilot / Gemini CLI | `AGENTS.md` native | same markdown files | per-tool config, same `mcpServers` shape |
+
+`.cursor/mcp.json` is generated from `.mcp.json` and never edited directly —
+setup-health fails on drift. Claude plugins have documented non-Claude equivalents
+(Convex MCP standalone + official rules; `node_modules/next/dist/docs/`; the official
+`better-auth/skills` pack) in the same reference.
+
 ## Single source of truth
 
 - `AGENTS.md` — the only place rules live. Read by Codex, Cursor, Copilot, Gemini CLI,
@@ -141,6 +155,13 @@ npx convex env set SITE_URL http://localhost:3000
 
 Then run `setup-health` — its Convex section verifies the connection, attempts
 `convex login` when it is missing, and falls back to the dashboard if that fails.
+
+Also install Better Auth's **official skill pack** (`better-auth-best-practices`) via
+the skills CLI — instructions at
+[better-auth.com/docs/ai-resources/skills](https://better-auth.com/docs/ai-resources/skills).
+It is not vendored here for the same reason the Convex skills aren't: official packs
+stay current on their own. setup-health warns when it is missing; the exact ShipKit
+wiring lives in `.agents/skills/convex-structure/references/better-auth-wiring.md`.
 
 Why Better Auth over Convex Auth or Clerk: it is the community default, the
 `@convex-dev/better-auth` bridge is first-party, organizations, 2FA and SSO ship as
