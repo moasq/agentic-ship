@@ -61,6 +61,23 @@
   "registries": [
     { "name": "@magicui", "url": "https://magicui.design/r/{name}.json", "verified": "2026-08-03" }
   ],
+  "plugins": [
+    {
+      "name": "nextjs",
+      "marketplace": "nextjs",
+      "source": "github:vercel/next.js/.claude-plugin",
+      "official": true,
+      "verified": "2026-08-03",
+      "declaredIn": ".claude/settings.json",
+      "note": "Official Next.js skills from the framework repo itself: Cache Components adoption, Partial Prefetching, runtime verification against a running dev server."
+    },
+    {
+      "name": "shadcn / magicui / tailwind / zustand plugins",
+      "status": "none exist",
+      "verified": "2026-08-03",
+      "note": "Their official integration is the MCP layer in .mcp.json plus Context7 docs. Do not bundle unofficial plugins for these."
+    }
+  ],
   "pins": {
     "next": "16.x",
     "react": "19.x",

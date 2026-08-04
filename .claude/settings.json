@@ -1,5 +1,16 @@
 {
-  "$comment": "Permissions only. All instructions live in AGENTS.md; all procedures live in .agents/skills/. Never duplicate rules here.",
+  "$comment": "Machine config only — permissions and plugin wiring. All instructions live in AGENTS.md; all procedures live in .agents/skills/. Never duplicate rules here.",
+  "extraKnownMarketplaces": {
+    "nextjs": {
+      "source": {
+        "source": "github",
+        "repo": "vercel/next.js"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "nextjs@nextjs": true
+  },
   "permissions": {
     "allow": [
       "Bash(pnpm install)",

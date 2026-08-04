@@ -14,7 +14,9 @@ This file is the single source of truth for agents. `CLAUDE.md` imports it with 
 line; `.claude/skills` symlinks to `.agents/skills`. Never write rules in two places.
 
 Instructions live here. Procedures live in `.agents/skills/`. Tool wiring lives in
-`.mcp.json`. Three kinds of file, three jobs, no overlap.
+`.mcp.json`. Plugin wiring lives in `.claude/settings.json` (the official `nextjs`
+plugin from the vercel/next.js repo is declared there). Provenance for all of it lives
+in `skills.lock.json`. No rule appears in two places.
 
 ## Stack
 

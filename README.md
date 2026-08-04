@@ -77,6 +77,31 @@ lives in `.mcp.json`. Three kinds of file, three jobs, no overlap.
 Every server checked by `setup-health` has a documented fallback. Nothing here strands
 you because a hosted service is down.
 
+## Official plugins
+
+`.claude/settings.json` declares the plugin wiring, so Claude Code users get offered it
+automatically when they trust the repo folder:
+
+- **`nextjs@nextjs`** — Next.js's own plugin, shipped inside the
+  [vercel/next.js repo](https://github.com/vercel/next.js/blob/canary/.claude-plugin/marketplace.json):
+  Cache Components adoption, Partial Prefetching, and runtime verification against a
+  running dev server.
+
+If the automatic offer does not appear (a known quirk), install it manually:
+
+```
+/plugin marketplace add vercel/next.js
+/plugin install nextjs@nextjs
+```
+
+Also worth browsing in Anthropic's auto-registered `claude-plugins-official`
+marketplace: the Context7 and frontend-design plugins. Optional — the `.mcp.json` in
+this repo already covers the same ground without them.
+
+shadcn, MagicUI, Tailwind, and Zustand have **no official plugins** — their official
+integration is the MCP layer above. This repo does not bundle unofficial stand-ins;
+that policy is recorded in `skills.lock.json`.
+
 ## Why the UI does not look AI-generated
 
 Roughly ninety percent of the sameness in AI-built sites comes from four defaults, and
