@@ -81,28 +81,39 @@ own. `convex-structure` covers only what they cannot know: this repo's conventio
 
 ## Structure
 
+The repo ships as the **plain engine** — seams, rules and vendor primitives, zero demo
+code. Directories marked *(you create)* do not exist yet; they are where your work goes,
+under these names and no others. A complete worked example of one domain lives in
+`.agents/skills/convex-structure/references/example-domain.md` — as a document, so
+nothing has to be deleted before building.
+
 ```
 convex/                   the backend — repo root, required by the CLI
-  schema.ts               every table and index. Nothing exists unless declared here.
+  schema.ts               every table and index. Ships with one counters table so the
+                          first `npx convex dev` deploys; replace it with real tables.
   auth.ts  auth.config.ts Better Auth wiring; plugins toggle in auth.ts
+  billing.ts  email.ts    the Stripe and Resend seams
   http.ts                 auth routes + inbound webhooks, nothing else
-  <domain>.ts             one file per domain, the whole public API of that domain
+  <domain>.ts             (you create) one file per domain — its whole public API
   lib/                    requireUser, requireOwner, shared validators
-  _generated/             committed, never edited
+  _generated/             committed once `npx convex dev` creates it, never edited
 src/
   app/                    routes only — keep these files thin
-  components/ui/          shadcn primitives — vendor-owned, never edited in place
-  components/magicui/     MagicUI accents
-  components/blocks/      composed sections: hero, features, pricing, faq
-  components/features/    feature-owned components — Convex hooks live HERE
-  stores/                 Zustand stores, one per domain
-  lib/                    utils, constants, cn(), auth-client, auth-server
   app/globals.css         the only place tokens are defined
-content/blog/             MDX articles
+  app/blog/               the article pipeline; publishing is the seo-blog skill's job
+  components/ui/          shadcn primitives — vendor-owned, never edited in place
+  components/magicui/     (you create) MagicUI accents, moved here after install
+  components/blocks/      (you create) composed sections — props in, JSX out
+  components/features/    (you create) feature-owned components — Convex hooks live HERE
+  stores/                 (you create) Zustand stores, one per domain
+  lib/                    the seams: site.ts identity, convex-api, auth, analytics, blog
 ```
 
 Names line up across all three layers: table `posts` → `convex/posts.ts` →
 `src/components/features/posts/`. One word, three places, no translation.
+
+Product identity — name, title, description — lives in `src/lib/site.ts` and nowhere
+else. Metadata derives from it; never hardcode the product's name in a component.
 
 ## Component rules
 

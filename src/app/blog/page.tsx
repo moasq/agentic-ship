@@ -1,22 +1,25 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getArticles } from "@/lib/blog";
+import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Writing",
-  description: "Notes on building with coding agents: design systems, structure, and the parts that go wrong.",
+  title: "Blog",
+  description: `Articles from ${site.name}.`,
   alternates: { canonical: "/blog" },
 };
 
+/**
+ * The article index — engine surface, not content. It derives entirely from the typed
+ * list in src/lib/blog.ts; publishing an article is the seo-blog skill's job, and this
+ * page needs no edits when one lands.
+ */
 export default function BlogIndex() {
   const articles = getArticles();
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16 sm:py-24">
-      <h1 className="font-semibold text-3xl tracking-tight sm:text-4xl">Writing</h1>
-      <p className="mt-3 text-base/7 text-muted-foreground">
-        Notes on building with coding agents — design systems, structure, and the parts that go wrong.
-      </p>
+      <h1 className="font-semibold text-3xl tracking-tight sm:text-4xl">Blog</h1>
 
       <ul className="mt-12 space-y-8">
         {articles.map((article) => (
@@ -38,7 +41,7 @@ export default function BlogIndex() {
 
       {articles.length === 0 && (
         <p className="mt-12 text-muted-foreground text-sm">
-          No articles yet. Add one with the <code className="font-mono">seo-blog</code> skill.
+          No articles yet. Write the first one with the <code className="font-mono">seo-blog</code> skill.
         </p>
       )}
     </main>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { Providers } from "./providers";
+import { site } from "@/lib/site";
 import "./globals.css";
 
 // Self-hosted at build time by next/font: no runtime request to Google,
@@ -21,28 +22,25 @@ const mono = IBM_Plex_Mono({
   display: "swap",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
+// All identity comes from src/lib/site.ts — edit it there, once.
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(site.url),
   title: {
-    default: "ShipKit — the frontend bundle that replaces your app builders",
-    template: "%s · ShipKit",
+    default: site.title,
+    template: `%s · ${site.name}`,
   },
-  description:
-    "An agent-ready Next.js foundation: design tokens, component rules, security headers and seven skills. Built for the coding subscription you already pay for.",
+  description: site.description,
   openGraph: {
     type: "website",
-    url: siteUrl,
-    siteName: "ShipKit",
-    title: "ShipKit — the frontend bundle that replaces your app builders",
-    description:
-      "An agent-ready Next.js foundation: design tokens, component rules, security headers and seven skills.",
+    url: site.url,
+    siteName: site.name,
+    title: site.title,
+    description: site.description,
   },
   twitter: {
     card: "summary_large_image",
-    title: "ShipKit",
-    description: "The frontend bundle that replaces your app builders.",
+    title: site.name,
+    description: site.description,
   },
 };
 

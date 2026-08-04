@@ -23,8 +23,9 @@ export const resend: Resend = new Resend(components.resend, {
   testMode: true,
 });
 
-/** Resend rejects sends from unverified domains, so this stays test-safe by default. */
-const from = () => process.env.EMAIL_FROM ?? "ShipKit <onboarding@resend.dev>";
+/** Set EMAIL_FROM in Convex env once a sending domain is verified. The fallback is
+ *  Resend's own onboarding address, which only works in testMode. */
+const from = () => process.env.EMAIL_FROM ?? "Onboarding <onboarding@resend.dev>";
 
 /**
  * Auth's email callbacks call these. They take an ActionCtx because Better Auth's
