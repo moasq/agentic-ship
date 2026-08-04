@@ -62,3 +62,17 @@ Format:
 - prevention: pin recorded with the receipt in `skills.lock.json`; only
   `upstream-sync` moves it, by building against the candidate first.
 - status: GRADUATED
+
+## 2026-08-04 next/font needs the network, the CI runner has none
+
+- cause: `next/font` fetches IBM Plex Sans/Mono from Google Fonts **at build time**. The
+  GitHub Actions runner cannot reach `fonts.googleapis.com`, so any CI job that builds
+  inside Playwright's `webServer` dies with "Failed to fetch IBM Plex Mono from Google
+  Fonts". The plain `pnpm build` step in the `verify` job succeeds — it runs before and
+  without that constraint — which is why the failure looked like an e2e defect rather
+  than a font one.
+- fix: the `e2e` job is commented out in `.github/workflows/ci.yml`; gate G3 runs
+  locally via `pnpm test:e2e`.
+- prevention: self-host the fonts — download the files and load them with
+  `next/font/local`, so a build never needs the network on any machine.
+- status: open
