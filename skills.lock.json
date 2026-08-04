@@ -64,6 +64,51 @@
       "verified": "2026-08-03"
     },
     {
+      "name": "convex",
+      "package": "convex (CLI subcommand: mcp start)",
+      "pinned": "latest",
+      "upstream": "https://docs.convex.dev/ai/convex-mcp-server",
+      "official": true,
+      "verified": "2026-08-04",
+      "note": "Project-scoped stdio server. Needs a connected deployment — before `npx convex dev` it reports not-configured, which setup-health treats as a stage. The convex plugin carries its own namespaced copy for Claude users; both listed on purpose so Cursor/Codex are not locked out."
+    },
+    {
+      "name": "stripe",
+      "package": "remote",
+      "url": "https://mcp.stripe.com",
+      "transport": "http+oauth",
+      "upstream": "https://github.com/stripe/ai (providers/claude/plugin/.mcp.json)",
+      "official": true,
+      "verified": "2026-08-04"
+    },
+    {
+      "name": "resend",
+      "package": "remote",
+      "url": "https://mcp.resend.com/mcp",
+      "transport": "http+oauth",
+      "upstream": "https://github.com/resend/resend-skills (.mcp.json)",
+      "official": true,
+      "verified": "2026-08-04"
+    },
+    {
+      "name": "posthog",
+      "package": "remote",
+      "url": "https://mcp.posthog.com/mcp",
+      "transport": "http+oauth",
+      "upstream": "https://github.com/PostHog/ai-plugin (.mcp.json)",
+      "official": true,
+      "verified": "2026-08-04"
+    },
+    {
+      "name": "render",
+      "package": "remote",
+      "url": "https://mcp.render.com/mcp",
+      "transport": "http+oauth",
+      "upstream": "https://github.com/render-oss/render-plugin-claude-code (.mcp.json)",
+      "official": true,
+      "verified": "2026-08-04"
+    },
+    {
       "name": "21st",
       "package": "remote",
       "url": "https://21st.dev/api/mcp",

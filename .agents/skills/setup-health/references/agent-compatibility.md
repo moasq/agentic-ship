@@ -76,19 +76,47 @@ args = ["-y", "@upstash/context7-mcp"]
 [mcp_servers.convex]
 command = "npx"
 args = ["-y", "convex@latest", "mcp", "start"]
+
+# The four remote servers (OAuth in the browser on first use). Codex speaks stdio,
+# so remotes go through the standard mcp-remote bridge:
+[mcp_servers.stripe]
+command = "npx"
+args = ["-y", "mcp-remote", "https://mcp.stripe.com"]
+
+[mcp_servers.resend]
+command = "npx"
+args = ["-y", "mcp-remote", "https://mcp.resend.com/mcp"]
+
+[mcp_servers.posthog]
+command = "npx"
+args = ["-y", "mcp-remote", "https://mcp.posthog.com/mcp"]
+
+[mcp_servers.render]
+command = "npx"
+args = ["-y", "mcp-remote", "https://mcp.render.com/mcp"]
 ```
 
-## What Claude plugins provide, and the non-Claude equivalent
+## MCP is cross-tool; plugins are Claude sugar
 
-| Claude plugin | Non-Claude equivalent |
-| --- | --- |
-| `convex@claude-plugins-official` (skills + expert subagent + MCP + error monitor) | Convex MCP standalone (`npx convex mcp start`) + Convex's official AI rules from https://docs.convex.dev/ai + our `convex-structure` skill |
-| `nextjs@nextjs` (framework skills) | `node_modules/next/dist/docs/` (version-accurate, in-repo) + Next DevTools MCP |
-| Better Auth knowledge | official `better-auth/skills` pack (markdown — works everywhere) + https://better-auth.com/llms.txt |
+Every MCP server this stack uses is declared in **`.mcp.json`** — including the backend
+five (convex, stripe, resend, posthog, render). That file is the SSOT; Cursor gets the
+generated mirror, Codex gets the TOML above. The Claude plugins ALSO carry their
+vendors' MCPs, so a Claude Code user sees those servers twice (plugin copies are
+namespaced — no collision, no harm). The duplication is deliberate: removing the servers
+from `.mcp.json` would make backend MCP Claude-only, which breaks the bundle's promise.
+
+What the plugins add beyond MCP, and the non-Claude equivalent:
+
+| Claude plugin | Beyond the MCP | Non-Claude equivalent |
+| --- | --- | --- |
+| `convex@claude-plugins-official` | skills, `convex-expert` subagent, error monitor | Convex's official AI rules from https://docs.convex.dev/ai + our `convex-structure` skill |
+| `stripe` / `resend` / `posthog` / `render` | vendor skills, commands, agents | each repo ships `.codex-plugin` / `.cursor-plugin` providers itself — install from the vendor repo |
+| `nextjs@nextjs` | framework skills | `node_modules/next/dist/docs/` (version-accurate, in-repo) + Next DevTools MCP |
+| Better Auth knowledge | — | official `better-auth/skills` pack (markdown — works everywhere) + https://better-auth.com/llms.txt |
 
 ## Sync rules
 
 - `.cursor/mcp.json` is **generated from** `.mcp.json`, never edited directly. Drift
   between the two is a setup-health failure.
-- Adding an MCP server = edit `.mcp.json`, copy to `.cursor/mcp.json`, append the TOML
-  snippet here. Three places, one commit, and the lockfile notes the addition.
+- Adding an MCP server = edit `.mcp.json`, run `pnpm sync:mcp`, append the TOML snippet
+  here. One commit, and the lockfile notes the addition.

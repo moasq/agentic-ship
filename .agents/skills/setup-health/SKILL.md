@@ -63,6 +63,15 @@ For each entry in `.mcp.json`:
 | `magicui` | list components | install through the `@magicui` registry pinned in `components.json` |
 | `context7` | resolve `zustand` | open the official docs in a browser; pin exact versions in prompts |
 | `21st` *(optional, off by default)* | search `button` | browse 21st.dev, copy the component's install prompt — works with zero setup |
+| `convex` | status | needs a connected deployment — before `npx convex dev` this is a STAGE, not a failure. Fallback: dashboard.convex.dev |
+| `stripe` *(remote, OAuth)* | list products | Stripe dashboard; the CLI on an unclaimed sandbox — Stripe's own guidance |
+| `resend` *(remote, OAuth)* | list domains | Resend dashboard |
+| `posthog` *(remote, OAuth)* | list projects | PostHog dashboard |
+| `render` *(remote, OAuth)* | list services | Render dashboard + `render.yaml` is the truth anyway |
+
+Remote servers authenticate with a browser OAuth on first use — that is a **human step**;
+say so and wait. In Claude Code the vendor plugins carry namespaced copies of these same
+servers; seeing both is expected, not drift.
 
 The `21st` server is a **remote** server needing `TWENTYFIRST_API_KEY`.
 Missing key or 401 → report **WARN, not FAIL**. It is optional by design.

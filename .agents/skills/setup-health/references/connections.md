@@ -63,11 +63,27 @@ to probe it, what failure means, and the fallback that keeps work moving.
 ## Convex MCP
 
 - **What:** live deployment introspection (tables, function specs, logs, run).
-  Arrives with the `convex@claude-plugins-official` plugin.
-- **Probe:** list tables.
-- **Fallback:** `npx convex mcp start` standalone; or the dashboard. Neither blocks
-  development.
-- **Upstream:** https://docs.convex.dev/ai
+  Declared in `.mcp.json` (`npx convex mcp start`) so **every** tool gets it; the
+  `convex@claude-plugins-official` plugin carries a namespaced second copy for Claude —
+  seeing both is expected.
+- **Probe:** status / list tables.
+- **Failure meaning:** usually no connected deployment yet — a stage, not an outage.
+- **Fallback:** the dashboard. Neither blocks development.
+- **Upstream:** https://docs.convex.dev/ai/convex-mcp-server
+
+## Stripe / Resend / PostHog / Render MCPs (remote, OAuth)
+
+- **What:** the four vendor remote servers, straight from each vendor's own plugin
+  config: `mcp.stripe.com` · `mcp.resend.com/mcp` · `mcp.posthog.com/mcp` ·
+  `mcp.render.com/mcp`. Declared in `.mcp.json`; Codex reaches them through the
+  `mcp-remote` bridge (TOML in `agent-compatibility.md`).
+- **Auth:** browser OAuth on first use — **human step: say so and wait.** No API key to
+  leak; nothing for `.env.local`.
+- **Probe:** one cheap list each — products / domains / projects / services.
+- **Failure meaning:** not yet authorized (human step pending), or no account yet —
+  `pnpm onboard` stages cover both. On an **unclaimed Stripe sandbox**, probe the CLI
+  (`stripe whoami`), not the MCP — Stripe's own guidance.
+- **Fallback:** each vendor's dashboard. None of them blocks development.
 
 ## Better Auth (official skills + docs MCP)
 
@@ -90,11 +106,11 @@ to probe it, what failure means, and the fallback that keeps work moving.
 
 ## Claude Code plugins
 
-- **Declared:** `nextjs@nextjs` (marketplace inside vercel/next.js) and
-  `convex@claude-plugins-official`.
+- **Declared:** `nextjs@nextjs` (marketplace inside vercel/next.js) plus
+  `convex` / `stripe` / `resend` / `posthog` / `render` from `claude-plugins-official`.
 - **Probe:** plugin listed by the harness.
 - **Fallback:** manual install —
   `/plugin marketplace add vercel/next.js` · `/plugin install nextjs@nextjs` ·
-  `/plugin install convex@claude-plugins-official`.
+  `/plugin install <name>@claude-plugins-official` for the rest.
 - **Non-Claude agents:** plugins don't exist there — see
   `references/agent-compatibility.md` for the per-tool equivalents.
