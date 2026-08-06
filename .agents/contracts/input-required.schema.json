@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-workspace.dev/contracts/input-required.schema.json",
+  "title": "Human input required",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "kind", "status", "prompt", "resumeCommand", "safeContext", "createdAt"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{2,80}$" },
+    "kind": {
+      "enum": ["agent_tool_oauth", "project_provisioning", "customer_checkout", "decision", "secret_entry"]
+    },
+    "provider": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["waiting_for_user", "declined", "expired", "failed_retryable", "blocked_manual", "completed"] },
+    "prompt": { "type": "string", "minLength": 1 },
+    "resumeCommand": { "type": "string", "minLength": 1 },
+    "safeContext": {
+      "type": "object",
+      "description": "Identifiers and status metadata only. Credentials, authorization codes, payment data, and secret values are forbidden."
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" }
+  }
+}

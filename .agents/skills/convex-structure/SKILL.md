@@ -1,6 +1,6 @@
 ---
 name: convex-structure
-description: How Convex is structured inside ShipKit — file layout, function shape, naming, the data-access decision tree, and the auth seam. Use before writing any backend code, adding a table, or wiring a component to data.
+description: How Convex is structured inside Agentic Ship — file layout, function shape, naming, the data-access decision tree, and the auth seam. Use before writing any backend code, adding a table, or wiring a component to data.
 ---
 
 # Convex Structure

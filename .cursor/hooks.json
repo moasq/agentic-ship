@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "stop": [
+      {
+        "command": "node .cursor/hooks/verify-stop.mjs",
+        "timeout": 600
+      }
+    ]
+  }
+}

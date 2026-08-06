@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "hosts": {
+    "claude": {
+      "displayName": "Claude Code",
+      "authInstructions": {
+        "remote_oauth": "Open `/mcp`, select the provider server, choose Authenticate, and complete the browser consent flow.",
+        "cli_browser_login": "Run the provider login command in the project terminal and complete any browser consent flow it opens."
+      },
+      "readOnlyProbeInstruction": "Ask Claude Code to call one read-only tool from the provider MCP server. Resume only after the call succeeds."
+    },
+    "codex": {
+      "displayName": "Codex",
+      "authInstructions": {
+        "remote_oauth": "Use the provider MCP authentication prompt, or run `codex mcp login workspace-<server>` after the generated project server is configured, then complete browser consent.",
+        "cli_browser_login": "Run the provider login command in the project terminal and complete any browser consent flow it opens."
+      },
+      "readOnlyProbeInstruction": "Ask Codex to call one read-only tool from the provider MCP server. Resume only after the call succeeds."
+    },
+    "cursor": {
+      "displayName": "Cursor",
+      "authInstructions": {
+        "remote_oauth": "Open Cursor Settings, choose Tools & MCP, select the provider server, choose Connect, and complete browser consent.",
+        "cli_browser_login": "Run the provider login command in the project terminal and complete any browser consent flow it opens."
+      },
+      "readOnlyProbeInstruction": "Ask Cursor to call one read-only tool from the provider MCP server. Resume only after the call succeeds."
+    },
+    "hermes": {
+      "displayName": "Hermes",
+      "authInstructions": {
+        "remote_oauth": "Confirm the provider server is configured with `auth: oauth` in the Hermes MCP configuration, start the connection, and complete browser consent. This CLI does not edit global Hermes configuration.",
+        "cli_browser_login": "Run the provider login command in the project terminal and complete any browser consent flow it opens."
+      },
+      "readOnlyProbeInstruction": "Ask Hermes to call one read-only tool from the provider MCP server. Resume only after the call succeeds."
+    },
+    "openclaw": {
+      "displayName": "OpenClaw",
+      "authInstructions": {
+        "remote_oauth": "Configure the provider MCP server with the openclaw mcp CLI in your OpenClaw configuration (outside this repository), start the connection, and complete browser consent. This CLI does not edit global OpenClaw configuration.",
+        "cli_browser_login": "Run the provider login command in the project terminal and complete any browser consent flow it opens."
+      },
+      "readOnlyProbeInstruction": "Ask OpenClaw to call one read-only tool from the provider MCP server. Resume only after the call succeeds."
+    }
+  }
+}

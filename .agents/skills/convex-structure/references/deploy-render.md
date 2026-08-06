@@ -1,6 +1,6 @@
 # Deploy — Render
 
-Reference for the setup-health and convex-structure skills.
+Reference for the service-connections, production-preflight, and convex-structure skills.
 
 ## Why Render over Railway
 
@@ -61,7 +61,8 @@ does not put it anywhere near your laptop.
    development-only and does not carry over.
 6. Switch Stripe to live keys, and only then flip Resend `testMode: false` +
    `requireEmailVerification: true` together.
-7. Run `pnpm health` and the setup-health skill against the deployed environment.
+7. Run `pnpm health`, then use service-connections for the live deployment verification
+   and production-preflight for the launch gate.
 
 ## Health checks
 

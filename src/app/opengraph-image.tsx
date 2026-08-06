@@ -5,7 +5,7 @@ import { site } from "@/lib/site";
  * The share card, rendered from code — first-party next/og, no design-tool export,
  * never stale: it derives from site.ts like every other identity surface.
  *
- * Colors are the ShipKit palette hardcoded, because this renders outside the CSS
+ * Colors are the Agentic Ship palette hardcoded, because this renders outside the CSS
  * pipeline — if you change the theme in globals.css, mirror the two values here.
  */
 export const size = { width: 1200, height: 630 };

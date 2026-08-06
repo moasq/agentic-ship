@@ -1,6 +1,6 @@
 # Analytics — PostHog, without opening the CSP
 
-Reference for the frontend-security and setup-health skills. Analytics is the one layer
+Reference for the frontend-security and workspace-health skills. Analytics is the one layer
 that normally forces a security compromise. This setup does not make one.
 
 ## Why PostHog

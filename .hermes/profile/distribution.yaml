@@ -1,0 +1,10 @@
+name: product-builder
+version: 0.1.0
+description: "Repository-aware product delivery coordinator"
+hermes_requires: ">=0.20.0"
+author: "Repository maintainers"
+license: "MIT"
+env_requires:
+  - name: PROJECT_ROOT
+    description: "Absolute path to the project repository"
+    required: true

@@ -1,0 +1,60 @@
+{
+  "shadcn": {
+    "command": "npx",
+    "args": [
+      "-y",
+      "shadcn@4.16.1",
+      "mcp"
+    ]
+  },
+  "next-devtools": {
+    "command": "npx",
+    "args": [
+      "-y",
+      "next-devtools-mcp@0.4.0"
+    ]
+  },
+  "magicui": {
+    "command": "npx",
+    "args": [
+      "-y",
+      "@magicuidesign/mcp@2.0.0"
+    ]
+  },
+  "context7": {
+    "command": "npx",
+    "args": [
+      "-y",
+      "@upstash/context7-mcp@3.2.5"
+    ]
+  },
+  "convex": {
+    "command": "npx",
+    "args": [
+      "-y",
+      "convex@1.43.0",
+      "mcp",
+      "start"
+    ]
+  },
+  "stripe": {
+    "url": "https://mcp.stripe.com"
+  },
+  "resend": {
+    "url": "https://mcp.resend.com/mcp"
+  },
+  "posthog": {
+    "url": "https://mcp.posthog.com/mcp"
+  },
+  "render": {
+    "url": "https://mcp.render.com/mcp"
+  },
+  "playwright-test": {
+    "command": "npx",
+    "args": [
+      "-y",
+      "playwright@1.62.1",
+      "run-test-mcp-server"
+    ]
+  }
+}

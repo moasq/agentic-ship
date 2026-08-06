@@ -1,22 +1,18 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
-  "name": "shipkit",
-  "displayName": "ShipKit",
+  "name": "agentic-ship",
+  "displayName": "Agentic Ship",
   "version": "0.1.0",
-  "description": "The ShipKit skill system as an installable plugin: ui-system, component-picker, asset-pipeline, convex-structure, frontend-security, seo-blog, testing, setup-health, production-preflight and upstream-sync. Deterministic UI rules (tokens, curated fonts, no AI-generated look), a verified backend structure for Convex + Better Auth + Stripe + Resend, and health/heal/preflight gates. Pairs with the ShipKit engine repo, which the same repository ships: scaffold from github.com/moasq/shipkit, or install this plugin to bring the rules into an existing session.",
+  "description": "The Agentic Ship agentic product system as an installable plugin: durable product contracts, neutral specialist roles, resumable service connections, deterministic UI and backend procedures, security, testing, health, and launch gates.",
   "author": {
     "name": "moasq",
     "url": "https://github.com/moasq"
   },
-  "homepage": "https://github.com/moasq/shipkit",
-  "repository": "https://github.com/moasq/shipkit",
+  "homepage": "https://github.com/moasq/agentic-ship",
+  "repository": "https://github.com/moasq/agentic-ship",
   "license": "MIT",
   "skills": "./.agents/skills/",
-  "agents": [
-    "./.agents/agents/shipkit-frontend.md",
-    "./.agents/agents/shipkit-testing.md",
-    "./.agents/agents/shipkit-convex.md"
-  ],
+  "mcpServers": "./.mcp.json",
   "keywords": [
     "nextjs",
     "convex",

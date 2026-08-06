@@ -1,0 +1,11 @@
+.env
+auth.json
+state.db*
+memories/
+sessions/
+logs/
+plans/
+workspace/
+home/
+cache/
+local/

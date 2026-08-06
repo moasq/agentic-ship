@@ -24,9 +24,9 @@ pnpm asset "https://images.unsplash.com/photo-…" hero-workspace
 ```
 
 Saves to `public/images/<name>.<ext>`, then serve it through `next/image`. Pure Node,
-so it behaves the same on macOS, Linux and Windows — the same reason every ShipKit
+so it behaves the same on macOS, Linux and Windows — the same reason every Agentic Ship
 operation is a `pnpm` script rather than a shell one-liner
-(`references/platform-notes.md` in the setup-health skill).
+(`references/platform-notes.md` in the workspace-health skill).
 
 The script refuses anything outside the source allowlist, which mirrors
 `images.remotePatterns` in `next.config.ts`. Adding a source is a **human decision**:

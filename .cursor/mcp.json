@@ -2,23 +2,23 @@
   "mcpServers": {
     "shadcn": {
       "command": "npx",
-      "args": ["-y", "shadcn@latest", "mcp"]
+      "args": ["-y", "shadcn@4.16.1", "mcp"]
     },
     "next-devtools": {
       "command": "npx",
-      "args": ["-y", "next-devtools-mcp@latest"]
+      "args": ["-y", "next-devtools-mcp@0.4.0"]
     },
     "magicui": {
       "command": "npx",
-      "args": ["-y", "@magicuidesign/mcp@latest"]
+      "args": ["-y", "@magicuidesign/mcp@2.0.0"]
     },
     "context7": {
       "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp"]
+      "args": ["-y", "@upstash/context7-mcp@3.2.5"]
     },
     "convex": {
       "command": "npx",
-      "args": ["-y", "convex@latest", "mcp", "start"]
+      "args": ["-y", "convex@1.43.0", "mcp", "start"]
     },
     "stripe": {
       "type": "http",
@@ -38,7 +38,7 @@
     },
     "playwright-test": {
       "command": "npx",
-      "args": ["playwright", "run-test-mcp-server"]
+      "args": ["-y", "playwright@1.62.1", "run-test-mcp-server"]
     }
   }
 }

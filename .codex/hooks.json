@@ -1,0 +1,17 @@
+{
+  "description": "Run the repository definition-of-done before Codex stops.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/verify.mjs --quiet --hook",
+            "timeout": 600,
+            "statusMessage": "Verifying repository gates"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -131,3 +131,85 @@ Format:
 - prevention: rule for every status surface — *never hardcode the state of something
   machine-checkable; when it truly is not checkable, say `manual`, never `false`*.
 - status: GRADUATED (scripts/onboard.mjs; the rule is this entry)
+
+## 2026-08-06 vulnerable auth pin hidden by green gates
+
+- cause: the exact `better-auth@1.6.15` compatibility pin was vulnerable to
+  GHSA-qq9h-g4jm-xgf3, while the offline definition-of-done gates did not run the
+  networked production audit. Patched Better Auth exposed a separate stale type in
+  `@convex-dev/better-auth@0.12.5`: its exported client alias inferred session data as
+  `never`, even though the provider's runtime contract was unchanged. The upgrade also
+  let `better-call` bind to shadcn's Zod 3 instead of its required Zod 4 peer.
+- fix: upgraded to exact `better-auth@1.6.26`, declared Zod 4 directly, preserved the
+  application client's inferred Better Auth type, and isolated one documented cast at
+  the stale adapter boundary after compile-checking the configured provider's session,
+  token and request operations. `pnpm audit:supply-chain` now provides a fail-closed
+  networked audit command.
+- prevention: `src/lib/auth-client.test.ts` guards non-`never` session data, email
+  sign-in, the Convex token plugin and bridge identity; `skills.lock.json` records the
+  patched exact pin and adapter caveat; supply-chain checks call the dedicated Node
+  command rather than relying on the offline health gate.
+- status: GRADUATED (auth client regression test + skills.lock.json +
+  scripts/audit-supply-chain.mjs)
+
+## 2026-08-06 keyboard check assumed seeded blog content
+
+- cause: the new keyboard e2e gate assumed `/blog` always contained an article link,
+  but the engine deliberately ships with zero demo articles and therefore no focusable
+  control on that route.
+- fix: verify keyboard focus whenever a visible control exists; when none exists,
+  require the intentional empty state instead of inventing demo content for the test.
+- prevention: UI browser gates must derive their assertion from the shipped surface and
+  test both its valid empty state and its interactive state, never smuggle seed-data
+  assumptions into the plain engine.
+- status: GRADUATED (e2e/ui-quality.spec.ts empty and interactive branches)
+
+## 2026-08-06 durable queue had no crash or blocked-state recovery
+
+- cause: initialization wrote outside the mutation lock, lock ownership was not
+  recorded, and `blocked` had no outbound transition. Two hosts could race the first
+  write, a crashed process could strand the queue permanently, and a resolved blocker
+  still forced an unsafe manual state edit.
+- fix: initialization now uses the same bounded cross-process lock as every mutation;
+  locks carry an owner token and PID, dead or abandoned partial locks recover through a
+  serialized recovery guard, and releases only remove their own token. An
+  evidence-required `unblock` transition returns resolved work to `ready`.
+- prevention: focused work-state tests cover initialization contention, dead-lock
+  recovery without stealing an aged live lock, abandoned partial locks, and the full
+  block-to-unblock lifecycle; the product-lifecycle skill documents retry and recovery.
+- status: GRADUATED (scripts/lib/work-state.test.mjs + product-lifecycle skill)
+
+## 2026-08-06 plugin install succeeded while shipping zero agents
+
+- cause: manifest validation accepted Claude agent paths under `.agents/`, but Claude's
+  installed component inventory discovered agents only from the plugin-root `agents/`
+  delivery directory. The Codex marketplace also used obsolete lowercase policy values,
+  so a real install failed even though the JSON parsed.
+- fix: generate neutral Claude plugin agents from the canonical role briefs, use current
+  Codex marketplace enums with lazy `ON_USE` authorization, and test both hosts in
+  isolated config homes.
+- prevention: `pnpm check:agents` byte-checks the Claude delivery files, `pnpm health`
+  checks both plugin wiring contracts, and distribution provenance records the actual
+  installed component counts and host versions.
+- status: GRADUATED (sync-agent-config + health plugin distribution wiring)
+
+## 2026-08-06 provider handoff printed the wrong Codex MCP name
+
+- cause: Codex project MCP servers are deliberately generated with a `workspace-`
+  prefix to avoid global transport collisions, but the human OAuth handoff printed the
+  canonical unprefixed server name.
+- fix: the Codex instruction now prints `workspace-<provider>`, matching the generated
+  TOML exactly.
+- prevention: the connection service test asserts the rendered Stripe login command,
+  not merely the canonical catalog key.
+- status: GRADUATED (scripts/lib/connections/service.test.mjs)
+
+## 2026-08-06 component layer check missed relative imports
+
+- cause: the block dependency gate recognized aliased paths such as
+  `@/components/blocks/...` but not a sibling import such as `./other-block`, allowing a
+  forbidden block-to-block edge to bypass the architecture rule.
+- fix: resolve relative imports against the authored file before classifying component,
+  store, and Convex-seam dependencies.
+- prevention: the UI contract suite contains a relative block import regression case.
+- status: GRADUATED (scripts/lib/ui-contract.test.mjs)

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-workspace.dev/contracts/feature-contract.schema.json",
+  "title": "Feature handoff",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "title", "ownerRole", "scope", "acceptanceCriteria", "dependencies", "interfaces"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "title": { "type": "string", "minLength": 1 },
+    "ownerRole": {
+      "enum": ["product-orchestrator", "frontend-builder", "backend-builder", "quality-engineer", "connection-guide"]
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["includes", "excludes"],
+      "properties": {
+        "includes": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "excludes": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "acceptanceCriteria": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "dependencies": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" } },
+    "interfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "direction", "input", "output"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "direction": { "enum": ["provides", "consumes"] },
+          "input": { "type": "string" },
+          "output": { "type": "string" }
+        }
+      }
+    },
+    "humanActions": {
+      "type": "array",
+      "items": { "$ref": "input-required.schema.json" }
+    }
+  }
+}

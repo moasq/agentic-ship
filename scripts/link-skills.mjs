@@ -3,7 +3,7 @@
  * Makes the `.claude/` views resolve to their `.agents/` sources on every platform:
  *
  *   .claude/skills  ->  .agents/skills    (the ten skills)
- *   .claude/agents  ->  .agents/agents    (the subagents — shipkit-* + playwright-*)
+ *   .claude/agents  ->  .agents/agents    (portable roles + Playwright vendor roles)
  *
  * Why this is a script and not `ln -s`:
  *   - Windows POSIX symlinks need Developer Mode or admin. Directory JUNCTIONS do not.
@@ -123,7 +123,7 @@ for (const l of LINKS) {
     continue;
   }
   if (before === "foreign-file" || before === "real-directory") {
-    console.error(`FAIL  ${label} exists and is not a ShipKit link (${before}). Refusing to delete it. Move it aside and re-run.`);
+    console.error(`FAIL  ${label} exists and is not a Agentic Ship link (${before}). Refusing to delete it. Move it aside and re-run.`);
     worst = Math.max(worst, 1);
     continue;
   }

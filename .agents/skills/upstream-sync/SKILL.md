@@ -58,7 +58,7 @@ drift is visible rather than assumed:
 | item | type | pinned | upstream | action |
 |------|------|--------|----------|--------|
 | next | pin | 16.x | 16.3.2 | none — inside pin |
-| better-auth | pin (exact) | 1.6.15 | 1.7.0 | HOLD — exact pin, build against candidate first |
+| better-auth | pin (exact) | 1.6.26 | 1.6.26 | none — patched candidate passed audit, typecheck and full gates |
 | @magicui registry | registry | url | HTTP 200 | none |
 ```
 
@@ -67,7 +67,7 @@ dates are only worth anything if the run that writes them actually checked the e
 
 Then a changelog block suitable for pasting into the bundle's release notes.
 
-Finish by running `pnpm health`, then the `setup-health` skill. A sync that leaves the
+Finish by running `pnpm health`, then the `workspace-health` skill. A sync that leaves the
 project broken is worse than no sync at all, and the health check is the proof it did
 not.
 
@@ -76,7 +76,7 @@ not.
 `scripts/` is the cross-platform layer — it is what lets the bundle work on Windows.
 Anything you add there must stay pure Node: no shelling out to `cp`, `ln`, `grep` or
 `openssl`, and no assumption of a POSIX shell. Rules and the substitution table:
-`.agents/skills/setup-health/references/platform-notes.md`.
+`.agents/skills/workspace-health/references/platform-notes.md`.
 
 ## Cadence
 
