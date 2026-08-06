@@ -4,9 +4,15 @@
  * re-run as the receipt. No model involved, nothing creative — that is tier 2's job
  * (the testing skill), and it only starts where this stops.
  *
- * Hard boundary: this never touches secrets, env values, version pins, or anything on
- * the health CRITICAL list. Those failures are printed, not "fixed" — a script that
- * edits credentials is a much worse bug than the one it repairs.
+ * Hard boundary: this never touches secrets, env values, or anything on the health
+ * CRITICAL list. Those failures are printed, not "fixed" — a script that edits
+ * credentials is a much worse bug than the one it repairs.
+ *
+ * One nuance on pins. This never edits a version RANGE — those live in `package.json`
+ * and `skills.lock.json` and only `upstream-sync` moves them. It will regenerate
+ * `pnpm-lock.yaml` to match the ranges already declared, which is resolution, not a
+ * decision: the resulting versions are whatever those unchanged ranges permit. If that
+ * still surprises you, `git diff pnpm-lock.yaml` is the receipt.
  *
  *   pnpm heal
  */
@@ -35,9 +41,12 @@ const repairs = [
   },
   {
     name: "lockfile",
+    // --frozen-lockfile fails when the lockfile does not satisfy package.json, which is
+    // precisely the drift we repair. --lockfile-only keeps the probe from touching
+    // node_modules on the way to answering.
     check: "pnpm install --frozen-lockfile --lockfile-only",
     fix: "pnpm install --lockfile-only",
-    why: "package.json and pnpm-lock.yaml resynced — the exact failure CI once caught",
+    why: "pnpm-lock.yaml regenerated from the UNCHANGED ranges in package.json — the exact failure CI once caught",
   },
 ];
 

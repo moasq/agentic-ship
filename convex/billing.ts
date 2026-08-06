@@ -2,7 +2,7 @@ import { action, query } from "./_generated/server";
 import { components } from "./_generated/api";
 import { StripeSubscriptions } from "@convex-dev/stripe";
 import { v } from "convex/values";
-import { requireUser } from "./lib/auth";
+import { getUser, requireUser } from "./lib/auth";
 
 /**
  * The billing seam. One domain, one file — this is the entire public billing API.
@@ -43,6 +43,16 @@ function priceIdFor(plan: PlanKey): string {
 
 const ACTIVE_STATUSES = new Set(["active", "trialing"]);
 
+/**
+ * Where Stripe sends the browser back to. The engine ships no billing UI, so this is
+ * the site root — change it to your own route once you build one, in this one place.
+ * It must be a route that EXISTS: pointing Stripe at a page you have not built yet
+ * turns a completed payment into a 404, which reads to the customer as a failed one.
+ */
+function returnUrl(siteUrl: string, status?: string): string {
+  return status ? `${siteUrl}/?billing=${status}` : siteUrl;
+}
+
 export const createCheckout = action({
   args: { plan: v.union(v.literal("pro")) },
   returns: v.object({ url: v.union(v.string(), v.null()) }),
@@ -62,8 +72,8 @@ export const createCheckout = action({
       mode: "subscription",
       // R3: the success page is a courtesy. Nothing is granted on it — entitlement
       // flips when the webhook lands in the component's tables.
-      successUrl: `${siteUrl}/billing?status=success`,
-      cancelUrl: `${siteUrl}/billing?status=canceled`,
+      successUrl: returnUrl(siteUrl, "success"),
+      cancelUrl: returnUrl(siteUrl, "canceled"),
       subscriptionMetadata: { userId: user.subject, plan: args.plan },
     });
 
@@ -88,7 +98,7 @@ export const createPortal = action({
 
     const portal = await stripeClient.createCustomerPortalSession(ctx, {
       customerId: customer.customerId,
-      returnUrl: `${siteUrl}/billing`,
+      returnUrl: returnUrl(siteUrl),
     });
     return { url: portal.url };
   },
@@ -106,7 +116,10 @@ export const getEntitlement = query({
     status: v.union(v.string(), v.null()),
   }),
   handler: async (ctx) => {
-    const user = await ctx.auth.getUserIdentity();
+    // Through the seam, like every other function here — `getUser` is the null-returning
+    // half of the pair, which is exactly the shape a signed-out read needs. Reaching for
+    // ctx.auth directly is how the vendor name leaks back into domain code.
+    const user = await getUser(ctx);
     if (!user) return { plan: null, status: null };
 
     const subscriptions = await ctx.runQuery(components.stripe.public.listSubscriptionsByUserId, {

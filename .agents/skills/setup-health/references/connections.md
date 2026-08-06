@@ -94,8 +94,9 @@ to probe it, what failure means, and the fallback that keeps work moving.
   https://better-auth.com/docs/ai-resources/skills
 - **Fallback:** https://better-auth.com/llms.txt pasted into context; the Convex
   adapter guide at https://labs.convex.dev/better-auth/framework-guides/next
-- **Version rule:** `better-auth` stays inside the `~1.6.x` pin from
-  `skills.lock.json` — the Convex adapter lags majors. Drift → `upstream-sync`.
+- **Version rule:** `better-auth` is pinned **exactly `1.6.15`** in
+  `skills.lock.json` — not a range: even a tilde re-admits the proven type break
+  (1.6.25 is inside `~1.6.15`). `pnpm health` fails on any drift → `upstream-sync`.
 
 ## Registries (components.json)
 

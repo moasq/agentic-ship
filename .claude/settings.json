@@ -29,6 +29,7 @@
       }
     ]
   },
+  "$comment:permissions": "Every read-only or repo-local ShipKit command is allowed, so the verify/heal loop runs without a prompt on a headless clone. Anything that spends money, touches a deployment, or rewrites history is deliberately absent — that is a human decision, not friction to remove.",
   "permissions": {
     "allow": [
       "Bash(pnpm install)",
@@ -37,6 +38,13 @@
       "Bash(pnpm lint)",
       "Bash(pnpm audit:*)",
       "Bash(pnpm health)",
+      "Bash(pnpm verify)",
+      "Bash(pnpm verify:full)",
+      "Bash(pnpm heal)",
+      "Bash(pnpm preflight)",
+      "Bash(pnpm test)",
+      "Bash(pnpm test:e2e)",
+      "Bash(pnpm secret)",
       "Bash(pnpm setup:env)",
       "Bash(pnpm link:skills)",
       "Bash(pnpm sync:mcp)",
@@ -45,6 +53,7 @@
       "Bash(pnpm asset:*)",
       "Bash(pnpm font:*)",
       "Bash(npx shadcn@latest add:*)",
+      "Bash(npx playwright install:*)",
       "Bash(git status)",
       "Bash(git diff:*)",
       "Bash(git log:*)"

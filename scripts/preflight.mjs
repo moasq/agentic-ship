@@ -35,16 +35,27 @@ const authSrc = read("convex/auth.ts");
 const emailLive = /^\s*testMode:\s*false/m.test(emailSrc);
 const verifyOn = /^\s*requireEmailVerification:\s*true/m.test(authSrc);
 
-add(
-  "email out of testMode",
-  emailLive ? "PASS" : "FAIL",
-  emailLive ? "" : "convex/email.ts still has testMode: true — production users receive nothing. Flip AFTER verifying a sending domain (references/email-resend.md)",
-);
-add(
-  "email verification required",
-  verifyOn ? "PASS" : "FAIL",
-  verifyOn ? "" : "requireEmailVerification is false — unverified addresses can sign up in production. Flip together with testMode",
-);
+// A seam that does not exist cannot be misconfigured. Without this, a frontend-only
+// repo was told "convex/email.ts still has testMode: true" about a file it does not
+// have — a blocking FAIL with no possible fix, which teaches people to ignore the gate.
+if (!emailSrc) {
+  add("email out of testMode", "SKIP", "no convex/email.ts in this repo — nothing sends mail");
+} else {
+  add(
+    "email out of testMode",
+    emailLive ? "PASS" : "FAIL",
+    emailLive ? "" : "convex/email.ts still has testMode: true — production users receive nothing. Flip AFTER verifying a sending domain (references/email-resend.md)",
+  );
+}
+if (!authSrc) {
+  add("email verification required", "SKIP", "no convex/auth.ts in this repo — nothing signs up");
+} else {
+  add(
+    "email verification required",
+    verifyOn ? "PASS" : "FAIL",
+    verifyOn ? "" : "requireEmailVerification is false — unverified addresses can sign up in production. Flip together with testMode",
+  );
+}
 
 /* ---------- site identity: placeholders must not ship ---------- */
 
@@ -60,7 +71,8 @@ add("deploy blueprint intact", /convex deploy/.test(blueprint) ? "PASS" : "FAIL"
 /* ---------- dev-side leaks that become launch incidents ---------- */
 
 const envLocal = read(".env.local");
-add("no live Stripe key on this machine", /\b(sk_live_|rk_live_)/.test(envLocal) ? "FAIL" : "PASS", "live keys belong in the PROD Convex deployment env only (rule R7)");
+const localLiveKey = /\b(sk_live_|rk_live_)/.test(envLocal);
+add("no live Stripe key on this machine", localLiveKey ? "FAIL" : "PASS", localLiveKey ? "live keys belong in the PROD Convex deployment env only (rule R7)" : "");
 
 /* ---------- the full local gate ---------- */
 

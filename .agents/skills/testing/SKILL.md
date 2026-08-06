@@ -17,11 +17,16 @@ cannot return.
 | G1 | `pnpm verify` | G0 + lint + the build |
 | G2 | `pnpm test` | backend logic, in memory, no network |
 | G3 | `pnpm test:e2e` | the app in a real browser: pages, headers, SEO surface |
-| all | `pnpm verify:full` | G0–G3, the same thing CI runs |
+| all | `pnpm verify:full` | G0–G3, the same gates CI runs |
 | launch | `pnpm preflight [--prod]` | production readiness — see the production-preflight skill |
 
 A gate runs only when the ones above it are green. `pnpm verify` is the definition of
 done for every completion; `verify:full` is for PRs and before a deploy.
+
+CI splits the same gates across two jobs: G0–G2 plus the build on macOS, Linux and
+Windows, and G3 on Linux. Every gate runs with no network beyond the install — fonts
+are committed rather than fetched, which is what lets the production build inside
+Playwright's `webServer` succeed on a runner with no egress.
 
 ## Writing unit tests (G2)
 

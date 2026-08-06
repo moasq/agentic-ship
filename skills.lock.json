@@ -1,7 +1,7 @@
 {
   "$comment": "Provenance manifest. Nothing enters this bundle without an entry. Run the upstream-sync skill monthly.",
   "bundleVersion": "0.1.0",
-  "lastSync": "2026-08-04",
+  "lastSync": "2026-08-05",
   "skills": [
     { "name": "setup-health",      "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
     { "name": "ui-system",         "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
@@ -343,7 +343,13 @@
       "official": true,
       "verified": "2026-08-03",
       "adapterVersion": "0.12.5",
-      "pins": {
+      "distribution": {
+    "$comment": "The repo doubles as a plugin marketplace. All manifests point at .agents/skills/ — one copy of every skill regardless of delivery path. Validate the Claude side with `claude plugin validate .` (strict passes as of 2026-08-06; a local end-to-end marketplace-add + install was also performed and then removed).",
+    "claude": { "manifests": [".claude-plugin/plugin.json", ".claude-plugin/marketplace.json"], "install": "/plugin marketplace add moasq/shipkit → /plugin install shipkit@shipkit", "verified": "2026-08-06" },
+    "codex": { "manifests": [".codex-plugin/plugin.json", ".agents/plugins/marketplace.json"], "install": "/plugin marketplace add moasq/shipkit → /plugin install shipkit@shipkit", "verified": "manifest shape mirrored from working plugins (caveman, convex, vercel); no Codex CLI on this machine to end-to-end test" },
+    "scaffold": { "install": "npx github:moasq/create-shipkit my-app" }
+  },
+  "pins": {
         "convex": ">=1.25.0",
         "better-auth": "1.6.15 EXACT"
       },
@@ -359,10 +365,21 @@
     }
   },
   "pins": {
+    "$comment": "The machine-checked set — scripts/health.mjs compares every entry against package.json. 'N.x' pins the major; a full 'x.y.z' means EXACT, range forms are a FAIL. better-auth's exact pin is load-bearing: 1.6.25 sits inside ^1.6.15 and still breaks the adapter's types (heal-ledger.md 2026-08-04). The narrative for backend pins lives in backend.auth.pins; this block is what the script enforces.",
     "next": "16.x",
     "react": "19.x",
     "tailwindcss": "4.x",
     "zustand": "5.x",
-    "shadcn-cli": "3.x"
+    "shadcn": "4.x",
+    "convex": "1.x",
+    "better-auth": "1.6.15"
+  },
+  "assets": {
+    "$comment": "Files vendored INTO the repo rather than fetched at build time. Committed on purpose: next/font/google downloads the face during `next build`, so a host with no egress cannot build at all — that took out CI here once (.agents/heal-ledger.md, 2026-08-05). Only redistributable licences may appear here; scripts/fetch-font.mjs enforces the split and keeps non-redistributable Fontshare faces gitignored.",
+    "added": "2026-08-05",
+    "entries": [
+      { "name": "IBM Plex Sans", "kind": "font", "weights": "400-700 (one variable file)", "file": "src/fonts/ofl/ibm-plex-sans-variable.woff2", "subset": "latin", "license": "OFL-1.1", "licenseFile": "src/fonts/ofl/ibm-plex-sans-OFL.txt", "upstream": "https://github.com/IBM/plex", "fetch": "pnpm font --ofl \"IBM Plex Sans\" 400,500,600,700", "verified": "2026-08-06" },
+      { "name": "IBM Plex Mono", "kind": "font", "weights": "400,500 (static instances)", "subset": "latin", "license": "OFL-1.1", "licenseFile": "src/fonts/ofl/ibm-plex-mono-OFL.txt", "upstream": "https://github.com/IBM/plex", "fetch": "pnpm font --ofl \"IBM Plex Mono\" 400,500", "verified": "2026-08-06" }
+    ]
   }
 }

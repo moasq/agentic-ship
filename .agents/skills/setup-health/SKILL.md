@@ -97,10 +97,16 @@ not the server. Fix and caveats: `references/platform-notes.md`.
 ## 5. Design system — `pnpm health`
 
 - `src/app/globals.css` contains the `@theme` block and the ShipKit token layer.
-- Fonts: `src/app/layout.tsx` loads the project faces through `next/font`. Banned as
-  primary faces — Inter, Geist, Space Grotesk, Poppins. Only what is actually **loaded**
-  counts; naming one in a comment is not a violation. A banned face is the single
-  loudest "AI generated this site" signal there is.
+- Fonts: `src/app/layout.tsx` loads the project faces through `next/font/local`, from
+  files committed under `src/fonts/ofl/`. Banned as primary faces — Inter, Geist,
+  Space Grotesk, Poppins. Only what is actually **loaded** counts; naming one in a
+  comment is not a violation. The check reads both shapes — `next/font/google` named
+  imports and the `src:` paths of a local font — because a face can arrive either way.
+  A banned face is the single loudest "AI generated this site" signal there is.
+- `next/font/google` in `layout.tsx` is a WARN, not a style opinion: it fetches the face
+  during `next build`, so the build fails on any host without egress. Self-host with
+  `pnpm font --ofl "<Family>" <weights>`. See `references/font-pairings.md` in
+  `ui-system` for the licence split (OFL committed, Fontshare gitignored).
 - No raw hex values or Tailwind arbitrary values (`text-[#fff]`) in `src/` or `content/`,
   outside vendor-owned `components/ui/`. Found → they must become tokens.
 
@@ -113,6 +119,14 @@ site? That question belongs to the `ui-system` skill.
 - `.env*` is gitignored, `.env.example` is not.
 - Client components (`"use client"`) may reference only `NEXT_PUBLIC_*` under
   `process.env`. Anything else is a leaked secret — CRITICAL.
+
+Secret **placement** is checked unconditionally — backend secrets in `.env.local`, any
+`sk_live`/`rk_live` there, and any `phx_` PostHog personal key anywhere in the repo, all
+CRITICAL. These used to be nested under the Convex and analytics sections, which meant
+deleting a seam silently disabled the corresponding scan and still reported PASS. Gate a
+check on the thing it measures, never on a seam that happens to sit near it: reporting
+whether a service is connected is conditional; scanning for a credential in the wrong
+file never is.
 
 Run separately, because it needs the network:
 
@@ -172,8 +186,10 @@ it with a cheap read (list tables).
 - `npx convex env list` shows `BETTER_AUTH_SECRET` and `SITE_URL`.
 - Those two names must **not** appear in `.env.local` — the leak check runs both
   directions.
-- Installed `better-auth` matches the `~1.6.x` pin in `skills.lock.json`. The adapter
-  lags Better Auth majors; drift → run `upstream-sync`, never a blind bump.
+- Installed `better-auth` is **exactly `1.6.15`** — the pin in `skills.lock.json` is
+  exact, not a range: 1.6.25 sits inside `~1.6.15` and still breaks the adapter's
+  types (proven, heal-ledger.md). `pnpm health` enforces it; drift → run
+  `upstream-sync`, never a blind bump.
 - `src/app/api/auth/[...all]/route.ts` exists — without it the proxy is dead and every
   sign-in fails with no useful error.
 - **Official Better Auth skills installed?** The `better-auth/skills` pack

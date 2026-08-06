@@ -27,15 +27,21 @@ test.describe("pages serve", () => {
 });
 
 test.describe("security headers ship on every response", () => {
-  test("home carries the full header set", async ({ request }) => {
-    const response = await request.get("/");
-    const headers = response.headers();
-    expect(headers["content-security-policy"]).toContain("default-src 'self'");
-    expect(headers["x-frame-options"]).toBe("DENY");
-    expect(headers["x-content-type-options"]).toBe("nosniff");
-    expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
-    expect(headers["strict-transport-security"]).toContain("max-age=");
-  });
+  // Every route the engine serves, not just the home page. The headers come from a
+  // `/:path*` matcher in next.config.ts, so a regression there is silent everywhere at
+  // once — testing one path would have proved almost nothing. A 404 is in the list on
+  // purpose: error responses are the ones people forget to protect.
+  for (const path of ["/", "/blog", "/robots.txt", "/sitemap.xml", "/llms.txt", "/opengraph-image", "/definitely-not-a-route"]) {
+    test(`${path} carries the full header set`, async ({ request }) => {
+      const headers = (await request.get(path)).headers();
+      expect(headers["content-security-policy"]).toContain("default-src 'self'");
+      expect(headers["x-frame-options"]).toBe("DENY");
+      expect(headers["x-content-type-options"]).toBe("nosniff");
+      expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+      expect(headers["permissions-policy"]).toBeTruthy();
+      expect(headers["strict-transport-security"]).toContain("max-age=");
+    });
+  }
 });
 
 test.describe("SEO surface — asserted in the rendered response", () => {

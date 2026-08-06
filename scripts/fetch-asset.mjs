@@ -8,6 +8,9 @@
  * Rules enforced here rather than remembered:
  *   - https only, and only from the source allowlist — the same hosts next/image and
  *     the CSP already trust. Anything else needs a human decision, not a download.
+ *   - redirects are NOT followed. Checking only the URL you typed is not a check: an
+ *     allowlisted host that 302s elsewhere would walk the download straight past the
+ *     allowlist. Every hop is re-validated against the same list.
  *   - the response must actually be an image
  *   - files land in public/images/<name>.<ext> — no scattered assets
  *
@@ -30,24 +33,64 @@ if (!rawUrl || !rawName) {
 // decision made there first — the two must not drift apart silently.
 const ALLOWED_HOSTS = new Set(["images.unsplash.com", "images.pexels.com"]);
 
-let url;
-try {
-  url = new URL(rawUrl);
-} catch {
-  console.error("FAIL  not a valid URL.");
-  process.exit(1);
+/** Every URL crosses this gate — the one you typed and every redirect target. */
+function checkUrl(candidate) {
+  let url;
+  try {
+    url = new URL(candidate);
+  } catch {
+    return { error: "not a valid URL." };
+  }
+  if (url.protocol !== "https:") return { error: `https only (got ${url.protocol}).` };
+  if (!ALLOWED_HOSTS.has(url.hostname)) {
+    return {
+      error:
+        `${url.hostname} is not in the source allowlist (${[...ALLOWED_HOSTS].join(", ")}).\n` +
+        "      Adding a source is a human decision: update images.remotePatterns in next.config.ts first, then this script's list.",
+    };
+  }
+  return { url };
 }
-if (url.protocol !== "https:") {
-  console.error("FAIL  https only.");
-  process.exit(1);
-}
-if (!ALLOWED_HOSTS.has(url.hostname)) {
-  console.error(`FAIL  ${url.hostname} is not in the source allowlist (${[...ALLOWED_HOSTS].join(", ")}).\n      Adding a source is a human decision: update images.remotePatterns in next.config.ts first, then this script's list.`);
+
+const first = checkUrl(rawUrl);
+if (first.error) {
+  console.error(`FAIL  ${first.error}`);
   process.exit(1);
 }
 
-const name = rawName.toLowerCase().replace(/[^a-z0-9-]/g, "-");
-const res = await fetch(rawUrl);
+// The name reaches the filesystem. Reject rather than mangle: silently rewriting
+// "../../etc/x" into a dash salad would write a file the caller did not ask for.
+const name = rawName.toLowerCase();
+if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name)) {
+  console.error(`FAIL  "${rawName}" is not a kebab-case name — lowercase letters, digits and single hyphens only (e.g. hero-workspace).`);
+  process.exit(1);
+}
+
+// redirect:"manual" is the whole point: fetch's default follows hops without telling
+// anyone, so the allowlist would only ever have described the first URL.
+let target = first.url.href;
+let res;
+for (let hop = 0; ; hop++) {
+  if (hop > 5) {
+    console.error("FAIL  too many redirects.");
+    process.exit(1);
+  }
+  res = await fetch(target, { redirect: "manual", signal: AbortSignal.timeout(30_000) });
+  if (res.status < 300 || res.status >= 400) break;
+
+  const location = res.headers.get("location");
+  if (!location) {
+    console.error(`FAIL  ${res.status} redirect with no Location header.`);
+    process.exit(1);
+  }
+  const next = checkUrl(new URL(location, target).href);
+  if (next.error) {
+    console.error(`FAIL  redirect left the allowlist: ${next.error}`);
+    process.exit(1);
+  }
+  target = next.url.href;
+}
+
 if (!res.ok) {
   console.error(`FAIL  download returned ${res.status}.`);
   process.exit(1);

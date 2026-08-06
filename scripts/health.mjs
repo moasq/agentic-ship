@@ -56,15 +56,23 @@ if (!pkg || !lock) {
   add("package.json + skills.lock.json readable", "FAIL", "one is missing or malformed");
 } else {
   for (const [name, pin] of Object.entries(lock.pins ?? {})) {
-    if (name === "shadcn-cli") continue; // a CLI, not a dependency of this package
+    if (name.startsWith("$")) continue; // $comment is annotation, not a pin
     const declared = pkg.dependencies?.[name] ?? pkg.devDependencies?.[name];
     if (!declared) {
       add(`pin ${name}`, "WARN", `pinned to ${pin} in skills.lock.json but not in package.json`);
       continue;
     }
-    const want = pin.split(".")[0];
-    const got = /(\d+)/.exec(declared)?.[1];
-    add(`pin ${name} ${declared}`, got === want ? "PASS" : "FAIL", got === want ? "" : `lockfile wants ${pin} — run the upstream-sync skill, do not hand-edit`);
+    // Two pin shapes. "16.x" pins the major. "1.6.15" pins the EXACT version and the
+    // declared range must be exactly that string — no caret, no tilde: better-auth
+    // 1.6.25 is inside ~1.6.15 and still breaks the adapter's types (heal-ledger.md),
+    // which is why an exact pin that only compared majors would be no pin at all.
+    const exact = /^\d+\.\d+\.\d+$/.test(pin);
+    const ok = exact ? declared === pin : /(\d+)/.exec(declared)?.[1] === pin.split(".")[0];
+    add(
+      `pin ${name} ${declared}`,
+      ok ? "PASS" : "FAIL",
+      ok ? "" : `lockfile wants ${exact ? `exactly ${pin} (no range — a range re-admits a proven breakage)` : pin} — run the upstream-sync skill, do not hand-edit`,
+    );
   }
 }
 
@@ -133,12 +141,53 @@ add("globals.css @theme block", css.includes("@theme") ? "PASS" : "FAIL", css.in
 // Only what is actually LOADED counts. Naming a banned face in a comment (this repo's
 // layout.tsx explains why they are banned) is not a violation — an early version of this
 // check flagged its own documentation.
+//
+// Two shapes to cover, because the two loaders import differently:
+//   next/font/google → named imports, the family IS the identifier: { Inter }
+//   next/font/local  → a default import, the family is only in the src file paths
+// Checking the google shape alone let a banned face in through a local `src:` array.
 const layout = read("src/app/layout.tsx") ?? "";
-const loadedFonts = [...layout.matchAll(/import\s*\{([^}]*)\}\s*from\s*["']next\/font\/(?:google|local)["']/g)]
+const loadedFonts = [...layout.matchAll(/import\s*\{([^}]*)\}\s*from\s*["']next\/font\/google["']/g)]
   .flatMap((m) => m[1].split(","))
   .map((s) => s.trim());
-const bannedFont = ["Inter", "Geist", "Space_Grotesk", "Poppins"].find((f) => loadedFonts.includes(f));
+const localFontPaths = /from\s*["']next\/font\/local["']/.test(layout)
+  ? [...layout.matchAll(/path:\s*["']([^"']+)["']/g)].map((m) => m[1])
+  : [];
+const BANNED = ["Inter", "Geist", "Space_Grotesk", "Poppins"];
+const bannedFont =
+  BANNED.find((f) => loadedFonts.includes(f)) ??
+  BANNED.find((f) => {
+    // "Space_Grotesk" as a file is "space-grotesk"; match the slug, and only as a whole
+    // path segment so a directory named "geist-alternatives" is not a false positive.
+    const slug = f.toLowerCase().replace(/_/g, "-");
+    return localFontPaths.some((p) => new RegExp(`(^|/)${slug}[-.]`).test(p));
+  });
 add("no banned primary font", bannedFont ? "FAIL" : "PASS", bannedFont ? `${bannedFont} is the loudest "an AI made this site" signal — see ui-system/references/font-pairings.md` : "");
+
+// The build must not need the network. next/font/google fetches the face during
+// `next build`, so a host with no egress cannot build at all — an air-gapped server, a
+// locked-down CI runner. OFL files committed under src/fonts/ofl/ are the fix.
+const usesRemoteFont = /from\s*["']next\/font\/google["']/.test(layout);
+add(
+  "fonts build offline",
+  usesRemoteFont ? "WARN" : "PASS",
+  usesRemoteFont
+    ? "layout.tsx loads next/font/google — `next build` will fetch fonts.googleapis.com and fail on any host without egress. Self-host: `pnpm font --ofl \"<Family>\" <weights>`, then switch to next/font/local"
+    : "",
+);
+
+// The paths must also RESOLVE. On a fresh clone (CI is one), a font that was never
+// `git add`ed makes every next/font/local build fail with module-not-found — and the
+// check above stays green because it only looks for the remote loader. This is the
+// gap that let src/fonts/ sit untracked while everything claimed it was committed.
+if (localFontPaths.length) {
+  const missingFonts = localFontPaths.filter((p) => !existsSync(join(root, "src", "app", p)));
+  add(
+    "local font files exist",
+    missingFonts.length ? "FAIL" : "PASS",
+    missingFonts.length ? `${missingFonts.join(", ")} referenced by layout.tsx but not on disk — refetch with \`pnpm font\` and commit src/fonts/ofl/` : "",
+  );
+}
 
 /* ---------- 7. hardcoded colors (the `grep -r` replacement) ---------- */
 
@@ -147,11 +196,24 @@ function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {
     if (entry === "node_modules" || entry === ".next" || entry.startsWith(".")) continue;
     const full = join(dir, entry);
-    if (statSync(full).isDirectory()) walk(full, out);
+    // statSync follows symlinks and THROWS on a broken one. A single dangling link
+    // under src/ must not abort the whole health run — skip it and keep going.
+    let stat;
+    try {
+      stat = statSync(full);
+    } catch {
+      continue;
+    }
+    if (stat.isDirectory()) walk(full, out);
     else if (/\.(tsx?|jsx?)$/.test(full)) out.push(full);
   }
   return out;
 }
+
+// The comment-vs-code rule (heal-ledger.md): a check must be able to tell the code from
+// the documentation of the code. Strip line and block comments before pattern checks so
+// a comment showing what NOT to write never trips the check that bans it.
+const stripComments = (body) => body.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 const sourceFiles = [...walk(join(root, "src")), ...walk(join(root, "content"))];
 const posix = (p) => relative(root, p).split(sep).join("/"); // stable output on Windows
@@ -159,12 +221,14 @@ const posix = (p) => relative(root, p).split(sep).join("/"); // stable output on
 const rawColor = [];
 const leaks = [];
 for (const file of sourceFiles) {
-  const body = readFileSync(file, "utf8");
+  const raw = readFileSync(file, "utf8");
+  const body = stripComments(raw);
   const rel = posix(file);
   if (!rel.startsWith("src/components/ui/") && /(?:bg|text|border|from|to|via|fill|stroke|ring|shadow)-\[#|:\s*#[0-9a-fA-F]{3,8}\b/.test(body)) {
     rawColor.push(rel);
   }
-  // Server-only env in a client component ships the value to the browser.
+  // Server-only env in a client component ships the value to the browser. Anchored to a
+  // line start AND comment-stripped, so a commented-out directive cannot arm the scan.
   if (/^\s*["']use client["']/m.test(body)) {
     for (const m of body.matchAll(/process\.env\.([A-Za-z0-9_]+)/g)) {
       if (!m[1].startsWith("NEXT_PUBLIC_")) leaks.push(`${rel} -> process.env.${m[1]}`);
@@ -172,9 +236,51 @@ for (const file of sourceFiles) {
   }
 }
 add("no raw hex / arbitrary color values", rawColor.length ? "FAIL" : "PASS", rawColor.length ? `${rawColor.length} file(s): ${rawColor.slice(0, 3).join(", ")} — these must become tokens` : "");
-add("no server env in client components", leaks.length ? "CRITICAL" : "PASS", leaks.length ? leaks.slice(0, 3).join("; ") : "");
+add(
+  "no server env in client components",
+  leaks.length ? "CRITICAL" : "PASS",
+  leaks.length
+    ? `${leaks.slice(0, 3).join("; ")} — a "use client" file ships its env values to the browser. Move the read into a server component or Server Action and pass the RESULT down as a prop; if the value is genuinely public, rename it NEXT_PUBLIC_*`
+    : "",
+);
 
-/* ---------- 8. convex backend ---------- */
+/* ---------- 8. secret placement ---------- */
+
+// UNCONDITIONAL, on purpose. These checks used to live inside the convex and analytics
+// sections, which meant a repo without convex/schema.ts or src/lib/analytics.ts was
+// never scanned for live Stripe keys or personal API keys at all — the checks silently
+// skipped exactly the non-standard layouts most likely to have drifted. A secret in the
+// wrong file is a secret in the wrong file regardless of which seams the repo ships.
+{
+  const envAll = (read(".env.local") ?? "") + "\n" + (read(".env") ?? "");
+  const envHasKey = (key) => new RegExp(`^\\s*${key}\\s*=\\s*\\S`, "m").test(envAll);
+
+  // Action secrets belong in Convex env. Finding one here means it is one `git add`
+  // away from being public.
+  const misplaced = [
+    "BETTER_AUTH_SECRET",
+    "CONVEX_DEPLOY_KEY",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "STRIPE_PRICE_\\w+",
+    "RESEND_API_KEY",
+    "RESEND_WEBHOOK_SECRET",
+  ].filter(envHasKey);
+  const misplacedNames = misplaced.map((k) => k.replace("\\w+", "*"));
+  add("no backend secrets in .env.local", misplaced.length ? "CRITICAL" : "PASS", misplaced.length ? `${misplacedNames.join(", ")} must live in Convex env — \`npx convex env set\` — not in .env.local` : "");
+
+  // R7: live Stripe credentials have no business on a dev machine's env file at all.
+  const liveKey = /\b(sk|rk)_live_[A-Za-z0-9]/.test(envAll);
+  add("no live Stripe key in .env.local", liveKey ? "CRITICAL" : "PASS", liveKey ? "sk_live/rk_live found — live keys belong in the PROD deployment's Convex env only" : "");
+
+  // A PostHog personal API key is a full-access credential. Prefix + payload only: a
+  // bare prefix is documentation ("never commit a phx_ key"), and matching the prefix
+  // alone made this check flag the very comments warning against the thing.
+  const personalKey = [envAll, ...sourceFiles.map((f) => readFileSync(f, "utf8"))].some((body) => /\bphx_[A-Za-z0-9]{20,}/.test(body));
+  add("no PostHog personal key", personalKey ? "CRITICAL" : "PASS", personalKey ? "a phx_ personal key is a full-access credential — only the public phc_ project key belongs in this repo" : "");
+}
+
+/* ---------- 9. convex backend ---------- */
 
 // Connecting Convex is a human step (`npx convex dev` opens a browser). Not being
 // connected yet is NOT a failure — it is a stage of onboarding, reported as such.
@@ -194,23 +300,8 @@ if (!existsSync(join(root, "convex", "schema.ts"))) {
   const typed = /^\s*(?:import|export)[^\n]*_generated\/api/m.test(seam);
   add("convex api seam", typed ? "PASS" : "WARN", typed ? "typed against generated api" : "running untyped via anyApi — after `npx convex dev`, swap the one line in src/lib/convex-api.ts");
 
-  // Action secrets belong in Convex env. Finding one in .env.local means it is one
-  // `git add` away from being public.
-  const misplaced = [
-    "BETTER_AUTH_SECRET",
-    "CONVEX_DEPLOY_KEY",
-    "STRIPE_SECRET_KEY",
-    "STRIPE_WEBHOOK_SECRET",
-    "STRIPE_PRICE_\\w+",
-    "RESEND_API_KEY",
-    "RESEND_WEBHOOK_SECRET",
-  ].filter((k) => envHas(k));
-  const misplacedNames = misplaced.map((k) => k.replace("\\w+", "*"));
-  add("no backend secrets in .env.local", misplaced.length ? "CRITICAL" : "PASS", misplaced.length ? `${misplacedNames.join(", ")} must live in Convex env — \`npx convex env set\` — not in .env.local` : "");
-
-  // R7: live Stripe credentials have no business on a dev machine's env file at all.
-  const liveKey = /\b(sk|rk)_live_[A-Za-z0-9]/.test(envLocal);
-  add("no live Stripe key in .env.local", liveKey ? "CRITICAL" : "PASS", liveKey ? "sk_live/rk_live found — live keys belong in the PROD deployment's Convex env only" : "");
+  // Secret placement is checked unconditionally in section 8 — not here, where it would
+  // only run for repos that happen to ship convex/schema.ts.
 
   const authRoute = existsSync(join(root, "src", "app", "api", "auth", "[...all]", "route.ts"));
   const authWired = existsSync(join(root, "convex", "auth.ts"));
@@ -236,21 +327,16 @@ if (!existsSync(join(root, "convex", "schema.ts"))) {
   }
 }
 
-/* ---------- 9. analytics (PostHog) ---------- */
+/* ---------- 10. analytics (PostHog) ---------- */
 
+// The phx_ personal-key scan is NOT here — it runs unconditionally in section 8, so a
+// repo without this seam is still scanned.
 const analyticsSeam = read("src/lib/analytics.ts");
 if (!analyticsSeam) {
   add("analytics", "SKIP", "no analytics seam in this repo");
 } else {
   const envAll = (read(".env.local") ?? "") + (read(".env") ?? "");
   const publicKey = /NEXT_PUBLIC_POSTHOG_KEY\s*=\s*\S/.test(envAll);
-
-  // A personal API key is a full-access credential. It has no business anywhere here.
-  // A bare prefix is documentation ("never commit a phx_ key"); a prefix followed by a
-  // payload is the credential itself. Matching the prefix alone made this check flag
-  // the very comments warning against the thing.
-  const personalKey = [envAll, ...sourceFiles.map((f) => readFileSync(f, "utf8"))].some((body) => /\bphx_[A-Za-z0-9]{20,}/.test(body));
-  add("no PostHog personal key", personalKey ? "CRITICAL" : "PASS", personalKey ? "a phx_ personal key is a full-access credential — only the public phc_ project key belongs in this repo" : "");
 
   // The proxy is what keeps the CSP closed. Key without proxy = blocked requests.
   const proxied = /\/ingest/.test(read("next.config.ts") ?? "") && /\/ingest/.test(read("instrumentation-client.ts") ?? "");
@@ -259,7 +345,7 @@ if (!analyticsSeam) {
   add("posthog key", publicKey ? "PASS" : "WARN", publicKey ? "" : "not configured — analytics is a no-op. Run `pnpm onboard`");
 }
 
-/* ---------- 10. deploy (Render) ---------- */
+/* ---------- 11. deploy (Render) ---------- */
 
 const blueprint = read("render.yaml");
 if (!blueprint) {
@@ -273,7 +359,7 @@ if (!blueprint) {
   add("no secret values in render.yaml", holdsSecret ? "CRITICAL" : "PASS", holdsSecret ? "this file is committed — secrets must use `sync: false` and be set in the dashboard" : "");
 }
 
-/* ---------- 11. env hygiene ---------- */
+/* ---------- 12. env hygiene ---------- */
 
 const gitignore = read(".gitignore") ?? "";
 add(".env* gitignored", /^\.env\*/m.test(gitignore) ? "PASS" : "CRITICAL", /^\.env\*/m.test(gitignore) ? "" : "add `.env*` to .gitignore immediately");
