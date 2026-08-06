@@ -12,6 +12,11 @@
   "repository": "https://github.com/moasq/shipkit",
   "license": "MIT",
   "skills": "./.agents/skills/",
+  "agents": [
+    "./.agents/agents/shipkit-frontend.md",
+    "./.agents/agents/shipkit-testing.md",
+    "./.agents/agents/shipkit-convex.md"
+  ],
   "keywords": [
     "nextjs",
     "convex",

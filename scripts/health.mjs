@@ -90,18 +90,23 @@ const agents = read("AGENTS.md") ?? "";
 const bothBlocks = agents.includes("nextjs-agent-rules") && agents.includes("# ShipKit");
 add("AGENTS.md rule blocks", bothBlocks ? "PASS" : "FAIL", bothBlocks ? "" : "both the Next.js block and the ShipKit block must be present");
 
-// .claude/skills — the check `readlink` used to do, minus readlink.
-const linkPath = join(root, ".claude", "skills");
-let skillsStatus = "FAIL";
-let skillsFix = "run `pnpm link:skills`";
-if (existsSync(join(linkPath, "setup-health", "SKILL.md"))) {
-  const isCopy = existsSync(join(root, ".claude", ".skills-is-a-copy"));
-  skillsStatus = isCopy ? "WARN" : "PASS";
-  skillsFix = isCopy ? "it is a COPY, not a link — edit .agents/skills then re-run `pnpm link:skills`" : "";
-} else if (existsSync(linkPath) && lstatSync(linkPath).isFile()) {
-  skillsFix = "it is a text stub — this checkout has core.symlinks=false (normal on Windows). Fix: `pnpm link:skills`";
+// .claude/skills and .claude/agents — the check `readlink` used to do, minus readlink.
+for (const [name, probe] of [
+  ["skills", join("setup-health", "SKILL.md")],
+  ["agents", "shipkit-frontend.md"],
+]) {
+  const linkPath = join(root, ".claude", name);
+  let status = "FAIL";
+  let fix = "run `pnpm link:skills`";
+  if (existsSync(join(linkPath, probe))) {
+    const isCopy = existsSync(join(root, ".claude", `.${name}-is-a-copy`));
+    status = isCopy ? "WARN" : "PASS";
+    fix = isCopy ? `it is a COPY, not a link — edit .agents/${name} then re-run \`pnpm link:skills\`` : "";
+  } else if (existsSync(linkPath) && lstatSync(linkPath).isFile()) {
+    fix = "it is a text stub — this checkout has core.symlinks=false (normal on Windows). Fix: `pnpm link:skills`";
+  }
+  add(`.claude/${name} resolves`, status, fix);
 }
-add(".claude/skills resolves", skillsStatus, skillsFix);
 
 /* ---------- 5. cross-tool mirror ---------- */
 
