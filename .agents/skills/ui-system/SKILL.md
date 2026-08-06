@@ -28,9 +28,17 @@ Tailwind v4 is CSS-first. There is **no `tailwind.config.js`**. Everything lives
 `@theme` block in `src/app/globals.css`. If a config file appears, migrate its contents
 into `@theme` and delete it.
 
-Generate a palette with [tweakcn](https://tweakcn.com), export the CSS variables, paste
-them into the `:root` and `.dark` blocks. Every shadcn and MagicUI component inherits
-them automatically — that is the entire trick.
+Replacing the shipped palette has two equivalent routes — pick by who is driving:
+
+- **A human at a browser:** generate with [tweakcn](https://tweakcn.com), export the
+  CSS variables, paste them into the `:root` and `.dark` blocks.
+- **An agent, headless:** follow `references/palette-recipes.md` — named, fully
+  specified oklch palettes plus the derivation rules for building a new one from a
+  single brand hue. No GUI in the loop, same paste target.
+
+Every shadcn and MagicUI component inherits the variables automatically — that is the
+entire trick. Either route ends the same way: the `@theme` block holds a palette
+chosen for THIS product. Shipping the default is defect #1 on the list above.
 
 Rules:
 
@@ -46,11 +54,11 @@ Two families maximum, plus one mono.
 
 Pairings that work, all free for commercial use:
 
-| Direction | Display | Body / mono |
-| --- | --- | --- |
-| Engineering brand | IBM Plex Sans | IBM Plex Mono |
-| Product / SaaS | General Sans | Source Serif 4 for accents |
-| Editorial landing | Instrument Serif (large sizes only) | a quiet grotesk |
+| Direction | Display | Body / mono | Licence note |
+| --- | --- | --- | --- |
+| Engineering brand | IBM Plex Sans | IBM Plex Mono | OFL, committed — the default; builds offline |
+| Product / SaaS | General Sans | Source Serif 4 for accents | General Sans is Fontshare: NOT committed, every machine (and CI) must fetch it — a real cost, weigh it |
+| Editorial landing | Instrument Serif (large sizes only) | Instrument Sans | both OFL, committed |
 
 Load through `next/font/local` in `src/app/layout.tsx`, from files committed under
 `src/fonts/ofl/`. **Never `next/font/google`**: it fetches the face during `next build`,
@@ -91,4 +99,4 @@ on real components and make sure the accent still works on the dark ground.
 - [ ] `--radius` chosen deliberately
 - [ ] Dark mode reviewed on a real page, not just tokens
 - [ ] No raw hex anywhere under `src/`
-- [ ] `pnpm build` passes
+- [ ] `pnpm verify` green — the definition of done, same as every completion

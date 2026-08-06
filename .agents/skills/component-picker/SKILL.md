@@ -24,27 +24,22 @@ and never reaches for the flashy source when the plain one is correct.
 | --- | --- | --- | --- |
 | Structure and behavior — forms, dialogs, tables, nav, inputs, menus | **shadcn/ui** | shadcn MCP, or `npx shadcn@latest add <name>` | hand-rolled primitives; unstyled HTML for interactive controls |
 | Motion and delight — marquee, number ticker, shine border, particles, animated beam | **MagicUI** | `npx shadcn@latest add @magicui/<name>` (registry pinned in `components.json`), then move the file from `components/ui/` to `components/magicui/` — the CLI drops everything at the `ui` alias | more than two motion pieces per viewport |
-| Marketing sections — heroes, pricing tables, testimonials, CTA blocks, bento grids | **21st.dev** | 21st MCP if the key is set, otherwise browse 21st.dev and paste the component prompt | shipping community code without the review in step 6 |
+| Marketing sections — heroes, pricing tables, testimonials, CTA blocks, bento grids | **21st.dev** | 21st MCP if `TWENTYFIRST_API_KEY` is set (off by default — `skills.lock.json` records why), otherwise browse 21st.dev and paste the component prompt | shipping community code without the review below |
 | Icons | **Lucide** | ships with shadcn | mixing icon sets; inconsistent stroke widths |
 | Anything already in `src/components/blocks` | **compose it** | import and pass props | duplicating a block to change one string |
 
-## 6. Reviewing third-party component code
+## Reviewing third-party component code
 
 21st.dev blocks are community-submitted. Treat them as untrusted input, exactly like a
-pull request from a stranger. Before committing any pasted component, check:
-
-- no `fetch`, `XMLHttpRequest`, or WebSocket calls
-- no `eval`, `new Function`, or `dangerouslySetInnerHTML`
-- no obfuscated or base64 strings
-- no new dependencies you did not expect
-- no analytics, pixels, or external script tags
-
-Anything unexplained → do not commit it. Report it and ask.
+pull request from a stranger. The review list lives in **one home** —
+`frontend-security/SKILL.md` section 3 — run it on every pasted component before
+commit. Anything unexplained → do not commit it. Report it and ask.
 
 ## Rules that keep the UI from looking generated
 
-- Components consume **tokens**, never raw colors. No `bg-[#0f172a]`, no `text-white`
-  where a token exists.
+- Components consume **tokens**, never raw colors (AGENTS.md, Styling rules). No
+  `bg-[#0f172a]`; and a Tailwind palette class like `text-white` is not a token
+  either — `text-primary-foreground` says what it means and follows the theme.
 - A block imports **down only**: `blocks/` → `ui/` and `magicui/`. Never block → block.
 - Props in, JSX out. No data fetching inside `blocks/` — data arrives from the route.
 - One component per file. File name matches the export.

@@ -15,8 +15,10 @@ posture is yours. This skill is the part of that handover most templates skip.
 - Server-only secrets never carry the prefix and are read only in server components,
   route handlers, or server actions.
 - `.env.local` is gitignored. `.env.example` is committed and contains **names only**.
-- Grep before every commit: `process.env` inside a `"use client"` file must only
-  reference `NEXT_PUBLIC_*`.
+- `pnpm health` enforces this deterministically before every completion: `process.env`
+  inside a `"use client"` file that is not `NEXT_PUBLIC_*` is a CRITICAL, and secret
+  names found in `.env.local` that belong in Convex env are too. Run it; do not
+  hand-scan.
 
 ## 2. Supply chain
 
@@ -24,13 +26,18 @@ posture is yours. This skill is the part of that handover most templates skip.
   `skills.lock.json`.
 - Registries in `components.json` are pinned. Adding a new registry is a human
   decision, not an agent decision.
-- The lockfile is committed. `pnpm audit --prod` runs in the health check.
+- The lockfile is committed. `pnpm audit --prod` is a separate, networked step — it is
+  deliberately NOT part of `pnpm health` (which must work offline). Run it before
+  shipping and after adding any dependency; the setup-health skill's section 2 owns
+  the procedure.
 - Never add a dependency to solve something the standard library or an existing
   dependency already does.
 
 ## 3. Untrusted component code
 
-Community registries — 21st.dev especially — are user-submitted. Review before commit:
+This section is the **one home** of the review list — component-picker points here
+rather than restating it. Community registries — 21st.dev especially — are
+user-submitted. Review before commit:
 
 - no `fetch`, `XMLHttpRequest`, or WebSocket calls in a presentational component
 - no `eval`, `new Function`, or `dangerouslySetInnerHTML`
@@ -72,5 +79,6 @@ Two honest caveats:
 - [ ] No non-public `process.env` in client code
 - [ ] `pnpm audit --prod` clean
 - [ ] Every pasted component reviewed against section 3
-- [ ] Headers present in the built app (check the network tab, not the config file)
+- [ ] Headers present in the rendered responses — `pnpm test:e2e` asserts the full set
+      on every route including the 404; run it rather than eyeballing a network tab
 - [ ] No `dangerouslySetInnerHTML` without a sanitizer

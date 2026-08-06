@@ -17,9 +17,9 @@ Format:
 
 ---
 
-## 2026-08-04 comment-vs-code false positives — **third occurrence**
+## 2026-08-04 comment-vs-code-false-positives
 
-- cause: checks matched a pattern anywhere in a file, and documentation naming the
+- cause: **third occurrence** of the class — checks matched a pattern anywhere in a file, and documentation naming the
   pattern satisfied the check. Three separate hits: (1) the banned-font check flagged
   the comment explaining why fonts are banned; (2) the `phx_`/secret scans flagged the
   comments warning against those keys; (3) preflight's `testMode: false` check passed
@@ -30,8 +30,7 @@ Format:
 - prevention: rule for every future text check — *a check must be able to tell the
   code from the documentation of the code*. Prefer parsing what is loaded; else anchor
   to line structure; else require the payload, not the name.
-- status: **GRADUATED** — encoded in `scripts/health.mjs` and `scripts/preflight.mjs`;
-  this entry is the written rule.
+- status: GRADUATED (scripts/health.mjs + scripts/preflight.mjs; this entry is the written rule)
 
 ## 2026-08-04 useQuery throws without a provider
 
@@ -42,7 +41,7 @@ Format:
   that renders only when configured.
 - prevention: rule in `AGENTS.md` (Backend rules) + the pattern in
   `convex-structure/references/example-domain.md`.
-- status: GRADUATED
+- status: GRADUATED (AGENTS.md Backend rules + example-domain.md)
 
 ## 2026-08-04 hand-edited dependency broke frozen-lockfile on 3 OSes
 
@@ -51,7 +50,7 @@ Format:
 - fix: `pnpm install` resync; versions are only ever changed through pnpm.
 - prevention: `AGENTS.md` already banned hand-editing versions; `pnpm heal` now
   detects and resyncs a stale lockfile deterministically.
-- status: GRADUATED
+- status: GRADUATED (AGENTS.md pin rule + scripts/heal.mjs lockfile repair)
 
 ## 2026-08-04 in-range minor broke the auth adapter's types
 
@@ -61,7 +60,7 @@ Format:
   against.
 - prevention: pin recorded with the receipt in `skills.lock.json`; only
   `upstream-sync` moves it, by building against the candidate first.
-- status: GRADUATED
+- status: GRADUATED (skills.lock.json pins — machine-enforced exact by scripts/health.mjs since 2026-08-06)
 
 ## 2026-08-04 next/font needs the network, the CI runner has none
 
@@ -80,9 +79,7 @@ Format:
   its fix column. The banned-font check was widened in the same pass — it only parsed
   the `next/font/google` named-import shape, so switching to `next/font/local` would
   have let a banned face straight through the `src:` paths it does not read.
-- status: **GRADUATED** — `scripts/health.mjs` ("fonts build offline"), and the licence
-  rule is encoded in `scripts/fetch-font.mjs`: OFL faces are committed, Fontshare faces
-  stay gitignored.
+- status: GRADUATED (scripts/health.mjs "fonts build offline"; licence rule encoded in scripts/fetch-font.mjs)
 
 ## 2026-08-05 secret scans skipped the repos most likely to need them
 
@@ -96,5 +93,41 @@ Format:
 - prevention: rule for every future check — *gate a check on the thing it measures,
   never on a seam that happens to be nearby*. Reporting the state of a seam (connected,
   not connected) is conditional; scanning for a credential in the wrong file is not.
-- status: **GRADUATED** — encoded as section 8 of `scripts/health.mjs`; this entry is
-  the written rule.
+- status: GRADUATED (scripts/health.mjs section 8; this entry is the written rule)
+
+## 2026-08-06 fonts referenced by layout.tsx were never tracked
+
+- cause: the self-hosted-fonts fix committed everything EXCEPT the fonts — src/fonts/
+  sat untracked while layout.tsx, CI comments and this ledger all said "committed".
+  One `git commit -a` away from breaking every fresh clone's build; the offline-fonts
+  health check could not see it because it only greps for the remote loader.
+- fix: `git add src/fonts` landed with the layout change, in one commit.
+- prevention: `pnpm health` now resolves every `next/font/local` path in layout.tsx
+  against the disk ("local font files exist" — FAIL when missing), so CI's fresh
+  checkout catches an untracked font forever.
+- status: GRADUATED (scripts/health.mjs "local font files exist")
+
+## 2026-08-06 variable font committed four times under four weight names
+
+- cause: Google's css2 endpoint returns the SAME variable file for every requested
+  weight of a variable family; per-weight download wrote four byte-identical IBM Plex
+  Sans files. 137KB of duplication, and a false "one file per weight" mental model in
+  the loader comments.
+- fix: one committed `ibm-plex-sans-variable.woff2` with a single weight-range entry
+  (`weight: "400 700"`); static families (IBM Plex Mono) stay per-weight.
+- prevention: `scripts/fetch-font.mjs` hashes every download and collapses identical
+  content into one file with a range snippet before anything is written.
+- status: GRADUATED (scripts/fetch-font.mjs content-hash dedupe)
+
+## 2026-08-06 onboarding hardcoded six steps as never-done
+
+- cause: steps whose truth lives in Convex env were written as `done: false` literals,
+  so `pnpm onboard` jammed at "Auth secrets" forever — including against a fully live
+  backend — and the "fully connected" branch was unreachable dead code. The most-run
+  buyer-facing script lied on every invocation past step five.
+- fix: secret steps verify by NAME against one `npx convex env list` call (timeout,
+  names only — values never leave the process); steps with no local signal are marked
+  `manual` and listed as the buyer's own verifications instead of blocking.
+- prevention: rule for every status surface — *never hardcode the state of something
+  machine-checkable; when it truly is not checkable, say `manual`, never `false`*.
+- status: GRADUATED (scripts/onboard.mjs; the rule is this entry)

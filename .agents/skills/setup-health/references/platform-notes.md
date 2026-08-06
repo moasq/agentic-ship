@@ -27,7 +27,12 @@ or admin rights. A bundle that half-works on a third of machines is not a bundle
 to write literally.
 
 `&&` between commands is safe in a `package.json` script — both `sh` and `cmd.exe`
-accept it. `||`, `$(...)`, single quotes, and `2>/dev/null` are not.
+accept it. `||`, `$(...)`, single quotes, and `2>/dev/null` are not — cmd.exe treats
+single quotes as literal characters. Scope of this rule: commands that must run on the
+**buyer's own shell** (package.json scripts, commands you print for them to run).
+A command executed inside a known Linux container is exempt — `render.yaml`'s
+`npx convex deploy --cmd 'pnpm build'` is the sanctioned example: Render builds run in
+bash, so the quotes are correct there and AGENTS.md mandates that exact line.
 
 ## Why `.claude/skills` is generated, not just committed
 

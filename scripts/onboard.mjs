@@ -72,7 +72,7 @@ const steps = [
   {
     title: "Backend source",
     done: has("convex/schema.ts") && has("convex/auth.ts") && has("convex/billing.ts"),
-    command: "ships with ShipKit — schema, waitlist, auth, billing",
+    command: "ships with ShipKit — schema, auth, billing, email",
     note: "auth = Better Auth via the official component; billing = Stripe via @convex-dev/stripe. Both idle safely until connected.",
   },
   {

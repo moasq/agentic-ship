@@ -36,6 +36,7 @@ Exit 1 on any FAIL. Run `--prod` before every launch; the plain form on every de
 | prod `BETTER_AUTH_SECRET` set | sessions cannot be issued |
 | **`ALLOW_TEST_SEED` absent from prod** | anyone-callable seeding of production data |
 | no live key in `.env.local` | a live credential one `git add` from public |
+| `render.yaml` still runs `npx convex deploy --cmd 'pnpm build'` | frontend ships against a stale backend |
 | `pnpm verify` + `pnpm test` green | launching a build that does not build |
 
 ## The judgment half (yours, or the agent's — not scriptable)
@@ -56,13 +57,17 @@ Exit 1 on any FAIL. Run `--prod` before every launch; the plain form on every de
 
 ## Order of flips (do not improvise)
 
-1. Verify sending domain in Resend → set prod `EMAIL_FROM`
-2. `testMode: false` + `requireEmailVerification: true` — one commit
-3. Live Stripe keys + prod webhook + live `STRIPE_PRICE_*` — into **prod Convex env**
+Same order as deploy-render's go-live checklist — the two documents deliberately agree:
+
+1. Verify the sending domain in Resend → set prod `EMAIL_FROM`. Preparation only —
+   nothing sends yet while `testMode` holds.
+2. Live Stripe keys + prod webhook + live `STRIPE_PRICE_*` — into **prod Convex env**
+3. Only then: `testMode: false` + `requireEmailVerification: true`, one commit —
+   real mail invites real users, so money goes real before mail does
 4. `SITE_URL` / `NEXT_PUBLIC_SITE_URL` to the real host
 5. `pnpm preflight --prod` → all green
 6. Deploy, then the acceptance tests above
 
-Deep references: `convex-structure/references/deploy-render.md` (env matrix,
-go-live checklist) · `references/email-resend.md` (the 3-step email flip) ·
-`references/stripe-billing.md` (rules R1–R8).
+Deep references, all under `convex-structure/references/`: `deploy-render.md` (env
+matrix, go-live checklist) · `email-resend.md` (the 3-step email flip) ·
+`stripe-billing.md` (rules R1–R8).

@@ -15,7 +15,7 @@ look like a brand. The treatment matters more than the photo.
 | Photography | Unsplash, Pexels | free for commercial use, no attribution required, both have APIs an agent can drive | download and serve through `next/image` — never hotlink |
 | Illustration | unDraw | permissive license, recolorable to the brand accent via URL parameter | one illustration style per site |
 | Icons | Lucide | ships with shadcn, so consistency is free | one set, one stroke width |
-| 3D | Spline embed | the practical default for web 3D | below the fold, lazy-loaded, only if it earns its bytes |
+| 3D | Spline embed | the practical default for web 3D | below the fold, lazy-loaded, only if it earns its bytes. **The shipped CSP blocks all iframes** (`frame-ancestors 'none'`, no `frame-src`) — embedding one is a deliberate CSP change owned by the `frontend-security` skill, never a quiet edit |
 
 ## Downloading
 
@@ -24,16 +24,18 @@ pnpm asset "https://images.unsplash.com/photo-…" hero-workspace
 ```
 
 Saves to `public/images/<name>.<ext>`, then serve it through `next/image`. Pure Node,
-so it behaves the same on macOS, Linux and Windows — never `curl -o`, which does not
-exist on a stock Windows box (`references/platform-notes.md` in the setup-health skill).
+so it behaves the same on macOS, Linux and Windows — the same reason every ShipKit
+operation is a `pnpm` script rather than a shell one-liner
+(`references/platform-notes.md` in the setup-health skill).
 
 The script refuses anything outside the source allowlist, which mirrors
 `images.remotePatterns` in `next.config.ts`. Adding a source is a **human decision**:
 update `next.config.ts` first — and the CSP `img-src` with it — then the script's list.
 Refusing beats silently trusting a new host.
 
-Keep a `credits.md` even when attribution is not required. It costs nothing and it
-answers the question a client will eventually ask.
+Keep `public/images/credits.md` — one line per asset: file, source URL, licence — even
+when attribution is not required. Create it with the first asset; it costs nothing and
+it answers the question a client will eventually ask.
 
 ## Treatment — the part that creates "life"
 

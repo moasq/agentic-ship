@@ -20,11 +20,11 @@ convex/
   auth.config.ts         auth provider declaration
   auth.ts                createAuth + authComponent. Plugins toggle here.
   http.ts                httpRouter: auth routes + inbound webhooks. Nothing else.
-  <domain>.ts            the entire public API of one domain, e.g. waitlist.ts
+  <domain>.ts            (you create) the entire public API of one domain, e.g. posts.ts
   lib/
     auth.ts              requireUser / requireOwner helpers
-    validators.ts        shared validator fragments
-  _generated/            committed, never edited by hand
+    validators.ts        (you create) shared validator fragments, once two domains share one
+  _generated/            created by `npx convex dev`; committed then, never edited by hand
 ```
 
 Rules:
@@ -68,9 +68,14 @@ export const create = mutation({
 ## 3. Identity and ownership — the rule that outlives every auth vendor
 
 ```ts
-// convex/lib/auth.ts
+// convex/lib/auth.ts — the real signatures; copy them, do not paraphrase them
 export async function requireUser(ctx) { /* throws if unauthenticated */ }
-export async function requireOwner(ctx, doc) { /* throws if doc.userId !== user._id */ }
+export function requireOwner(user, doc) { /* throws if doc.userId !== user.subject */ }
+
+// usage: identity first, then ownership against the fetched document
+const user = await requireUser(ctx);
+const doc = await ctx.db.get(args.id);
+requireOwner(user, doc);
 ```
 
 - **Identity comes from the authenticated context inside the function.** Never from an
@@ -145,8 +150,10 @@ export function WaitlistPanel() {
 Every Convex-backed component needs an honest **not-connected** state. "The backend is
 not wired up yet" is a real thing to render; a crash is not.
 
-Reference implementation in this repo: `convex/waitlist.ts` →
-`src/components/features/waitlist/waitlist-panel.tsx` → `blocks/waitlist-form.tsx`.
+The complete worked example of this chain — domain file → feature component →
+stateless block, with the not-connected state — is
+`references/example-domain.md`. It ships as a document rather than code on purpose:
+the engine carries zero demo files to delete.
 
 ## 7. Auth seam
 
@@ -171,7 +178,7 @@ design.
 3. `npx convex dev --once` — types regenerate
 4. Feature component in `src/components/features/<domain>/` using the hooks
 5. Route composes feature + blocks
-6. Run `setup-health`, then `pnpm build`
+6. `pnpm verify` — the definition of done for every completion
 
 Deviating from this order is what produces the half-wired states agents get lost in.
 
@@ -184,4 +191,4 @@ Deviating from this order is what produces the half-wired states agents get lost
 - [ ] Every `fetchQuery` outside a server-only surface has its why-comment
 - [ ] Blocks still stateless; no `useQuery` under `components/blocks/`
 - [ ] Secrets in Convex env, absent from `.env.local`
-- [ ] `npx convex dev --once` clean, `pnpm build` green
+- [ ] `npx convex dev --once` clean (when a deployment is connected), `pnpm verify` green

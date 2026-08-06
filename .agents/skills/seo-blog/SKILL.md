@@ -50,8 +50,9 @@ Emit JSON-LD as a typed object, not a hand-written script string:
 
 - `src/app/sitemap.ts` — generated from the article list, never hand-maintained
 - `src/app/robots.ts` — points at the sitemap and **allows AI crawlers by name**
-  (GPTBot, ClaudeBot, PerplexityBot, Google-Extended). Deliberate: being cited by
-  answer engines is distribution. Opting out = editing that one list.
+  (GPTBot, ClaudeBot, Claude-User, PerplexityBot, Google-Extended — the file is the
+  authoritative list). Deliberate: being cited by answer engines is distribution.
+  Opting out = editing that one list.
 - `src/app/llms.txt/route.ts` — the AEO counterpart of the sitemap, generated from the
   SAME typed article index + `site.ts`, so it cannot go stale separately
 - `src/app/opengraph-image.tsx` — the share card as code (`next/og`), derived from
@@ -87,9 +88,11 @@ Targets: LCP < 2.5s · CLS < 0.1 · INP < 200ms. A blown budget is a defect, not
 - [ ] Slug is final
 - [ ] Hero image present with alt text
 - [ ] At least two internal links to other pages on the site
-- [ ] JSON-LD renders and validates
+- [ ] JSON-LD renders; validate at search.google.com/test/rich-results (manual, needs
+      a deployed or tunneled URL)
 - [ ] Post appears in `/sitemap.xml` after build
-- [ ] `pnpm build` passes
+- [ ] `pnpm verify` green, then `pnpm test:e2e` — the SEO surface is asserted in the
+      **rendered response** there, and response-vs-code drift is the classic failure
 
 ## Writing rules
 

@@ -59,11 +59,15 @@ load-bearing in them:
 same instruction written twice, and the moment they disagree the bundle has lied to
 someone. Skills work everywhere; commands work in one tool. One source of truth wins.
 
-**Subagents: exactly three, all vendor-generated.** `.claude/agents/` holds the
-Playwright test planner/generator/healer that `npx playwright init-agents
---loop=claude` emits (the testing skill's tier-2 e2e path). They are regenerable for
-Codex with `--loop=codex`; every other tool falls back to the written testing skill.
-Nothing else ships as a subagent, for the same one-source-of-truth reason.
+**Subagents: six, canonical in `.agents/agents/`.** `.claude/agents` links to it
+(`pnpm link:skills` maintains both links; a junction on Windows). Three are ShipKit's
+own — `shipkit-frontend`, `shipkit-testing`, `shipkit-convex` — and they are dispatch,
+not doctrine: each names the AGENTS.md sections and skills that bind it, so the rules
+still live in one place (the delegation table is in AGENTS.md → Agents). Three are the
+vendor-generated Playwright planner/generator/healer (`npx playwright init-agents
+--loop=claude`, regenerable for Codex with `--loop=codex`). Only Claude Code spawns
+them natively; in every other tool the same files read as role briefs pointing at
+skills that work everywhere.
 
 The Stop hook is the one exception, because it does something a document cannot: it is
 deterministic. A rule in `AGENTS.md` asks an agent to check its work; the hook makes the

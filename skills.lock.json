@@ -1,23 +1,23 @@
 {
   "$comment": "Provenance manifest. Nothing enters this bundle without an entry. Run the upstream-sync skill monthly.",
   "bundleVersion": "0.1.0",
-  "lastSync": "2026-08-05",
+  "lastSync": "2026-08-06",
   "skills": [
-    { "name": "setup-health",      "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
-    { "name": "ui-system",         "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
-    { "name": "component-picker",  "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
-    { "name": "asset-pipeline",    "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
-    { "name": "frontend-security", "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
-    { "name": "seo-blog",          "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
-    { "name": "upstream-sync",     "upstream": "original", "patched": false, "lastSync": "2026-08-03" },
-    { "name": "testing",             "upstream": "original", "patched": false, "lastSync": "2026-08-04", "note": "Gates G0–G3, test-data tiers, the three-tier heal loop. Companion files: vitest.config.ts, playwright.config.ts, e2e/, scripts/heal.mjs, .agents/heal-ledger.md, and the official Playwright agents in .claude/agents (regenerate: npx playwright init-agents --loop=claude — WARNING: that command overwrites .mcp.json; health catches it via the lockfile-match check)." },
+    { "name": "setup-health",      "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["connections.md", "platform-notes.md", "agent-compatibility.md"] },
+    { "name": "ui-system",         "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["font-pairings.md", "palette-recipes.md"] },
+    { "name": "component-picker",  "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": [] },
+    { "name": "asset-pipeline",    "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": [] },
+    { "name": "frontend-security", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["analytics-posthog.md"] },
+    { "name": "seo-blog",          "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": [] },
+    { "name": "upstream-sync",     "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": [] },
+    { "name": "testing",             "upstream": "original", "patched": false, "lastSync": "2026-08-04", "note": "Gates G0–G3, test-data tiers, the three-tier heal loop. Companion files: vitest.config.ts, playwright.config.ts, e2e/, scripts/heal.mjs, .agents/heal-ledger.md, and the official Playwright agents in .agents/agents — .claude/agents links to it (regenerate: npx playwright init-agents --loop=claude — WARNING: that command overwrites .mcp.json; health catches it via the lockfile-match check)." },
     { "name": "production-preflight", "upstream": "original", "patched": false, "lastSync": "2026-08-04", "note": "The go-live gate. Machine half: scripts/preflight.mjs (--prod audits the prod Convex env: live Stripe keys, email flips, EMAIL_FROM, SITE_URL, BETTER_AUTH_SECRET, and that ALLOW_TEST_SEED is ABSENT). Judgment half in the skill: prod webhooks, one refunded live checkout, rollback story." },
     {
       "name": "convex-structure",
       "upstream": "original",
       "patched": false,
       "lastSync": "2026-08-03",
-      "references": ["better-auth-wiring.md (steps verified against labs.convex.dev/better-auth 2026-08-03)"],
+      "references": ["better-auth-wiring.md (steps verified against labs.convex.dev/better-auth 2026-08-03)", "deploy-render.md", "email-resend.md", "example-domain.md", "stripe-billing.md"],
       "note": "Deliberately narrow: covers Convex INSIDE ShipKit only. Convex-the-product is taught by the official convex plugin's skills, which are not vendored here — they update themselves."
     },
     {
@@ -343,7 +343,25 @@
       "official": true,
       "verified": "2026-08-03",
       "adapterVersion": "0.12.5",
-      "distribution": {
+      "cliTools": {
+    "$comment": "npx-executed CLIs sanctioned outside package.json dependencies — frontend-security's npx rule checks this list. playwright (init-agents) and shadcn are already dependencies and need no entry.",
+    "entries": [
+      { "name": "@lhci/cli", "use": "seo-blog Core Web Vitals budget (manual, networked)", "upstream": "https://github.com/GoogleChrome/lighthouse-ci", "added": "2026-08-06" },
+      { "name": "mcp-remote", "use": "Codex stdio bridge for the four remote MCP servers (agent-compatibility.md TOML)", "upstream": "https://github.com/geelen/mcp-remote", "added": "2026-08-06" }
+    ]
+  },
+  "agents": {
+    "$comment": "Subagents, canonical in .agents/agents/ with .claude/agents linked by scripts/link-skills.mjs. The shipkit-* three are dispatch only — rules stay declared in AGENTS.md and elaborated in skills; an agent restating a rule differently is a bug by the same doctrine as skills. The playwright-* three are vendor-generated.",
+    "entries": [
+      { "name": "shipkit-frontend", "upstream": "original", "added": "2026-08-06" },
+      { "name": "shipkit-testing", "upstream": "original", "added": "2026-08-06" },
+      { "name": "shipkit-convex", "upstream": "original", "added": "2026-08-06" },
+      { "name": "playwright-test-planner", "upstream": "npx playwright init-agents --loop=claude", "added": "2026-08-04" },
+      { "name": "playwright-test-generator", "upstream": "npx playwright init-agents --loop=claude", "added": "2026-08-04" },
+      { "name": "playwright-test-healer", "upstream": "npx playwright init-agents --loop=claude", "added": "2026-08-04" }
+    ]
+  },
+  "distribution": {
     "$comment": "The repo doubles as a plugin marketplace. All manifests point at .agents/skills/ — one copy of every skill regardless of delivery path. Validate the Claude side with `claude plugin validate .` (strict passes as of 2026-08-06; a local end-to-end marketplace-add + install was also performed and then removed).",
     "claude": { "manifests": [".claude-plugin/plugin.json", ".claude-plugin/marketplace.json"], "install": "/plugin marketplace add moasq/shipkit → /plugin install shipkit@shipkit", "verified": "2026-08-06" },
     "codex": { "manifests": [".codex-plugin/plugin.json", ".agents/plugins/marketplace.json"], "install": "/plugin marketplace add moasq/shipkit → /plugin install shipkit@shipkit", "verified": "manifest shape mirrored from working plugins (caveman, convex, vercel); no Codex CLI on this machine to end-to-end test" },

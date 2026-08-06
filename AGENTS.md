@@ -92,6 +92,26 @@ auth-setup, function-creator, migration-helper, and the `convex-expert` subagent
 are not copied into this repo — they arrive through the plugin and stay current on their
 own. `convex-structure` covers only what they cannot know: this repo's conventions.
 
+## Agents
+
+Subagents live in `.agents/agents/`; `.claude/agents` links to it, same as skills.
+They are **dispatch, not doctrine**: each one names which AGENTS.md sections and skills
+bind it and adds only its operating procedure — a rule stated inside an agent file that
+is not declared here is the same bug as in a skill.
+
+| Agent | Delegate when |
+| --- | --- |
+| `shipkit-frontend` | building any interface — pages, sections, components, theme, fonts, assets |
+| `shipkit-testing` | writing tests, any red gate, any repair |
+| `shipkit-convex` | anything in `convex/` — domains, schema, seams, wiring features to data |
+| `playwright-test-*` | vendor-generated e2e planner/generator/healer (regenerate: `npx playwright init-agents --loop=claude`, also `--loop=codex`) |
+
+Split work along these seams and hand over contracts, not context: shipkit-convex
+passes function names and arg/return shapes to shipkit-frontend; both send their gates
+to shipkit-testing. Every agent finishes with `pnpm verify` — delegation never waives
+the definition of done. In tools without native subagents the same files read as role
+briefs: follow the named skills directly.
+
 ## Structure
 
 The repo ships as the **plain engine** — seams, rules and vendor primitives, zero demo
@@ -104,6 +124,7 @@ nothing has to be deleted before building.
 convex/                   the backend — repo root, required by the CLI
   schema.ts               every table and index. Ships with one counters table so the
                           first `npx convex dev` deploys; replace it with real tables.
+  convex.config.ts        component registration (Better Auth, Stripe, Resend)
   auth.ts  auth.config.ts Better Auth wiring; plugins toggle in auth.ts
   billing.ts  email.ts    the Stripe and Resend seams
   http.ts                 auth routes + inbound webhooks, nothing else
@@ -347,3 +368,9 @@ permission to skip it.
 
 If `pnpm verify` fails, the failure is the work. Fix it, or report it verbatim and stop
 — never describe a task as complete with a known-failing build.
+
+Repairs have memory: every tier-2 fix appends an entry to `.agents/heal-ledger.md` —
+`cause`, `fix`, `prevention`, `status`, under a dated heading; the template at the top
+of the ledger is normative. A bug healed twice is a missing rule: graduate its
+prevention into this file, a health check, or a skill, and set
+`status: GRADUATED (where)`. The `testing` skill owns the procedure.

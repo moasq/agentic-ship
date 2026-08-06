@@ -17,7 +17,7 @@ cannot return.
 | G1 | `pnpm verify` | G0 + lint + the build |
 | G2 | `pnpm test` | backend logic, in memory, no network |
 | G3 | `pnpm test:e2e` | the app in a real browser: pages, headers, SEO surface |
-| all | `pnpm verify:full` | G0–G3, the same gates CI runs |
+| all | `pnpm verify:full` | G0–G3 in one command (CI runs the same gates, plus `pnpm check:mcp`, split across OS jobs) |
 | launch | `pnpm preflight [--prod]` | production readiness — see the production-preflight skill |
 
 A gate runs only when the ones above it are green. `pnpm verify` is the definition of
@@ -79,19 +79,22 @@ prove the fix, no model is involved.
 1. Start from captured evidence: the failing assertion, the build output, the
    Playwright trace. Reproduce before diagnosing; never patch from a symptom
    description.
-2. For e2e failures, use the official healer (`.claude/agents/playwright-test-healer.md`,
-   regenerate with `npx playwright init-agents --loop=claude` — also `--loop=codex`).
-   **Warning: `init-agents` overwrites `.mcp.json`; run `pnpm heal` afterwards to
-   restore the mirror, and re-merge the server list.**
+2. For e2e failures, use the official healer (`.agents/agents/playwright-test-healer.md`,
+   reachable as `.claude/agents/` through the link; regenerate with
+   `npx playwright init-agents --loop=claude` — also `--loop=codex`; other tools follow
+   this skill directly). **Warning: `init-agents` overwrites `.mcp.json`; run
+   `pnpm heal` afterwards to restore the mirror, and re-merge the server list.**
 3. A heal may edit **tests** when the test is wrong, or **code** when the code is wrong
    — decided by the rule, not by which edit is easier. Never relax a rule to go green.
 4. **Two failed attempts = stop.** Write the ledger entry, hand the human the evidence
    verbatim.
 5. Never touch secrets, env values, pins, or anything on the health CRITICAL list.
 
-**Tier 3 — memory.** Every tier-2 repair appends to `.agents/heal-ledger.md`
-(cause → fix → prevention). A bug healed twice is a missing rule: graduate the
-prevention into `AGENTS.md`, a health check, or a skill, and mark the entry GRADUATED.
+**Tier 3 — memory.** Every tier-2 repair appends to `.agents/heal-ledger.md` in the
+ledger's own four-field template — a `## YYYY-MM-DD short-name` heading, then `cause`,
+`fix`, `prevention`, `status` (the template at the top of the ledger is normative).
+A bug healed twice is a missing rule: graduate the prevention into `AGENTS.md`, a
+health check, or a skill, and set `status: GRADUATED (where)` — naming where it went.
 
 ## What never self-heals
 

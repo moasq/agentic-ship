@@ -15,24 +15,27 @@ buyer must never be stranded by someone else's outage.
 pnpm health
 ```
 
-That one command covers sections 1, 2, 5 and 6 below and prints them in the output
-format at the bottom of this file. It is a Node script, so it behaves identically on
-macOS, Linux and Windows.
+That one command covers sections 1, 2, 5 and 6 below, plus the static half of
+section 7, and prints them in the output format at the bottom of this file. It is a
+Node script, so it behaves identically on macOS, Linux and Windows.
 
 **Never substitute a shell command for it.** `readlink`, `grep`, `cp` and `openssl` do
 not exist on a stock Windows machine, and a check that silently no-ops there is worse
-than no check. Sections 1, 2, 5 and 6 document what `pnpm health` verifies, so you can
+than no check. The covered sections document what `pnpm health` verifies, so you can
 read a failure without reading the script. The command table for every platform:
 `references/platform-notes.md`.
 
-Sections 3, 4, 7 and 8 need judgment or a network, so you run them yourself.
+Sections 3, 4 and 8 — plus section 7's live half (`pnpm onboard` and the probes) —
+need judgment or a network, so you run them yourself.
 
 ## 1. Toolchain and version pins — `pnpm health`
 
 - Node >= 20. FAIL → install via mise, nvm, fnm, or nvm-windows.
 - pnpm >= 9. FAIL → `corepack enable`.
-- `package.json` majors against `skills.lock.json` → `pins`:
-  `next 16.x` · `react 19.x` · `tailwindcss 4.x` · `zustand 5.x`
+- `package.json` against `skills.lock.json` → `pins`:
+  `next 16.x` · `react 19.x` · `tailwindcss 4.x` · `zustand 5.x` · `shadcn 4.x` ·
+  `convex 1.x` · `better-auth` **exactly 1.6.15** (a full `x.y.z` pin means the
+  declared range must be that string — no caret, no tilde).
   Drift → run the `upstream-sync` skill. Do not hand-edit versions.
 - `tailwind.config.*` must **not** exist. Tailwind v4 is CSS-first; a config file is a
   training-data fossil. Found → let the `ui-system` skill migrate its contents into the
@@ -42,16 +45,18 @@ Sections 3, 4, 7 and 8 need judgment or a network, so you run them yourself.
 
 - `CLAUDE.md` contains exactly `@AGENTS.md` (the import pattern Next.js itself ships).
   FAIL → restore it; never let the two files hold separate copies of the rules.
-- `.claude/skills` resolves to `.agents/skills`. FAIL → `pnpm link:skills`.
-  On Windows this is created as a **directory junction**, not a symlink — junctions need
-  no admin rights. A `git clone` there can also leave a plain text file where the link
+- `.claude/skills` resolves to `.agents/skills`, and `.claude/agents` to
+  `.agents/agents`. FAIL on either → `pnpm link:skills` (it maintains both).
+  On Windows these are created as **directory junctions**, not symlinks — junctions need
+  no admin rights. A `git clone` there can also leave a plain text file where a link
   should be; `pnpm link:skills` detects that exact case and repairs it. Why it happens:
   `references/platform-notes.md`.
 - `AGENTS.md` still contains the ShipKit rules block **and** the Next.js rules block.
 
 ## 3. MCP servers
 
-For each entry in `.mcp.json`:
+For each entry in `.mcp.json` — ten servers, plus `21st`, which is deliberately NOT
+wired (lockfile records why) and probes only when its key is set:
 
 - **Listed?** `claude mcp list` (or the equivalent for the harness in use).
 - **Alive?** Call one cheap, read-only tool on each:
@@ -62,7 +67,8 @@ For each entry in `.mcp.json`:
 | `next-devtools` | get build errors | read `node_modules/next/dist/docs/`; watch the dev-server terminal |
 | `magicui` | list components | install through the `@magicui` registry pinned in `components.json` |
 | `context7` | resolve `zustand` | open the official docs in a browser; pin exact versions in prompts |
-| `21st` *(optional, off by default)* | search `button` | browse 21st.dev, copy the component's install prompt — works with zero setup |
+| `playwright-test` | list tests | `pnpm test:e2e` directly; the playwright-test-* agents degrade to the testing skill |
+| `21st` *(optional, NOT in `.mcp.json`)* | search `button` | browse 21st.dev, copy the component's install prompt — works with zero setup |
 | `convex` | status | needs a connected deployment — before `npx convex dev` this is a STAGE, not a failure. Fallback: dashboard.convex.dev |
 | `stripe` *(remote, OAuth)* | list products | Stripe dashboard; the CLI on an unclaimed sandbox — Stripe's own guidance |
 | `resend` *(remote, OAuth)* | list domains | Resend dashboard |
@@ -175,7 +181,9 @@ stub typechecks and then lies about the shape of every function.
 The Convex MCP server arrives with the `convex@claude-plugins-official` plugin. Probe
 it with a cheap read (list tables).
 
-- Plugin not installed → `/plugin install convex@claude-plugins-official`.
+- Plugin not installed → `/plugin install convex@claude-plugins-official` (Claude Code
+  only — other tools use the non-Claude equivalents in
+  `references/agent-compatibility.md`).
 - Plugin present but MCP dead → **FALLBACK:** `npx convex mcp start` standalone, or use
   `dashboard.convex.dev` for introspection. Neither blocks development.
 
