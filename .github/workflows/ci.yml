@@ -35,22 +35,15 @@ jobs:
       # Also runs postinstall: link-skills + sync-mcp.
       - run: pnpm install --frozen-lockfile
 
-      # Single source of truth, version pins, design tokens, env hygiene, backend stage.
-      # Convex is expected to be unconnected in CI — that is a WARN, and DEGRADED exits 0.
-      - run: pnpm health
-
-      # The generated mirror must match its source on every platform. On Windows this
-      # also catches CRLF normalization breaking the byte comparison.
-      - run: pnpm check:mcp
-
-      - run: pnpm lint
+      # Offline definition of done: health, native agent adapters, the MCP mirror,
+      # component contracts, lint, and a production build. Convex is deliberately
+      # unconnected in CI and reports a non-blocking stage warning.
+      - run: pnpm verify
 
       # Gate G2 — backend logic in memory, no network, no Convex account.
       - run: pnpm test
 
-      - run: pnpm build
-
-  # Gate G3 — the browser gate. This job was disabled for a while: Playwright's
+  # Full release proof. This job was disabled for a while: Playwright's
   # webServer runs `pnpm build`, `next/font/google` fetched IBM Plex at BUILD time, and
   # the runner has no route to fonts.googleapis.com, so the build died inside webServer
   # while the plain `pnpm build` step above stayed green. The fix was to stop needing
@@ -68,8 +61,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: npx playwright install --with-deps chromium
-      # Production build in a real browser: pages, headers, the SEO surface.
-      - run: pnpm test:e2e
+      # Adds the fail-closed production dependency audit and every unit/browser gate.
+      - run: pnpm verify:full
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

@@ -23,10 +23,10 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       <blockquote className="mt-6 border-primary/40 border-l-2 pl-4 text-muted-foreground italic">{children}</blockquote>
     ),
     code: ({ children }) => (
-      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em]">{children}</code>
+      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm">{children}</code>
     ),
     pre: ({ children }) => (
-      <pre className="mt-6 overflow-x-auto rounded-[--radius] border bg-muted/50 p-4 font-mono text-sm">{children}</pre>
+      <pre className="mt-6 overflow-x-auto rounded-lg border bg-muted/50 p-4 font-mono text-sm">{children}</pre>
     ),
     hr: () => <hr className="mt-10 border-border" />,
     ...components,

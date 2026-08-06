@@ -50,7 +50,7 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* ShipKit palette — replace this with your own from https://tweakcn.com
+/* Agentic Ship palette — replace this with your own from https://tweakcn.com
    Deliberately NOT the shadcn neutral default: that default palette is most of
    the reason AI-built sites look identical to each other.
    Neutrals carry a slight green bias so they belong with the accent. */

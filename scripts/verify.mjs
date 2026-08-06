@@ -2,7 +2,8 @@
 /**
  * The definition of done. Nothing is finished until this passes.
  *
- *   pnpm verify        health + lint + build
+ *   pnpm verify        health + architecture checks + lint + build
+ *   pnpm verify:full   verify + supply-chain audit + unit + browser gates
  *
  * It exists as one command so that "did you check?" has a single answer, and so the
  * Stop hook in .claude/settings.json can enforce it without judgment: the hook runs
@@ -17,8 +18,9 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const quiet = process.argv.includes("--quiet"); // used by the hook: only speak on failure
 const asHook = process.argv.includes("--hook"); // exit 2 on failure, which is what blocks a Stop
+const quiet = process.argv.includes("--quiet") || asHook; // hooks require JSON-only stdout
+const full = process.argv.includes("--full");
 
 /**
  * Loop guard. A Stop hook that blocks fires again on the next stop; if the agent cannot
@@ -29,7 +31,10 @@ const asHook = process.argv.includes("--hook"); // exit 2 on failure, which is w
 if (asHook) {
   try {
     const input = JSON.parse(readFileSync(0, "utf8") || "{}");
-    if (input.stop_hook_active) process.exit(0);
+    if (input.stop_hook_active) {
+      process.stdout.write("{}\n");
+      process.exit(0);
+    }
   } catch {
     // No stdin (run by hand, or a harness that does not send one) — carry on.
   }
@@ -37,9 +42,20 @@ if (asHook) {
 
 const steps = [
   { name: "health", cmd: "pnpm health", why: "single source of truth, pins, secrets, backend stage" },
+  { name: "agent adapters", cmd: "pnpm check:agents", why: "canonical roles and generated host-native adapters" },
+  { name: "MCP mirror", cmd: "pnpm check:mcp", why: "one pinned tool catalog across supported hosts" },
+  { name: "UI contract", cmd: "pnpm check:ui", why: "component boundaries, fixtures, tokens, and unsafe pasted code" },
   { name: "lint", cmd: "pnpm lint", why: "" },
   { name: "build", cmd: "pnpm build", why: "the only check that proves the rest were real" },
 ];
+
+if (full) {
+  steps.push(
+    { name: "supply chain", cmd: "pnpm audit:supply-chain", why: "fail-closed production dependency audit" },
+    { name: "unit", cmd: "pnpm test", why: "deterministic contracts and backend logic" },
+    { name: "browser", cmd: "pnpm test:e2e", why: "production server, accessibility skeleton, viewports, headers, and SEO" },
+  );
+}
 
 const failures = [];
 
@@ -54,7 +70,14 @@ for (const step of steps) {
 }
 
 if (failures.length === 0) {
-  if (!quiet) console.log("\n  verified — health, lint and build are green.\n");
+  if (asHook) process.stdout.write("{}\n");
+  if (!quiet) {
+    console.log(
+      full
+        ? "\n  fully verified — architecture, security, unit, build and browser gates are green.\n"
+        : "\n  verified — health, architecture, lint and build gates are green.\n",
+    );
+  }
   process.exit(0);
 }
 

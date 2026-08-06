@@ -1,0 +1,11 @@
+# Generated profile configuration. No credentials belong in this file.
+terminal:
+  backend: local
+  cwd: "${PROJECT_ROOT}"
+skills:
+  external_dirs:
+    - "${PROJECT_ROOT}/.agents/skills"
+delegation:
+  max_concurrent_children: 4
+  max_spawn_depth: 2
+  orchestrator_enabled: true

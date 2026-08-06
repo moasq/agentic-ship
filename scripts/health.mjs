@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * The machine-checkable half of the setup-health skill.
+ * The machine-checkable half of the workspace-health skill.
  *
  * Everything here used to be a shell one-liner: `readlink`, `grep -r`, `cp`, `openssl`.
  * None of those exist on a stock Windows box, and a health check that silently no-ops on
  * a third of buyers' machines is worse than no health check. This runs the same on
  * macOS, Linux and Windows because Node is the only thing it needs.
  *
- * Agents still run the setup-health SKILL for the parts a script cannot do (probing MCP
- * servers, judging whether generated UI looks generated). This covers the rest.
+ * Agents use service-connections for live provider state and ui-system for visual
+ * judgment. This command covers deterministic repository state.
  *
  * Exit code: 0 = HEALTHY or DEGRADED, 1 = BROKEN.
  */
@@ -62,10 +62,9 @@ if (!pkg || !lock) {
       add(`pin ${name}`, "WARN", `pinned to ${pin} in skills.lock.json but not in package.json`);
       continue;
     }
-    // Two pin shapes. "16.x" pins the major. "1.6.15" pins the EXACT version and the
-    // declared range must be exactly that string — no caret, no tilde: better-auth
-    // 1.6.25 is inside ~1.6.15 and still breaks the adapter's types (heal-ledger.md),
-    // which is why an exact pin that only compared majors would be no pin at all.
+    // Two pin shapes. "16.x" pins the major. A complete semantic version pins EXACTLY,
+    // with no range. Better Auth is exact because its patched runtime and the adapter's
+    // narrow provider-only type bridge are regression-tested together.
     const exact = /^\d+\.\d+\.\d+$/.test(pin);
     const ok = exact ? declared === pin : /(\d+)/.exec(declared)?.[1] === pin.split(".")[0];
     add(
@@ -87,13 +86,71 @@ const claudeMd = read("CLAUDE.md");
 add("CLAUDE.md imports AGENTS.md", claudeMd?.trim() === "@AGENTS.md" ? "PASS" : "FAIL", claudeMd?.trim() === "@AGENTS.md" ? "" : "CLAUDE.md must contain exactly `@AGENTS.md` — never a second copy of the rules");
 
 const agents = read("AGENTS.md") ?? "";
-const bothBlocks = agents.includes("nextjs-agent-rules") && agents.includes("# ShipKit");
-add("AGENTS.md rule blocks", bothBlocks ? "PASS" : "FAIL", bothBlocks ? "" : "both the Next.js block and the ShipKit block must be present");
+const bothBlocks = agents.includes("nextjs-agent-rules") && agents.includes("# Agentic Ship");
+add("AGENTS.md rule blocks", bothBlocks ? "PASS" : "FAIL", bothBlocks ? "" : "both the Next.js block and the Agentic Ship block must be present");
+
+const portableRoles = ["product-orchestrator", "frontend-builder", "backend-builder", "connection-guide", "quality-engineer"];
+const legacyRoles = [".agents/agents", "agents", ".codex/agents", ".cursor/agents"].flatMap((directory) => {
+  const full = join(root, directory);
+  return existsSync(full)
+    ? readdirSync(full)
+        // Both prefixes: `shipkit-` predates the rename, `agentic-ship-` is the current
+        // product name. A role named after the product is not portable either way.
+        .filter((name) => /^(?:shipkit|agentic-ship)-.*\.(?:md|toml)$/i.test(name))
+        .map((name) => `${directory}/${name}`)
+    : [];
+});
+add(
+  "canonical role names are portable",
+  legacyRoles.length ? "FAIL" : "PASS",
+  legacyRoles.length ? `product-prefixed role briefs remain: ${legacyRoles.join(", ")}` : "",
+);
+
+const missingAdapters = portableRoles.flatMap((role) =>
+  [`.agents/agents/${role}.md`, `agents/${role}.md`, `.codex/agents/${role}.toml`, `.cursor/agents/${role}.md`].filter(
+    (path) => !existsSync(join(root, path)),
+  ),
+);
+for (const path of [".codex/config.toml", ".codex/hooks.json", ".cursor/hooks.json", ".hermes/profile/config.yaml", ".hermes/roles.md", ".openclaw/config.json5", ".openclaw/roles.md"]) {
+  if (!existsSync(join(root, path))) missingAdapters.push(path);
+}
+add(
+  "native agent adapters",
+  missingAdapters.length ? "FAIL" : "PASS",
+  missingAdapters.length ? `missing: ${missingAdapters.slice(0, 5).join(", ")} — run \`pnpm sync:agents\`` : "",
+);
+
+const claudePlugin = json(".claude-plugin/plugin.json");
+const codexMarketplace = json(".agents/plugins/marketplace.json");
+const codexMarketplaceEntry = codexMarketplace?.plugins?.find((entry) => entry.name === "agentic-ship");
+const pluginWiringValid =
+  claudePlugin?.skills === "./.agents/skills/" &&
+  claudePlugin?.mcpServers === "./.mcp.json" &&
+  !("agents" in (claudePlugin ?? {})) &&
+  codexMarketplaceEntry?.source?.source === "local" &&
+  codexMarketplaceEntry?.source?.path === "./" &&
+  codexMarketplaceEntry?.policy?.installation === "AVAILABLE" &&
+  codexMarketplaceEntry?.policy?.authentication === "ON_USE";
+add(
+  "plugin distribution wiring",
+  pluginWiringValid ? "PASS" : "FAIL",
+  pluginWiringValid
+    ? ""
+    : "Claude must auto-discover generated agents/ and canonical skills; Codex marketplace policy must use current enum values",
+);
+
+const contractFiles = ["product-brief.schema.json", "feature-contract.schema.json", "input-required.schema.json"];
+const brokenContracts = contractFiles.filter((file) => !json(join(".agents", "contracts", file)));
+add(
+  "agent handoff contracts",
+  brokenContracts.length ? "FAIL" : "PASS",
+  brokenContracts.length ? `missing or malformed: ${brokenContracts.join(", ")}` : "",
+);
 
 // .claude/skills and .claude/agents — the check `readlink` used to do, minus readlink.
 for (const [name, probe] of [
-  ["skills", join("setup-health", "SKILL.md")],
-  ["agents", "shipkit-frontend.md"],
+  ["skills", join("workspace-health", "SKILL.md")],
+  ["agents", "frontend-builder.md"],
 ]) {
   const linkPath = join(root, ".claude", name);
   let status = "FAIL";
@@ -114,12 +171,33 @@ const mcpRaw = read(".mcp.json");
 const mirrorRaw = read(".cursor/mcp.json");
 add(".cursor/mcp.json mirror", mcpRaw !== null && mcpRaw === mirrorRaw ? "PASS" : "FAIL", mcpRaw === mirrorRaw ? "" : "generated file drifted or is missing — run `pnpm sync:mcp`, never edit it directly");
 
+{
+  const servers = Object.entries(json(".mcp.json")?.mcpServers ?? {});
+  const floating = servers
+    .filter(([, server]) => server.command === "npx")
+    .filter(([, server]) => {
+      const executable = server.args?.find((arg) => !arg.startsWith("-"));
+      if (!executable) return true;
+      if (executable.includes("@latest")) return true;
+      if (executable.startsWith("@")) return !/@[^@/]+$/.test(executable);
+      return !/@\d+\.\d+\.\d+$/.test(executable);
+    })
+    .map(([name]) => name);
+  add(
+    "MCP executables are exact",
+    floating.length ? "FAIL" : "PASS",
+    floating.length ? `floating executable versions: ${floating.join(", ")} — run upstream-sync and commit exact versions` : "",
+  );
+}
+
 // Every server must have lockfile provenance, and every lockfile entry must still be
 // wired (21st is the documented off-by-default exception). Catches the exact failure
 // `npx playwright init-agents` caused once: it OVERWRITES .mcp.json wholesale.
 {
-  const mcpNames = Object.keys(json(".mcp.json")?.mcpServers ?? {});
-  const lockNames = (json("skills.lock.json")?.mcp ?? []).map((entry) => entry.name);
+  const mcpServers = json(".mcp.json")?.mcpServers ?? {};
+  const mcpNames = Object.keys(mcpServers);
+  const lockEntries = json("skills.lock.json")?.mcp ?? [];
+  const lockNames = lockEntries.map((entry) => entry.name);
   const unlocked = mcpNames.filter((name) => !lockNames.includes(name));
   const unwired = lockNames.filter((name) => !mcpNames.includes(name) && name !== "21st");
   add(
@@ -131,6 +209,19 @@ add(".cursor/mcp.json mirror", mcpRaw !== null && mcpRaw === mirrorRaw ? "PASS" 
     ]
       .filter(Boolean)
       .join("; "),
+  );
+
+  const pinDrift = lockEntries
+    .filter((entry) => /^\d+\.\d+\.\d+$/.test(entry.pinned ?? "") && mcpServers[entry.name]?.command === "npx")
+    .filter((entry) => {
+      const executable = mcpServers[entry.name].args?.find((arg) => !arg.startsWith("-")) ?? "";
+      return executable.match(/@(\d+\.\d+\.\d+)$/)?.[1] !== entry.pinned;
+    })
+    .map((entry) => `${entry.name} wants ${entry.pinned}`);
+  add(
+    "MCP executable pins match provenance",
+    pinDrift.length ? "FAIL" : "PASS",
+    pinDrift.length ? `${pinDrift.join(", ")} — run upstream-sync, then regenerate adapters` : "",
   );
 }
 
@@ -220,7 +311,11 @@ function walk(dir, out = []) {
 // a comment showing what NOT to write never trips the check that bans it.
 const stripComments = (body) => body.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
-const sourceFiles = [...walk(join(root, "src")), ...walk(join(root, "content"))];
+const sourceFiles = [
+  ...walk(join(root, "src")),
+  ...walk(join(root, "content")),
+  ...(existsSync(join(root, "mdx-components.tsx")) ? [join(root, "mdx-components.tsx")] : []),
+];
 const posix = (p) => relative(root, p).split(sep).join("/"); // stable output on Windows
 
 const rawColor = [];
@@ -371,6 +466,8 @@ add(".env* gitignored", /^\.env\*/m.test(gitignore) ? "PASS" : "CRITICAL", /^\.e
 const exampleExempt = /^!\.env\.example/m.test(gitignore);
 add(".env.example committed", exampleExempt ? "PASS" : "WARN", exampleExempt ? "" : "the template must be exempt from the .env* rule");
 add(".env.local exists", existsSync(join(root, ".env.local")) ? "PASS" : "WARN", existsSync(join(root, ".env.local")) ? "" : "run `pnpm setup:env`");
+const stateIgnored = /^\/?\.agent-state\/$/m.test(gitignore);
+add("agent state gitignored", stateIgnored ? "PASS" : "CRITICAL", stateIgnored ? "" : "add `/.agent-state/` — receipts and work coordination metadata are local runtime state");
 
 /* ---------- report ---------- */
 
@@ -393,6 +490,6 @@ console.log(
           ? `BROKEN — ${critical} failing check(s), ${warned} warning(s).`
           : `DEGRADED — ${warned} warning(s). Fallbacks listed above; the project still builds.`),
 );
-console.log("Machine checks only. Run the setup-health skill for MCP probes, registries and the build proof.\n");
+console.log("Machine checks only. Use workspace-health for interpretation and service-connections for live provider authorization or provisioning.\n");
 
 process.exit(critical ? 1 : 0);

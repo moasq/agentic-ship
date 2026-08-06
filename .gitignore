@@ -53,3 +53,7 @@ src/fonts/*
 # playwright
 /test-results/
 /playwright-report/
+
+# Local, non-secret receipts for resumable agent-to-service connection handoffs.
+# The connection CLI writes only provider/host/state/timestamps here; never tokens.
+/.agent-state/

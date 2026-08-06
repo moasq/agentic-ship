@@ -35,6 +35,11 @@ const repairs = [
     why: ".cursor/mcp.json regenerated from .mcp.json",
   },
   {
+    name: "agent adapters",
+    fix: "node scripts/sync-agent-config.mjs",
+    why: "Codex, Cursor, Hermes, OpenClaw, hooks, and plugin MCP regenerated from canonical roles and .mcp.json",
+  },
+  {
     name: "env scaffold",
     fix: "node scripts/init-env.mjs",
     why: ".env.local created if missing — never overwritten",

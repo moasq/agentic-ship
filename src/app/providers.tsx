@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { ConvexReactClient } from "convex/react";
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
-import { authClient } from "@/lib/auth-client";
+import { convexProviderAuthClient } from "@/lib/auth-client";
 import { convexUrl } from "@/lib/convex-api";
 
 /**
@@ -20,7 +20,7 @@ export function Providers({ children }: { children: ReactNode }) {
 
   if (!client) return <>{children}</>;
   return (
-    <ConvexBetterAuthProvider client={client} authClient={authClient}>
+    <ConvexBetterAuthProvider client={client} authClient={convexProviderAuthClient}>
       {children}
     </ConvexBetterAuthProvider>
   );

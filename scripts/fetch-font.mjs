@@ -150,7 +150,7 @@ report();
 
 async function fromFontshare() {
   const cssUrl = `https://api.fontshare.com/v2/css?f[]=${encodeURIComponent(slug)}@${weights.join(",")}&display=swap`;
-  const res = await get(cssUrl, { headers: { "user-agent": "shipkit-font-fetch" } });
+  const res = await get(cssUrl, { headers: { "user-agent": "agentic-ship-font-fetch" } });
   if (!res.ok) {
     console.error(`FAIL  Fontshare returned ${res.status} for "${slug}". Check the slug at fontshare.com.`);
     process.exit(1);

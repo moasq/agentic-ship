@@ -26,10 +26,11 @@ posture is yours. This skill is the part of that handover most templates skip.
   `skills.lock.json`.
 - Registries in `components.json` are pinned. Adding a new registry is a human
   decision, not an agent decision.
-- The lockfile is committed. `pnpm audit --prod` is a separate, networked step — it is
-  deliberately NOT part of `pnpm health` (which must work offline). Run it before
-  shipping and after adding any dependency; the setup-health skill's section 2 owns
-  the procedure.
+- The lockfile is committed. `pnpm audit:supply-chain` is a separate, networked step
+  around `pnpm audit --prod` — it is deliberately NOT part of `pnpm health` (which
+  must work offline). It fails closed on advisories or an unavailable/malformed report.
+  Run it before shipping and after adding any dependency; the workspace-health skill's
+  supply-chain reference owns the procedure.
 - Never add a dependency to solve something the standard library or an existing
   dependency already does.
 
@@ -77,7 +78,7 @@ Two honest caveats:
 
 - [ ] No secret outside `.env.local`
 - [ ] No non-public `process.env` in client code
-- [ ] `pnpm audit --prod` clean
+- [ ] `pnpm audit:supply-chain` clean
 - [ ] Every pasted component reviewed against section 3
 - [ ] Headers present in the rendered responses — `pnpm test:e2e` asserts the full set
       on every route including the 404; run it rather than eyeballing a network tab

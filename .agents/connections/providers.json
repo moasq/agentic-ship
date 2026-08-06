@@ -1,0 +1,311 @@
+{
+  "schemaVersion": 1,
+  "providers": {
+    "convex": {
+      "displayName": "Convex",
+      "docsUrl": "https://docs.convex.dev/cli",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "agentTool": {
+        "authFlow": "cli_browser_login",
+        "mcpServer": "convex",
+        "setupUrl": "https://dashboard.convex.dev/",
+        "instructions": [
+          "Run `npx convex login`; it may open a browser for authorization.",
+          "Return to the active agent after the CLI reports that authorization succeeded.",
+          "Ask the agent to make one read-only Convex MCP call before resuming this action."
+        ],
+        "configurationProbe": {
+          "id": "convex-mcp",
+          "label": "Convex MCP server is declared",
+          "type": "mcp_server",
+          "server": "convex",
+          "required": true
+        }
+      },
+      "projectProvisioning": {
+        "setupUrl": "https://dashboard.convex.dev/",
+        "instructions": [
+          "Run `npx convex dev` and finish the project-selection flow in the browser.",
+          "Wait until Convex writes the deployment URLs to `.env.local` and generates `convex/_generated/`.",
+          "Do not paste deployment credentials into chat or this connection action."
+        ],
+        "verification": {
+          "policy": "machine",
+          "probes": [
+            {
+              "id": "deployment-pointer",
+              "label": "Convex deployment pointer exists",
+              "type": "env_file_key",
+              "file": ".env.local",
+              "key": "CONVEX_DEPLOYMENT",
+              "required": true
+            },
+            {
+              "id": "client-url",
+              "label": "Convex client URL exists",
+              "type": "env_file_key",
+              "file": ".env.local",
+              "key": "NEXT_PUBLIC_CONVEX_URL",
+              "allowPrefixes": ["https://"],
+              "required": true
+            },
+            {
+              "id": "site-url",
+              "label": "Convex site URL exists",
+              "type": "env_file_key",
+              "file": ".env.local",
+              "key": "NEXT_PUBLIC_CONVEX_SITE_URL",
+              "allowPrefixes": ["https://"],
+              "required": true
+            },
+            {
+              "id": "generated-api",
+              "label": "Convex generated API exists",
+              "type": "any_file_exists",
+              "paths": ["convex/_generated/api.d.ts", "convex/_generated/api.js"],
+              "required": true
+            }
+          ]
+        }
+      }
+    },
+    "stripe": {
+      "displayName": "Stripe",
+      "docsUrl": "https://docs.stripe.com/",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "agentTool": {
+        "authFlow": "remote_oauth",
+        "mcpServer": "stripe",
+        "setupUrl": "https://dashboard.stripe.com/",
+        "instructions": [
+          "Authorize only the Stripe account and scopes needed for the current task.",
+          "Use sandbox mode while building and testing.",
+          "After browser authorization returns, ask the agent to make one read-only Stripe MCP call before resuming."
+        ],
+        "configurationProbe": {
+          "id": "stripe-mcp",
+          "label": "Stripe MCP server is declared",
+          "type": "mcp_server",
+          "server": "stripe",
+          "required": true
+        }
+      },
+      "projectProvisioning": {
+        "setupUrl": "https://dashboard.stripe.com/test/apikeys",
+        "instructions": [
+          "Create or select a Stripe sandbox and create the product price used by the application.",
+          "Configure the Convex Stripe webhook endpoint and the required Stripe values in Convex environment storage.",
+          "Keep secret keys and webhook secrets out of chat, `.env.local`, and connection-state files.",
+          "Complete one sandbox checkout and confirm entitlement changes from the webhook, not the return URL."
+        ],
+        "verification": {
+          "policy": "probe_and_attestation",
+          "probes": [
+            {
+              "id": "billing-seam",
+              "label": "Stripe billing seam exists",
+              "type": "file_contains",
+              "file": "convex/billing.ts",
+              "text": "@convex-dev/stripe",
+              "required": true
+            },
+            {
+              "id": "webhook-route",
+              "label": "Stripe webhook route is registered",
+              "type": "file_contains",
+              "file": "convex/http.ts",
+              "text": "/stripe/webhook",
+              "required": true
+            }
+          ]
+        }
+      }
+    },
+    "resend": {
+      "displayName": "Resend",
+      "docsUrl": "https://resend.com/docs",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "agentTool": {
+        "authFlow": "remote_oauth",
+        "mcpServer": "resend",
+        "setupUrl": "https://resend.com/",
+        "instructions": [
+          "Authorize only the Resend account needed for the current project.",
+          "Keep the shipped email integration in test mode during setup.",
+          "After browser authorization returns, ask the agent to make one read-only Resend MCP call before resuming."
+        ],
+        "configurationProbe": {
+          "id": "resend-mcp",
+          "label": "Resend MCP server is declared",
+          "type": "mcp_server",
+          "server": "resend",
+          "required": true
+        }
+      },
+      "projectProvisioning": {
+        "setupUrl": "https://resend.com/api-keys",
+        "instructions": [
+          "Create the project API key and store it only in the Convex deployment environment.",
+          "Register the Convex Resend webhook endpoint and store its signing secret only in Convex.",
+          "Verify delivery with a Resend test inbox while `testMode` remains enabled.",
+          "Do not enable production sending until the sending domain and email-verification pair pass production preflight."
+        ],
+        "verification": {
+          "policy": "probe_and_attestation",
+          "probes": [
+            {
+              "id": "email-seam",
+              "label": "Resend email seam exists",
+              "type": "file_contains",
+              "file": "convex/email.ts",
+              "text": "@convex-dev/resend",
+              "required": true
+            },
+            {
+              "id": "test-mode",
+              "label": "Resend remains in test mode",
+              "type": "file_contains",
+              "file": "convex/email.ts",
+              "text": "testMode: true",
+              "required": true
+            },
+            {
+              "id": "webhook-route",
+              "label": "Resend webhook route is registered",
+              "type": "file_contains",
+              "file": "convex/http.ts",
+              "text": "/resend-webhook",
+              "required": true
+            }
+          ]
+        }
+      }
+    },
+    "posthog": {
+      "displayName": "PostHog",
+      "docsUrl": "https://posthog.com/docs",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "agentTool": {
+        "authFlow": "remote_oauth",
+        "mcpServer": "posthog",
+        "setupUrl": "https://app.posthog.com/",
+        "instructions": [
+          "Authorize only the PostHog organization and project needed for this application.",
+          "Never provide a `phx_` personal API key to the application or connection CLI.",
+          "After browser authorization returns, ask the agent to make one read-only PostHog MCP call before resuming."
+        ],
+        "configurationProbe": {
+          "id": "posthog-mcp",
+          "label": "PostHog MCP server is declared",
+          "type": "mcp_server",
+          "server": "posthog",
+          "required": true
+        }
+      },
+      "projectProvisioning": {
+        "setupUrl": "https://app.posthog.com/",
+        "instructions": [
+          "Create or select the PostHog project used by this application.",
+          "Put only its public `phc_` project key in `NEXT_PUBLIC_POSTHOG_KEY` inside `.env.local`.",
+          "Keep personal `phx_` keys out of the repository, browser bundle, chat, and connection state.",
+          "Confirm an allowlisted event reaches the selected development project."
+        ],
+        "verification": {
+          "policy": "machine",
+          "probes": [
+            {
+              "id": "analytics-seam",
+              "label": "PostHog analytics seam exists",
+              "type": "file_contains",
+              "file": "src/lib/analytics.ts",
+              "text": "posthog-js",
+              "required": true
+            },
+            {
+              "id": "public-project-key",
+              "label": "Public PostHog project key exists",
+              "type": "env_file_key",
+              "file": ".env.local",
+              "key": "NEXT_PUBLIC_POSTHOG_KEY",
+              "allowPrefixes": ["phc_"],
+              "denyPrefixes": ["phx_"],
+              "required": true
+            },
+            {
+              "id": "ingest-proxy",
+              "label": "First-party PostHog ingest proxy exists",
+              "type": "file_contains",
+              "file": "next.config.ts",
+              "text": "/ingest/:path*",
+              "required": true
+            }
+          ]
+        }
+      }
+    },
+    "render": {
+      "displayName": "Render",
+      "docsUrl": "https://render.com/docs",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "agentTool": {
+        "authFlow": "remote_oauth",
+        "mcpServer": "render",
+        "setupUrl": "https://dashboard.render.com/",
+        "instructions": [
+          "Authorize only the Render workspace needed for the current project.",
+          "Review the requested access before approving the browser handoff.",
+          "After browser authorization returns, ask the agent to make one read-only Render MCP call before resuming."
+        ],
+        "configurationProbe": {
+          "id": "render-mcp",
+          "label": "Render MCP server is declared",
+          "type": "mcp_server",
+          "server": "render",
+          "required": true
+        }
+      },
+      "projectProvisioning": {
+        "setupUrl": "https://dashboard.render.com/",
+        "instructions": [
+          "Connect the repository as a Render Blueprint and review the proposed resources before applying it.",
+          "Set `CONVEX_DEPLOY_KEY` and the public PostHog project key in Render without pasting their values into chat.",
+          "Wait for the first deployment and verify both the site health check and the production Convex webhook origin.",
+          "Resume only after the deployment is reachable; this local CLI cannot inspect the private Render workspace."
+        ],
+        "verification": {
+          "policy": "probe_and_attestation",
+          "probes": [
+            {
+              "id": "render-blueprint",
+              "label": "Render Blueprint exists",
+              "type": "file_exists",
+              "path": "render.yaml",
+              "required": true
+            },
+            {
+              "id": "deploy-key-declaration",
+              "label": "Render deploy key is declared without a committed value",
+              "type": "file_contains",
+              "file": "render.yaml",
+              "text": "sync: false",
+              "required": true
+            },
+            {
+              "id": "atomic-deploy",
+              "label": "Render deploys Convex and Next.js together",
+              "type": "file_contains",
+              "file": "render.yaml",
+              "text": "npx convex deploy --cmd 'pnpm build'",
+              "required": true
+            }
+          ]
+        }
+      }
+    }
+  }
+}

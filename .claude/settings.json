@@ -16,7 +16,7 @@
     "posthog@claude-plugins-official": true,
     "render@claude-plugins-official": true
   },
-  "$comment:hooks": "Claude-only teeth for the AGENTS.md rule 'nothing is done until the build is green'. Codex/Cursor cannot run hooks, so for them AGENTS.md is the rule and CI is the backstop. --hook exits 2 (blocks the stop) and honors stop_hook_active so a failure it cannot fix never traps you.",
+  "$comment:hooks": "Claude's native adapter for the cross-host definition-of-done rule. Codex and Cursor have generated native hooks; Hermes follows AGENTS.md with CI as backstop. --hook exits 2 and honors stop_hook_active so a failure cannot trap the user.",
   "hooks": {
     "Stop": [
       {
@@ -29,7 +29,7 @@
       }
     ]
   },
-  "$comment:permissions": "Every read-only or repo-local ShipKit command is allowed, so the verify/heal loop runs without a prompt on a headless clone. Anything that spends money, touches a deployment, or rewrites history is deliberately absent — that is a human decision, not friction to remove.",
+  "$comment:permissions": "Every read-only or repo-local Agentic Ship command is allowed, so the verify/heal loop runs without a prompt on a headless clone. Anything that spends money, touches a deployment, or rewrites history is deliberately absent — that is a human decision, not friction to remove.",
   "permissions": {
     "allow": [
       "Bash(pnpm install)",
@@ -49,10 +49,16 @@
       "Bash(pnpm link:skills)",
       "Bash(pnpm sync:mcp)",
       "Bash(pnpm check:mcp)",
+      "Bash(pnpm sync:agents)",
+      "Bash(pnpm check:agents)",
+      "Bash(pnpm check:ui)",
+      "Bash(pnpm agent:work:*)",
+      "Bash(pnpm connect:*)",
+      "Bash(pnpm component:place:*)",
       "Bash(pnpm onboard)",
       "Bash(pnpm asset:*)",
       "Bash(pnpm font:*)",
-      "Bash(npx shadcn@latest add:*)",
+      "Bash(npx shadcn@4.16.1 add:*)",
       "Bash(npx playwright install:*)",
       "Bash(git status)",
       "Bash(git diff:*)",

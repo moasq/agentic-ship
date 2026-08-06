@@ -105,13 +105,110 @@ A **block** takes props and renders. A **feature** owns the data. The branch on
 `isConvexConfigured` happens in the parent, before any Convex hook mounts — `useQuery`
 throws when there is no `ConvexProvider` in the tree, and `"skip"` does not save you.
 
+### `src/components/blocks/waitlist-form.tsx`
+
+The block knows nothing about Convex. It receives data and an action contract. Install
+the shadcn `Input` primitive through `component-picker` before using this example.
+
 ```tsx
-// src/components/features/waitlist/waitlist-panel.tsx
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+export type WaitlistFormProps = {
+  count: number | null;
+  state: "idle" | "submitting" | "success" | "error" | "not-connected";
+  onSubmit: (email: string) => Promise<void>;
+};
+
+export function WaitlistForm({ count, state, onSubmit }: WaitlistFormProps) {
+  return (
+    <section aria-labelledby="waitlist-title" className="rounded-lg border bg-card p-6">
+      <h2 id="waitlist-title" className="font-heading text-xl">Join the waitlist</h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {count === null ? "Connect the backend to show the live count." : `${count} people joined.`}
+      </p>
+      <form
+        className="mt-4 flex gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const email = String(new FormData(event.currentTarget).get("email") ?? "");
+          void onSubmit(email);
+        }}
+      >
+        <Input name="email" type="email" required aria-label="Email address" disabled={state === "not-connected"} />
+        <Button type="submit" disabled={state === "submitting" || state === "not-connected"}>
+          {state === "submitting" ? "Joining…" : "Join"}
+        </Button>
+      </form>
+      <p aria-live="polite" className="mt-2 text-sm text-muted-foreground">
+        {state === "success" ? "You are on the list." : state === "error" ? "Try again." : ""}
+      </p>
+    </section>
+  );
+}
+```
+
+### `src/components/blocks/waitlist-form.fixture.tsx`
+
+Every block has a deterministic fixture so agents and tests can render it without a
+backend or chat context.
+
+```tsx
+import { WaitlistForm } from "./waitlist-form";
+
+export const fixture = {
+  Component: WaitlistForm,
+  props: { count: 42, state: "idle" as const, onSubmit: async () => {} },
+};
+```
+
+### `src/components/features/waitlist/waitlist-live.tsx`
+
+```tsx
+"use client";
+
+import { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { WaitlistForm } from "@/components/blocks/waitlist-form";
+import { api } from "@/lib/convex-api";
+
+export function WaitlistLive() {
+  const count = useQuery(api.waitlist.count);
+  const join = useMutation(api.waitlist.join);
+  const [state, setState] = useState<"idle" | "submitting" | "success" | "error">("idle");
+
+  return (
+    <WaitlistForm
+      count={count ?? null}
+      state={state}
+      onSubmit={async (email) => {
+        setState("submitting");
+        try {
+          await join({ email, source: "home" });
+          setState("success");
+        } catch {
+          setState("error");
+        }
+      }}
+    />
+  );
+}
+```
+
+### `src/components/features/waitlist/waitlist-panel.tsx`
+
+```tsx
+"use client";
+
+import { WaitlistForm } from "@/components/blocks/waitlist-form";
+import { isConvexConfigured } from "@/lib/convex-api";
+import { WaitlistLive } from "./waitlist-live";
+
 export function WaitlistPanel() {
   if (!isConvexConfigured) {
-    return <WaitlistForm count={null} state="not-connected" action={() => {}} />;
+    return <WaitlistForm count={null} state="not-connected" onSubmit={async () => {}} />;
   }
-  return <WaitlistLive />;   // hooks live in here, called unconditionally
+  return <WaitlistLive />; // hooks mount only beneath an existing provider
 }
 ```
 

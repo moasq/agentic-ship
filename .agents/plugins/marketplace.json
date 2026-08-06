@@ -1,20 +1,20 @@
 {
-  "name": "shipkit",
+  "name": "agentic-ship",
   "interface": {
-    "displayName": "ShipKit"
+    "displayName": "Agentic Ship"
   },
   "plugins": [
     {
-      "name": "shipkit",
+      "name": "agentic-ship",
       "source": {
         "source": "local",
         "path": "./"
       },
       "policy": {
-        "installation": "manual",
-        "authentication": "none"
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
       },
-      "category": "development"
+      "category": "Development"
     }
   ]
 }

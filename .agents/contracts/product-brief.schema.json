@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-workspace.dev/contracts/product-brief.schema.json",
+  "title": "Product brief",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "product", "capabilities", "constraints", "quality"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "product": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "problem", "audience", "outcomes", "nonGoals"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "problem": { "type": "string", "minLength": 1 },
+        "audience": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "outcomes": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "nonGoals": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "userOutcome", "acceptanceCriteria"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+          "userOutcome": { "type": "string", "minLength": 1 },
+          "acceptanceCriteria": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "providers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "purpose", "connectionKind"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "purpose": { "type": "string", "minLength": 1 },
+          "connectionKind": {
+            "enum": ["agent_tool_oauth", "project_provisioning", "customer_checkout"]
+          }
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["definitionOfDone", "riskLevel"],
+      "properties": {
+        "definitionOfDone": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "riskLevel": { "enum": ["low", "medium", "high"] }
+      }
+    }
+  }
+}

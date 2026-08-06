@@ -25,7 +25,7 @@ text to ship beside committed files — `--ofl` fetches each family's own OFL.tx
 in Google's OFL set. Variable families are detected by content: one committed file
 with a weight-range entry, never one identical copy per weight.
 
-## Pairing A — engineering brand (the ShipKit default)
+## Pairing A — engineering brand (the Agentic Ship default)
 
 - **IBM Plex Sans** (display + body) · **IBM Plex Mono** (code, labels, data)
 - Why: one coherent superfamily, terminal-credible, excellent weights.

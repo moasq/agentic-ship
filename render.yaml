@@ -13,7 +13,7 @@
 
 services:
   - type: web
-    name: shipkit
+    name: agentic-ship
     runtime: node
     plan: starter
     region: oregon
@@ -51,7 +51,7 @@ services:
       - key: NEXT_PUBLIC_SITE_URL
         fromService:
           type: web
-          name: shipkit
+          name: agentic-ship
           property: hostport
 
 # Everything else — BETTER_AUTH_SECRET, SITE_URL, STRIPE_SECRET_KEY,

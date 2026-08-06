@@ -76,11 +76,12 @@ add("no live Stripe key on this machine", localLiveKey ? "FAIL" : "PASS", localL
 
 /* ---------- the full local gate ---------- */
 
-const verify = spawnSync("pnpm verify", { cwd: root, shell: true, encoding: "utf8" });
-add("pnpm verify (health + lint + build)", verify.status === 0 ? "PASS" : "FAIL", verify.status === 0 ? "" : "fix the base gate first — preflight on a red build is meaningless");
-
-const vitest = spawnSync("pnpm test", { cwd: root, shell: true, encoding: "utf8" });
-add("unit tests", vitest.status === 0 ? "PASS" : "FAIL", vitest.status === 0 ? "" : "pnpm test is red");
+const verify = spawnSync("pnpm verify:full", { cwd: root, shell: true, encoding: "utf8" });
+add(
+  "full local release gate",
+  verify.status === 0 ? "PASS" : "FAIL",
+  verify.status === 0 ? "" : "pnpm verify:full is red — fix architecture, audit, unit, build, or browser failures before preflight",
+);
 
 /* ---------- prod deployment audit (needs login) ---------- */
 
