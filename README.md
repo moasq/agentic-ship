@@ -20,8 +20,38 @@ payments, a deploy button.
 ShipKit is that setup, in a repo you own, that works with Claude Code, Cursor, Codex and
 the rest. No credits, no monthly fee, no export button.
 
+Precisely: it is a **plugin and an engine in one repo**. Install it as a plugin and
+your agent gains the ten ShipKit skills — the deterministic UI system, the backend
+structure, the gates. Scaffold it as a project and you get the wired engine those
+skills operate. Not a boilerplate: there is no demo app to delete.
+
 **Honest version:** if you don't already pay for a coding agent, a hosted builder is
 probably a better deal. This is for people who do.
+
+---
+
+## Install as a plugin
+
+The same repo is a plugin marketplace for Claude Code **and** Codex — the manifests
+(`.claude-plugin/`, `.codex-plugin/`) point at the same ten skills in
+`.agents/skills/`, so there is one copy of every rule no matter how it arrives.
+
+In **Claude Code**:
+
+```
+/plugin marketplace add moasq/shipkit
+/plugin install shipkit@shipkit
+```
+
+In **Codex**:
+
+```
+/plugin marketplace add moasq/shipkit
+/plugin install shipkit@shipkit
+```
+
+Every other tool reads the skills as plain markdown straight from the repo — no
+install step at all.
 
 ---
 
@@ -33,6 +63,9 @@ cd my-app
 pnpm dev
 ```
 
+Type that command exactly, `github:` prefix and all. Plain `npx create-shipkit` is an
+unrelated package on npm by someone else — it is not this project.
+
 Open the folder in your coding agent and tell it what you want to build. It reads
 `AGENTS.md` on its own and follows the rules in there.
 
@@ -41,7 +74,7 @@ pre-built for you to tear out.
 
 ---
 
-## Three commands worth remembering
+## Five commands worth remembering
 
 | Command | Ask it when you want to know |
 | --- | --- |
@@ -65,7 +98,7 @@ ready for that piece.
 | --- | --- | --- |
 | A website | Next.js 16, React 19, Tailwind, shadcn/ui, MagicUI | nothing |
 | A database | Convex | run `npx convex dev` once |
-| Sign in / sign up | Better Auth | paste one secret |
+| Sign in / sign up | Better Auth, wired — no screens | connect Convex, set one secret |
 | Take payments | Stripe (subscriptions, hosted checkout) | paste your keys |
 | Send email | Resend | paste your key |
 | See who uses it | PostHog | paste your key |
@@ -78,10 +111,14 @@ tool (Claude Code, Cursor, Codex alike). `pnpm onboard` walks you through them o
 time and tells you which step needs you.
 
 **Tested, not hoped:** the kit ships its own test gates — unit tests, and a browser
-suite that checks every page, every security header, and the SEO surface on a real
-production build. CI runs all of it on macOS, Linux and Windows. And before you launch,
+suite that checks every page it ships, every security header, and the SEO surface on a
+real production build. CI runs health, lint, unit tests and the build on macOS, Linux
+and Windows; the browser suite runs on Linux. And before you launch,
 `pnpm preflight --prod` refuses to pass while production still has test payment keys, a
 dead email setup, or a test-data backdoor.
+
+The build needs no network — fonts are committed, not fetched — so all of this also
+runs on a locked-down server.
 
 ---
 
@@ -130,12 +167,33 @@ not handing a third party a script tag on every page.
 
 | Tool | Just works? |
 | --- | --- |
-| Claude Code | yes — plus plugins and an automatic build check |
-| Cursor | yes |
-| Codex | yes |
-| Windsurf, Cline, Copilot, Gemini CLI | yes |
+| Claude Code | yes — installable plugin, plus an automatic build check |
+| Codex | yes — installable plugin |
+| Cursor | yes — committed MCP mirror |
+| Windsurf, Cline, Copilot, Gemini CLI | yes — AGENTS.md + plain-markdown skills |
 
-Same repo, same rules, no per-tool setup.
+Same repo, same rules, one copy of every skill.
+
+---
+
+## How far it gets on its own
+
+Worth being exact about, because "autonomous" gets thrown around loosely.
+
+**Your agent can do all of this with nobody watching** — on your machine, over SSH, on a
+server, from your phone: clone, install, self-check, self-repair, build the entire
+frontend, write tests, run the production build, run the browser suite, commit. No
+account, no key, no network beyond your agent's own. A fresh clone builds green with
+nothing connected, and every unconnected service reports "not connected yet" instead of
+crashing.
+
+**Five things only you can do**, because each one ends in a browser login: connecting
+Convex (`npx convex dev`), creating the Resend account, creating the PostHog project,
+connecting Render, and the first OAuth for the vendor MCP servers. `pnpm onboard` marks
+these `needs you`, tells you the exact command, and never pretends to have done them.
+
+That line — knowing precisely where its own reach ends — is the point. An agent that
+stops and tells you is worth more than one that spins on a login screen for an hour.
 
 ---
 
@@ -149,7 +207,8 @@ run the upstream-sync skill
 Checks every tool for new versions, flags anything that would break, and re-runs the
 health check to prove nothing broke.
 
-A template is out of date the day you download it. This one updates itself.
+A template is out of date the day you download it. This one knows how to update itself —
+you still decide when. Nothing runs on a schedule behind your back.
 
 ---
 

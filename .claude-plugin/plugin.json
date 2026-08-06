@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "shipkit",
+  "displayName": "ShipKit",
+  "version": "0.1.0",
+  "description": "The ShipKit skill system as an installable plugin: ui-system, component-picker, asset-pipeline, convex-structure, frontend-security, seo-blog, testing, setup-health, production-preflight and upstream-sync. Deterministic UI rules (tokens, curated fonts, no AI-generated look), a verified backend structure for Convex + Better Auth + Stripe + Resend, and health/heal/preflight gates. Pairs with the ShipKit engine repo, which the same repository ships: scaffold from github.com/moasq/shipkit, or install this plugin to bring the rules into an existing session.",
+  "author": {
+    "name": "moasq",
+    "url": "https://github.com/moasq"
+  },
+  "homepage": "https://github.com/moasq/shipkit",
+  "repository": "https://github.com/moasq/shipkit",
+  "license": "MIT",
+  "skills": "./.agents/skills/",
+  "keywords": [
+    "nextjs",
+    "convex",
+    "tailwind",
+    "shadcn",
+    "design-tokens",
+    "fonts",
+    "seo",
+    "stripe",
+    "resend",
+    "posthog",
+    "starter",
+    "skills"
+  ]
+}

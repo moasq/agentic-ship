@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "shipkit",
+  "description": "ShipKit — the plain engine for shipping real products with agents: deterministic UI system, wired Convex backend seams, and verification gates, delivered as skills.",
+  "owner": {
+    "name": "moasq",
+    "url": "https://github.com/moasq"
+  },
+  "plugins": [
+    {
+      "name": "shipkit",
+      "description": "All ten ShipKit skills — deterministic UI (tokens, curated fonts, no AI signal), Convex/Better Auth/Stripe/Resend structure, security posture, SEO, testing gates and the go-live preflight.",
+      "source": "./",
+      "category": "development"
+    }
+  ]
+}

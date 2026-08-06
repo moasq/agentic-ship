@@ -1,0 +1,39 @@
+{
+  "name": "shipkit",
+  "version": "0.1.0",
+  "description": "The ShipKit skill system for Codex: deterministic UI rules (design tokens, curated self-hosted fonts, no AI-generated look), a verified Convex + Better Auth + Stripe + Resend backend structure, security posture, SEO, testing gates and a go-live preflight — ten skills, plain markdown.",
+  "author": {
+    "name": "moasq",
+    "url": "https://github.com/moasq"
+  },
+  "homepage": "https://github.com/moasq/shipkit",
+  "repository": "https://github.com/moasq/shipkit",
+  "license": "MIT",
+  "keywords": [
+    "nextjs",
+    "convex",
+    "tailwind",
+    "shadcn",
+    "design-tokens",
+    "seo",
+    "stripe",
+    "skills"
+  ],
+  "skills": "./.agents/skills/",
+  "interface": {
+    "displayName": "ShipKit",
+    "shortDescription": "Ship real products with agents — deterministic UI, wired backend seams, verification gates.",
+    "longDescription": "ShipKit's ten skills as a Codex plugin. The ui-system, component-picker and asset-pipeline skills make generated UI deterministic and non-generic (tokens in one place, curated OFL fonts, banned AI-signal patterns); convex-structure, frontend-security, seo-blog, testing, setup-health, production-preflight and upstream-sync cover the rest of the ship path. The same repository is the ShipKit engine — scaffold it from github.com/moasq/shipkit.",
+    "developerName": "moasq",
+    "category": "Development",
+    "capabilities": [
+      "Write"
+    ],
+    "websiteURL": "https://github.com/moasq/shipkit",
+    "privacyPolicyURL": "https://github.com/moasq/shipkit/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/moasq/shipkit/blob/main/README.md",
+    "defaultPrompt": [
+      "Use the ShipKit skills for UI, backend structure, and verification gates."
+    ]
+  }
+}

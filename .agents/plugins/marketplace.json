@@ -1,0 +1,20 @@
+{
+  "name": "shipkit",
+  "interface": {
+    "displayName": "ShipKit"
+  },
+  "plugins": [
+    {
+      "name": "shipkit",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "manual",
+        "authentication": "none"
+      },
+      "category": "development"
+    }
+  ]
+}

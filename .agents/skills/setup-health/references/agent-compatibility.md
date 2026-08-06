@@ -5,10 +5,26 @@ reads, and what (if anything) it needs extra:
 
 | Tool | Rules | Skills | MCP | Plugins |
 | --- | --- | --- | --- | --- |
-| **Claude Code** | `CLAUDE.md` → `@AGENTS.md` | `.claude/skills` (symlink, or a junction on Windows — `pnpm link:skills`) | `.mcp.json` | `.claude/settings.json` → nextjs, convex |
-| **Codex** | `AGENTS.md` (native) | `.agents/skills/*` — plain markdown, reference from AGENTS.md | global `~/.codex/config.toml` (snippet below) | n/a — MCP + skills cover it |
+| **Claude Code** | `CLAUDE.md` → `@AGENTS.md` | `.claude/skills` (symlink, or a junction on Windows — `pnpm link:skills`) | `.mcp.json` | six enabled in `.claude/settings.json` (nextjs, convex, stripe, resend, posthog, render) — and ShipKit itself installs as one (below) |
+| **Codex** | `AGENTS.md` (native) | `.agents/skills/*` — plain markdown, reference from AGENTS.md | global `~/.codex/config.toml` (snippet below) | ShipKit installs as a Codex plugin (below) |
 | **Cursor** | `AGENTS.md` (native) | same markdown files | `.cursor/mcp.json` (committed mirror of `.mcp.json`) | n/a |
 | **Windsurf / Cline / Copilot / Gemini CLI** | `AGENTS.md` (native) | same markdown files | per-tool MCP config, same `mcpServers` shape | n/a |
+
+## ShipKit is itself an installable plugin
+
+The repo doubles as a plugin marketplace for the two tools with a plugin system. Both
+manifests point at the **same** `.agents/skills/` directory — installing the plugin
+adds zero copies of any rule:
+
+- **Claude Code** — `.claude-plugin/marketplace.json` + `.claude-plugin/plugin.json`.
+  Install: `/plugin marketplace add moasq/shipkit`, then `/plugin install shipkit@shipkit`.
+- **Codex** — `.codex-plugin/plugin.json` (+ the repo-scoped
+  `.agents/plugins/marketplace.json`). Install from inside Codex:
+  `/plugin marketplace add moasq/shipkit`, then `/plugin install shipkit@shipkit`.
+
+Inside a scaffolded ShipKit project the plugin is redundant — the skills are already on
+disk and `.claude/skills` resolves to them. The plugin exists for the other direction:
+bringing ShipKit's rules into a session that is not sitting in a ShipKit checkout.
 
 Three facts make this work:
 
@@ -39,10 +55,15 @@ load-bearing in them:
 | procedures (setup, components, security, SEO, backend) | `.agents/skills/*/SKILL.md` — plain markdown any agent can follow | native invocation through the `.claude/skills` symlink |
 | tool wiring | `.mcp.json` (+ the generated `.cursor/mcp.json`, + the Codex TOML) | plugin declarations in `.claude/settings.json` |
 
-**No slash commands and no subagents are shipped, deliberately.** A command that wraps a
-skill is the same instruction written twice, and the moment they disagree the bundle has
-lied to someone. Skills work everywhere; commands work in one tool. One source of truth
-wins.
+**No slash commands are shipped, deliberately.** A command that wraps a skill is the
+same instruction written twice, and the moment they disagree the bundle has lied to
+someone. Skills work everywhere; commands work in one tool. One source of truth wins.
+
+**Subagents: exactly three, all vendor-generated.** `.claude/agents/` holds the
+Playwright test planner/generator/healer that `npx playwright init-agents
+--loop=claude` emits (the testing skill's tier-2 e2e path). They are regenerable for
+Codex with `--loop=codex`; every other tool falls back to the written testing skill.
+Nothing else ships as a subagent, for the same one-source-of-truth reason.
 
 The Stop hook is the one exception, because it does something a document cannot: it is
 deterministic. A rule in `AGENTS.md` asks an agent to check its work; the hook makes the
@@ -73,6 +94,10 @@ args = ["-y", "@magicuidesign/mcp@latest"]
 command = "npx"
 args = ["-y", "@upstash/context7-mcp"]
 
+[mcp_servers.playwright-test]
+command = "npx"
+args = ["-y", "playwright", "run-test-mcp-server"]
+
 [mcp_servers.convex]
 command = "npx"
 args = ["-y", "convex@latest", "mcp", "start"]
@@ -98,8 +123,9 @@ args = ["-y", "mcp-remote", "https://mcp.render.com/mcp"]
 
 ## MCP is cross-tool; plugins are Claude sugar
 
-Every MCP server this stack uses is declared in **`.mcp.json`** — including the backend
-five (convex, stripe, resend, posthog, render). That file is the SSOT; Cursor gets the
+Every MCP server this stack uses is declared in **`.mcp.json`** — the frontend set
+(shadcn, magicui, next-devtools, context7, playwright-test) and the backend five
+(convex, stripe, resend, posthog, render). That file is the SSOT; Cursor gets the
 generated mirror, Codex gets the TOML above. The Claude plugins ALSO carry their
 vendors' MCPs, so a Claude Code user sees those servers twice (plugin copies are
 namespaced — no collision, no harm). The duplication is deliberate: removing the servers

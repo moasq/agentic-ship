@@ -10,12 +10,18 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # ShipKit
 
-This file is the single source of truth for agents. `CLAUDE.md` imports it with one
-line; `.claude/skills` symlinks to `.agents/skills`. Never write rules in two places.
+This file is where every rule is **declared**. `CLAUDE.md` imports it with one line;
+`.claude/skills` symlinks to `.agents/skills`. Skills elaborate these rules into
+procedure — they must never restate one differently, and never introduce a rule that is
+not declared here. When a skill and this file disagree, this file is right and the skill
+is a bug.
 
 Works with any agentic tool. Codex, Cursor, Windsurf, Cline, Copilot and Gemini CLI
 read this file natively; skills are plain markdown any agent can follow; Cursor gets
 MCP through the committed `.cursor/mcp.json` mirror; Codex gets a global TOML snippet.
+The repo is also an **installable plugin** for Claude Code and Codex — manifests in
+`.claude-plugin/` and `.codex-plugin/` point at the same `.agents/skills/`, so the
+plugin adds a second delivery path, never a second copy of a rule.
 Per-tool matrix and sync rules: `.agents/skills/setup-health/references/agent-compatibility.md`.
 Skills with a `references/` folder keep their deep material there — load it only when
 the task needs it.
@@ -23,7 +29,7 @@ the task needs it.
 Instructions live here. Procedures live in `.agents/skills/`. Tool wiring lives in
 `.mcp.json`. Plugin wiring lives in `.claude/settings.json` (the official `nextjs`
 plugin from the vercel/next.js repo is declared there). Provenance for all of it lives
-in `skills.lock.json`. No rule appears in two places.
+in `skills.lock.json`. One rule, one home: it is declared here, applied there.
 
 ## Stack
 
@@ -42,7 +48,7 @@ Windows. The buyer may be on any of the three.
 | Command | Does |
 | --- | --- |
 | `pnpm verify` | **the definition of done** — health + lint + build in one command |
-| `pnpm verify:full` | verify + unit tests + e2e — what CI runs; use before a PR or deploy |
+| `pnpm verify:full` | verify + unit tests + e2e — the same gates CI runs, in one command; use before a PR or deploy |
 | `pnpm test` · `pnpm test:e2e` | gate G2 (vitest, in-memory) · gate G3 (Playwright, production build) |
 | `pnpm heal` | tier-1 deterministic repairs (links, mirrors, env, lockfile), then health as proof |
 | `pnpm preflight [--prod]` | **the go-live gate** — live keys, email flips, no seed backdoor |
@@ -141,6 +147,12 @@ else. Metadata derives from it; never hardcode the product's name in a component
 - Colors, radii, spacing, and fonts come from tokens. Raw hex or arbitrary values like
   `bg-[#0f172a]` in components are a defect.
 - Banned as primary faces: Inter, Geist, Space Grotesk, Poppins.
+- Fonts are **self-hosted and committed**, loaded with `next/font/local` from
+  `src/fonts/ofl/`. `next/font/google` fetches the face during `next build`, so a host
+  with no egress cannot build at all — that broke CI here once. Add a face with
+  `pnpm font --ofl "<Family>" <weights>`; `pnpm health` warns if the remote loader
+  comes back. Only OFL-licensed faces may be committed — Fontshare faces are not
+  redistributable and stay gitignored, fetched per machine by `pnpm font <slug>`.
 - At most two motion pieces per viewport. One signature element per page.
 
 ## State rules
@@ -183,7 +195,16 @@ Full detail and the fixed feature-building sequence: `.agents/skills/convex-stru
 - Action secrets live in **Convex env** (`npx convex env set`), never in `.env.local`.
   The only Convex values Next sees are `NEXT_PUBLIC_CONVEX_URL` and
   `NEXT_PUBLIC_CONVEX_SITE_URL` — both URLs, both public by design.
-- `convex/_generated/` is committed and never hand-edited.
+- `convex/_generated/` is committed and never hand-edited. **It does not exist on a
+  fresh clone** — `npx convex dev` creates it, and that command opens a browser, so it
+  is the buyer's step and never yours. Until then the frontend runs untyped through
+  `anyApi` and the app still builds. Never fake, stub, or hand-write `_generated/`.
+- The frontend imports function references from **`src/lib/convex-api.ts` only** — one
+  seam, one line to change when the generated types arrive.
+- A component that calls a Convex hook must not render when there is no
+  `ConvexProvider` in the tree. Branch on `isConvexConfigured` in a parent; `"skip"`
+  does not help, because the failure is a missing client, not a missing argument.
+- Not-yet-connected is a WARN, never an error. `pnpm build` stays green with no backend.
 
 ## Auth rules (Better Auth, wired)
 
@@ -259,16 +280,10 @@ Detail: `.agents/skills/convex-structure/references/deploy-render.md`.
 - Render holds `CONVEX_DEPLOY_KEY` and public keys only. Every backend secret lives in
   the **prod Convex deployment's** env, which is what keeps live Stripe keys off dev
   machines.
-- Secret **values** never appear in `render.yaml` — declare them `sync: false`. **It does not exist on a
-  fresh clone** — `npx convex dev` creates it, and that command opens a browser, so it
-  is the buyer's step and never yours. Until then the frontend runs untyped through
-  `anyApi` and the app still builds. Never fake, stub, or hand-write `_generated/`.
-- The frontend imports function references from **`src/lib/convex-api.ts` only** — one
-  seam, one line to change when the generated types arrive.
-- A component that calls a Convex hook must not render when there is no
-  `ConvexProvider` in the tree. Branch on `isConvexConfigured` in a parent; `"skip"`
-  does not help, because the failure is a missing client, not a missing argument.
-- Not-yet-connected is a WARN, never an error. `pnpm build` stays green with no backend.
+- Secret **values** never appear in `render.yaml` — declare them `sync: false` and set
+  them in the dashboard. The file is committed; a value written into it is published.
+- Connecting Render is a browser step and the buyer's, not yours: the repo is linked at
+  render.com, and `CONVEX_DEPLOY_KEY` is copied out of the Convex dashboard by hand.
 
 ## Security rules
 
