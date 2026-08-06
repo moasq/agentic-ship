@@ -71,8 +71,30 @@ Format:
   Fonts". The plain `pnpm build` step in the `verify` job succeeds — it runs before and
   without that constraint — which is why the failure looked like an e2e defect rather
   than a font one.
-- fix: the `e2e` job is commented out in `.github/workflows/ci.yml`; gate G3 runs
-  locally via `pnpm test:e2e`.
-- prevention: self-host the fonts — download the files and load them with
-  `next/font/local`, so a build never needs the network on any machine.
-- status: open
+- fix: self-hosted the fonts. `pnpm font --ofl "<Family>" <weights>` downloads the OFL
+  woff2 files into `src/fonts/ofl/` (committed — OFL is redistributable, and the licence
+  ships beside them); `layout.tsx` loads them with `next/font/local`. The `e2e` job in
+  `.github/workflows/ci.yml` is enabled again.
+- prevention: `pnpm health` has a `fonts build offline` check that WARNs the moment
+  `src/app/layout.tsx` imports `next/font/google` again, naming the self-host command in
+  its fix column. The banned-font check was widened in the same pass — it only parsed
+  the `next/font/google` named-import shape, so switching to `next/font/local` would
+  have let a banned face straight through the `src:` paths it does not read.
+- status: **GRADUATED** — `scripts/health.mjs` ("fonts build offline"), and the licence
+  rule is encoded in `scripts/fetch-font.mjs`: OFL faces are committed, Fontshare faces
+  stay gitignored.
+
+## 2026-08-05 secret scans skipped the repos most likely to need them
+
+- cause: the live-Stripe-key, misplaced-backend-secret and `phx_` personal-key scans in
+  `pnpm health` were nested inside `if (convex/schema.ts exists)` and
+  `if (src/lib/analytics.ts exists)`. Deleting either seam silently disabled the
+  corresponding secret scan — and reported PASS. A repo that had drifted from the
+  shipped layout got *less* checking than one that had not, which is exactly backwards.
+- fix: secret placement is now its own unconditional section in `scripts/health.mjs`,
+  run before and independent of any seam-existence branch.
+- prevention: rule for every future check — *gate a check on the thing it measures,
+  never on a seam that happens to be nearby*. Reporting the state of a seam (connected,
+  not connected) is conditional; scanning for a credential in the wrong file is not.
+- status: **GRADUATED** — encoded as section 8 of `scripts/health.mjs`; this entry is
+  the written rule.

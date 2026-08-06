@@ -50,30 +50,29 @@ jobs:
 
       - run: pnpm build
 
-  # DISABLED — gate G3 runs locally only, via `pnpm test:e2e`.
-  #
-  # Playwright's webServer runs `pnpm build`, and `next/font` fetches IBM Plex Sans/Mono
-  # from Google Fonts at build time. The runner has no route to fonts.googleapis.com, so
-  # the build dies with "Failed to fetch IBM Plex Mono from Google Fonts" — a network
-  # restriction, not a defect in the app. Note the `pnpm build` step in `verify` above is
-  # unaffected and still green; only the build inside webServer hits this.
-  #
-  # The real fix is to stop needing the network: download the font files into the repo
-  # and load them with `next/font/local`, which the ui-system skill's font-pairings
-  # reference already documents as an option. Re-enable this job once fonts are
-  # self-hosted.
-  #
-  # e2e:
-  #   name: e2e (ubuntu)
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: pnpm/action-setup@v4
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: 22
-  #         cache: pnpm
-  #     - run: pnpm install --frozen-lockfile
-  #     - run: npx playwright install --with-deps chromium
-  #     # Gate G3 — production build in a real browser: pages, headers, the SEO surface.
-  #     - run: pnpm test:e2e
+  # Gate G3 — the browser gate. This job was disabled for a while: Playwright's
+  # webServer runs `pnpm build`, `next/font/google` fetched IBM Plex at BUILD time, and
+  # the runner has no route to fonts.googleapis.com, so the build died inside webServer
+  # while the plain `pnpm build` step above stayed green. The fix was to stop needing
+  # the network at all — the OFL files are committed under src/fonts/ofl/ and load via
+  # next/font/local. `pnpm health` now WARNs if anything reintroduces next/font/google.
+  e2e:
+    name: e2e (ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      # Production build in a real browser: pages, headers, the SEO surface.
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

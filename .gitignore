@@ -43,8 +43,12 @@ next-env.d.ts
 # but ship the template
 !.env.example
 
-# Fontshare faces are licensed but NOT redistributable - each machine runs `pnpm font`
-src/fonts/
+# Fontshare faces are licensed but NOT redistributable - each machine runs `pnpm font`.
+# OFL faces ARE redistributable and are committed on purpose: a build that fetches
+# fonts is a build that dies on a host with no egress. See .agents/heal-ledger.md.
+# Note the trailing /* — git cannot re-include a file whose parent dir is excluded.
+src/fonts/*
+!src/fonts/ofl/
 
 # playwright
 /test-results/

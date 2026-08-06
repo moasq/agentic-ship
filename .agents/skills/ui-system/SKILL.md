@@ -52,10 +52,18 @@ Pairings that work, all free for commercial use:
 | Product / SaaS | General Sans | Source Serif 4 for accents |
 | Editorial landing | Instrument Serif (large sizes only) | a quiet grotesk |
 
-Load through `next/font/google` in `src/app/layout.tsx`. Next downloads the files at
-build time and serves them from your own deployment — no runtime request to Google, no
-layout shift, no third-party font call to explain in a privacy policy. Expose them as
-CSS variables and map those variables to `--font-sans` and `--font-mono` in `@theme`.
+Load through `next/font/local` in `src/app/layout.tsx`, from files committed under
+`src/fonts/ofl/`. **Never `next/font/google`**: it fetches the face during `next build`,
+so a host with no egress cannot build at all — that broke CI in this repo once
+(`.agents/heal-ledger.md`), and `pnpm health` warns if the remote loader reappears.
+
+Fetch a face with `pnpm font --ofl "<Family>" <weights>`, which prints the exact block to
+paste. Only OFL faces may be committed; Fontshare faces are not redistributable and stay
+gitignored, fetched per machine by `pnpm font <slug>`. Licences and the full pairing
+detail: `references/font-pairings.md`.
+
+Expose each family as a CSS variable and map those variables to `--font-sans`,
+`--font-mono` and `--font-heading` in `@theme`. Components never name a family.
 
 ## 3. Composition rules
 
