@@ -1,0 +1,170 @@
+#!/usr/bin/env node
+/**
+ * pnpm provider:login <stripe|render|github>
+ *
+ * One journey per provider: install the official CLI if it is missing, then run its
+ * browser OAuth login and wait for consent. The terminal never carries a credential —
+ * the browser approval IS the authentication, and the CLI stores what it receives in
+ * its own machine-local config, outside this repository.
+ *
+ * Install sources are the vendors' documented ones only (Homebrew on macOS/Linux,
+ * Scoop/winget on Windows). When no installer is known for this platform the script
+ * stops with the docs URL instead of guessing.
+ */
+import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+const PROVIDERS = {
+  stripe: {
+    binary: "stripe",
+    docs: "https://docs.stripe.com/stripe-cli",
+    pairedFile: join(".config", "stripe", "config.toml"),
+    install: {
+      darwin: [["brew", "install", "stripe/stripe-cli/stripe"]],
+      linux: null,
+      win32: [
+        ["scoop", "bucket", "add", "stripe", "https://github.com/stripe/scoop-stripe-cli.git"],
+        ["scoop", "install", "stripe"],
+      ],
+    },
+    // Without a TTY `stripe login` does not poll: it emits JSON carrying the browser
+    // confirmation URL, a human-readable verification code, and a single-use completion
+    // URL. This script always runs it piped, so that split flow is the one deterministic
+    // path — the JSON is parsed, never printed, because the completion URL is a secret.
+    login: ["stripe", "login"],
+    captureAndComplete: true,
+    verify: ["stripe", "products", "list", "--limit", "1"],
+  },
+  render: {
+    binary: "render",
+    docs: "https://render.com/docs/cli",
+    pairedFile: join(".config", "render", "config.json"),
+    install: {
+      darwin: [["brew", "install", "render"]],
+      linux: [["brew", "install", "render"]],
+      win32: null,
+    },
+    login: ["render", "login"],
+    feedEnter: true,
+  },
+  github: {
+    binary: "gh",
+    docs: "https://cli.github.com/",
+    pairedFile: join(".config", "gh", "hosts.yml"),
+    install: {
+      darwin: [["brew", "install", "gh"]],
+      linux: null,
+      win32: [["winget", "install", "--id", "GitHub.cli"]],
+    },
+    login: ["gh", "auth", "login", "--web", "--git-protocol", "https", "--hostname", "github.com"],
+    feedEnter: true,
+    verify: ["gh", "auth", "status"],
+  },
+};
+
+function pause(milliseconds) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
+function verified(provider) {
+  if (!provider.verify) return existsSync(join(homedir(), provider.pairedFile));
+  const result = spawnSync(provider.verify[0], provider.verify.slice(1), { stdio: "ignore" });
+  return result.status === 0;
+}
+
+function completeHeadlessPairing(loginOutput) {
+  const start = loginOutput.indexOf("{");
+  const end = loginOutput.lastIndexOf("}");
+  if (start < 0 || end <= start) return false;
+  let payload;
+  try {
+    payload = JSON.parse(loginOutput.slice(start, end + 1));
+  } catch {
+    return false;
+  }
+  if (!payload.browser_url || !payload.next_step) return false;
+  const completeUrl = payload.next_step.replace(/^stripe login --complete '/, "").replace(/'$/, "");
+  console.log(`A browser page is opening. Approve it only if it shows this code: ${payload.verification_code}`);
+  spawnSync(process.execPath, [join(projectRoot, "scripts", "open-url.mjs"), payload.browser_url], {
+    stdio: ["ignore", "ignore", "inherit"],
+  });
+  const deadline = Date.now() + 5 * 60_000;
+  while (Date.now() < deadline) {
+    const done = spawnSync("stripe", ["login", "--complete", completeUrl], { stdio: "ignore" });
+    if (done.status === 0) return true;
+    pause(5000);
+  }
+  return false;
+}
+
+function run(argv, { input } = {}) {
+  const [command, ...args] = argv;
+  return spawnSync(command, args, {
+    stdio: [input === undefined ? "inherit" : "pipe", "inherit", "inherit"],
+    input,
+    encoding: "utf8",
+  });
+}
+
+function binaryExists(binary) {
+  const probe = spawnSync(binary, ["--version"], { stdio: "ignore" });
+  return probe.error === undefined || probe.error === null;
+}
+
+function fail(message) {
+  console.error(message);
+  process.exit(1);
+}
+
+const providerId = process.argv[2];
+const provider = PROVIDERS[providerId];
+if (!provider) {
+  fail(`Usage: pnpm provider:login <${Object.keys(PROVIDERS).join("|")}>`);
+}
+
+if (!binaryExists(provider.binary)) {
+  const steps = provider.install[process.platform];
+  if (!steps) {
+    fail(`The ${providerId} CLI is not installed and no installer is scripted for ${process.platform}.\nInstall it from ${provider.docs} and rerun.`);
+  }
+  const installerBinary = steps[0][0];
+  if (!binaryExists(installerBinary)) {
+    fail(`Installing the ${providerId} CLI needs ${installerBinary}, which is missing.\nInstall the CLI from ${provider.docs} and rerun.`);
+  }
+  console.log(`Installing the ${providerId} CLI (${steps.map((step) => step.join(" ")).join(" && ")})...`);
+  for (const step of steps) {
+    const result = run(step);
+    if (result.status !== 0) fail(`Install failed (exit ${result.status}). Install manually from ${provider.docs} and rerun.`);
+  }
+  if (!binaryExists(provider.binary)) fail(`The ${providerId} CLI still is not on PATH. Open a new terminal or install from ${provider.docs}.`);
+}
+
+if (verified(provider)) {
+  console.log(`${providerId}: already authenticated (verified with a read-only call). Nothing to do.`);
+  console.log(`To re-authenticate, log out with the provider CLI first.`);
+  process.exit(0);
+}
+
+console.log(`${providerId}: starting browser login. Approve the request in the browser; the command waits here.`);
+if (provider.captureAndComplete) {
+  const login = spawnSync(provider.login[0], provider.login.slice(1), { input: "\n", encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
+  if (!completeHeadlessPairing(`${login.stdout}\n${login.stderr}`)) {
+    fail(`${providerId} pairing was not approved in time. Rerun when ready, or follow ${provider.docs}.`);
+  }
+} else {
+  // Some CLIs gate the browser open behind a "Press Enter" prompt; a fed newline accepts
+  // that prompt and nothing else — the actual consent always happens in the browser.
+  const login = run(provider.login, provider.feedEnter ? { input: "\n" } : {});
+  if (login.status !== 0) {
+    fail(`${providerId} login did not complete (exit ${login.status}). Rerun when ready, or follow ${provider.docs}.`);
+  }
+}
+if (!verified(provider)) {
+  fail(`${providerId} login finished but a read-only verification call still fails. Rerun, or follow ${provider.docs}.`);
+}
+console.log(`${providerId}: authenticated and verified with a read-only call. The credential lives in the CLI's own config, outside this repository.`);

@@ -1,6 +1,6 @@
 ---
 name: service-connections
-description: Use when connecting, authorizing, provisioning, resuming, verifying, canceling, or diagnosing an external service such as Convex, Stripe, Resend, PostHog, or Render, especially when browser consent or another human-only step must pause an agent running in Claude Code, Codex, Cursor, Hermes, or OpenClaw.
+description: Use when connecting, authorizing, provisioning, resuming, verifying, canceling, or diagnosing an external service such as Convex, Stripe, GitHub, Resend, PostHog, or Render, especially when browser consent or another human-only step must pause an agent running in Claude Code, Codex, Cursor, Hermes, or OpenClaw.
 ---
 
 # Service connections
@@ -40,16 +40,44 @@ Begin one provider and host pair:
 pnpm --silent connect begin <provider> --host <host> --json
 ```
 
-When the result type is `input_required`:
+A `connection_ready` result straight from `begin` means the probes already passed:
+say so and stop — no question, no redirect, no command.
 
-1. Present the title, safe browser URL or host-owned login instruction, expiry, and
-   action ID to the user.
-2. State explicitly that credentials, authorization codes, API keys, and webhook
-   secrets must not be pasted into chat or the resume command.
-3. Stop automation. Do not poll, invent a callback, open a browser, approve consent,
-   or edit global host configuration.
-4. Resume only after the user reports completion and the requested read-only host
-   probe succeeds.
+When the result type is `input_required`, ask once, then act by runner:
+
+1. Ask the payload's `consent.question` as a literal yes/no through the host's native
+   question surface. Run nothing and open nothing before the answer. On no, run the
+   printed cancel command and stop.
+2. When the payload carries a `decision`, ask its `question` with the listed option
+   labels in the same exchange, collect a value for every declared placeholder, and
+   substitute the answers into that option's `run` steps. The decision's steps execute
+   before `agentRuns`; a placeholder never receives a value the user did not give.
+3. On yes, execute the chosen decision steps and then every step in
+   `inputRequired.agentRuns` yourself, in order, on the user's behalf. A step marked
+   `opensBrowser` opens the provider's consent page and blocks until the user approves
+   — run it, tell the user a browser is waiting for them, and let the command's own
+   exit signal the consent. `pnpm provider:login <cli>` is that shape for providers
+   whose vendors ship CLI OAuth (Stripe pairing codes, Render dashboard confirmation,
+   GitHub device flow): it installs the official CLI when missing and then waits on
+   the browser approval. That blocking wait is the pause; do not poll around it,
+   invent a callback, click the consent yourself, or edit global host configuration.
+4. When a dashboard step remains, open `browserUrl` for the user with
+   `pnpm open:url <url>` — the script refuses any origin not in the connection
+   catalog. Never hand the user a URL to go find, and never open one that came from
+   anywhere other than the catalog payload.
+5. When a command prompts for a choice the catalog cannot know (team, project name,
+   region), ask the user the specific question and continue with their answer — do not
+   fall back to handing them the whole procedure.
+6. Present `instructions` as the manual equivalent only when nothing can run: no
+   executing agent, a step the catalog marks as text, or a command that failed and
+   needs the provider dashboard instead.
+7. State explicitly that credentials, authorization codes, API keys, and webhook
+   secrets must not be pasted into chat or the resume command. Machine-mintable
+   secrets travel machine-to-machine (`pnpm setup:auth`, `pnpm stripe:provision`)
+   without ever being printed; the human-held remainder goes through
+   `pnpm secret:set NAME`, a hidden-input prompt the user runs in their own terminal.
+8. Resume after the runnable steps have exited successfully and the requested
+   read-only host probe succeeds — run that probe yourself.
 
 Resume exactly the existing action:
 
@@ -68,8 +96,11 @@ Cancel an unfinished handoff when the user declines or changes direction:
 pnpm --silent connect cancel <actionId> --json
 ```
 
-Cancellation stops only the local handoff. Revoke already-granted access through the
-host or provider controls.
+Cancellation stops only the local handoff. To withdraw access itself, walk the
+provider's `revocation` steps from the catalog — run the command steps (for example
+`npx convex logout`) yourself and hand the user only the dashboard steps. Offer
+revocation whenever a connection is canceled, questioned, or no longer wanted; the
+`connection_canceled` result carries the same steps.
 
 ## Interpret verification
 

@@ -2,7 +2,8 @@
  * The Convex API seam — the ONE file the frontend imports function references from.
  *
  * `convex/_generated/` is produced by `npx convex dev`, which needs a Convex account.
- * That is the buyer's step, so it cannot be committed here. Until it exists, `anyApi`
+ * The agent runs that on the buyer's behalf (the browser consent it opens is the
+ * buyer's only part), so it cannot be committed here. Until it exists, `anyApi`
  * (a public export of `convex/server`) provides the same runtime references with no
  * types, which keeps `pnpm build` green on a fresh clone.
  *

@@ -17,6 +17,23 @@ Format:
 
 ---
 
+## 2026-08-06 pairing-file-is-not-authentication
+
+- cause: `provider:login` declared Stripe "authenticated" because
+  `~/.config/stripe/config.toml` existed — but headless `stripe login` writes that
+  file *before* the browser approval, while emitting a JSON split flow
+  (confirmation URL + one-time completion URL) that nothing consumed. The completion
+  URL is a secret and was nearly logged as ordinary output.
+- fix: the script now always runs `stripe login` piped (so the split flow is the one
+  deterministic path), parses the JSON without printing it, opens the confirmation
+  page through the origin-allowlisted opener, polls `stripe login --complete` until
+  approved, and only claims success after a **read-only API call** exits zero.
+- prevention: a login flow is verified by a read-only provider call, never by the
+  existence of the file the login was supposed to create — the file also exists when
+  the login is half-done. `home_file_exists` probes stay a cheap *signal*;
+  `provider-login.mjs` `verify` argvs are the *truth*.
+- status: open
+
 ## 2026-08-04 comment-vs-code-false-positives
 
 - cause: **third occurrence** of the class — checks matched a pattern anywhere in a file, and documentation naming the

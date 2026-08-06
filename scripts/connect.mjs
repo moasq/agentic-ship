@@ -14,7 +14,7 @@ function usage() {
     "  pnpm --silent connect resume <actionId> [--json]",
     "  pnpm --silent connect cancel <actionId> [--json]",
     "",
-    "Providers: convex, stripe, resend, posthog, render",
+    "Providers: convex, stripe, github, resend, posthog, render",
     "Hosts: claude, codex, cursor, hermes, openclaw",
   ].join("\n");
 }
@@ -66,6 +66,27 @@ function printHuman(result) {
   console.log(`State: ${result.action.state} · phase: ${result.action.phase}`);
   if (result.inputRequired) {
     console.log(`\n${result.inputRequired.title}\n`);
+    if (result.inputRequired.consent) {
+      console.log(`Ask first — one yes/no question, nothing runs before the answer:`);
+      console.log(`  ${result.inputRequired.consent.question}`);
+      console.log(`  yes → ${result.inputRequired.consent.onYes}`);
+      console.log(`  no  → ${result.inputRequired.consent.onNo}\n`);
+    }
+    if (result.inputRequired.decision) {
+      console.log(`Your call first — ${result.inputRequired.decision.question}`);
+      for (const option of result.inputRequired.decision.options) {
+        console.log(`  [${option.value}] ${option.label}`);
+        for (const step of option.run) console.log(`    $ ${step.command}`);
+      }
+      console.log("  {placeholders} are filled with your answer before anything runs.\n");
+    }
+    if (result.inputRequired.agentRuns?.length) {
+      console.log("Agent runs these on your behalf (a browser step only needs your consent):");
+      for (const step of result.inputRequired.agentRuns) {
+        console.log(`  $ ${step.command}${step.opensBrowser ? "   ← opens a browser; approve it and the command continues" : ""}`);
+      }
+      console.log("\nIf no agent is driving, the manual equivalent:");
+    }
     for (const instruction of result.inputRequired.instructions) console.log(`  - ${instruction}`);
     if (result.inputRequired.browserUrl) console.log(`\nOpen: ${result.inputRequired.browserUrl}`);
     console.log(`\nResume: ${result.inputRequired.resumeCommand}`);
@@ -74,6 +95,10 @@ function printHuman(result) {
     return;
   }
   if (result.message) console.log(`\n${result.message}`);
+  if (result.revocation?.length) {
+    console.log("\nTo revoke access itself:");
+    for (const step of result.revocation) console.log(`  ${step.command ? `$ ${step.command}` : `- ${step.text}`}`);
+  }
   console.log("");
 }
 

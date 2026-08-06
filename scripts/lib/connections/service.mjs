@@ -42,6 +42,7 @@ export function createConnectionService({
   projectRoot = process.cwd(),
   catalogDirectory,
   stateDirectory,
+  homeDirectory,
   now = () => new Date(),
   idFactory = () => `conn_${randomUUID()}`,
   lockOptions,
@@ -49,6 +50,7 @@ export function createConnectionService({
   const root = resolve(projectRoot);
   const catalog = loadConnectionCatalog({ projectRoot: root, catalogDirectory });
   const store = createConnectionStateStore(stateDirectory ?? resolve(root, ".agent-state", "connections"), lockOptions);
+  const probeContext = { projectRoot: root, homeDirectory };
 
   function currentTime() {
     return new Date(now());
@@ -104,11 +106,11 @@ export function createConnectionService({
   }
 
   function projectVerification(provider) {
-    return runConnectionProbes(provider.projectProvisioning.verification.probes, { projectRoot: root });
+    return runConnectionProbes(provider.projectProvisioning.verification.probes, probeContext);
   }
 
   function agentToolConfiguration(provider) {
-    return runConnectionProbe(provider.agentTool.configurationProbe, { projectRoot: root });
+    return runConnectionProbe(provider.agentTool.configurationProbe, probeContext);
   }
 
   function baseResult(type, action, at) {
@@ -130,8 +132,14 @@ export function createConnectionService({
         requestedFrom: "user",
         kind: provider.agentTool.authFlow === "remote_oauth" ? "browser_authorization" : "provider_login",
         title: `Authorize ${provider.displayName} for ${host.displayName}`,
+        consent: {
+          question: `Authorize ${provider.displayName} for ${host.displayName} now?`,
+          onYes: "The agent runs every listed command on your behalf; a browser opens only where your consent is needed.",
+          onNo: `Nothing runs and nothing opens. Cancel the receipt with: ${commandFor("cancel", action.actionId)}`,
+        },
         browserUrl: null,
         urlSource: "host_managed",
+        agentRuns: provider.agentTool.automation?.run ?? [],
         instructions: [hostInstruction, ...provider.agentTool.instructions, host.readOnlyProbeInstruction],
         configuration,
         sensitiveInputAllowed: false,
@@ -144,6 +152,22 @@ export function createConnectionService({
 
   function projectInput(action, at, verification, reason = "Project provisioning needs the builder") {
     const provider = getProvider(action.provider);
+    const decision = provider.projectProvisioning.automation?.decision ?? null;
+    const configuredRuns = provider.projectProvisioning.automation?.run ?? [];
+    // When a provider has no runnable CLI step, its own page IS the path — so the
+    // opener becomes the step. A `browserUrl` that nobody opens is the friction this
+    // process exists to delete: it turns into "go find this page yourself", which is
+    // what telling a user to visit a dashboard has always been.
+    const agentRuns =
+      configuredRuns.length || decision
+        ? configuredRuns
+        : [
+            {
+              command: `pnpm open:url ${provider.projectProvisioning.setupUrl}`,
+              why: `Open ${provider.displayName}'s setup page in your browser`,
+              opensBrowser: true,
+            },
+          ];
     return {
       ...baseResult("input_required", action, at),
       inputRequired: {
@@ -151,7 +175,16 @@ export function createConnectionService({
         kind: "project_provisioning",
         title: `Finish ${provider.displayName} project provisioning`,
         reason,
+        consent: {
+          question: `Set up ${provider.displayName} for this project now?`,
+          onYes: `The agent runs every listed command on your behalf and opens ${provider.projectProvisioning.setupUrl} for any dashboard step.`,
+          onNo: `Nothing runs and nothing opens. Cancel the receipt with: ${commandFor("cancel", action.actionId)}`,
+        },
+        // The decision precedes every run: its chosen option's steps execute first, with
+        // the user's answers substituted for the declared {placeholder} tokens.
+        ...(decision ? { decision } : {}),
         browserUrl: provider.projectProvisioning.setupUrl,
+        agentRuns,
         instructions: provider.projectProvisioning.instructions,
         verificationPolicy: provider.projectProvisioning.verification.policy,
         verification,
@@ -171,14 +204,22 @@ export function createConnectionService({
           policy: getProvider(action.provider).projectProvisioning.verification.policy,
           project: verification ?? projectVerification(getProvider(action.provider)),
           agentTool: {
-            passed: Boolean(action.agentToolAttestedAt),
-            basis: "resume_after_user_consent_and_host_read_only_probe",
+            passed: Boolean(action.agentToolAttestedAt) || action.history.some((entry) => entry.event === "verified_preexisting"),
+            basis: action.agentToolAttestedAt
+              ? "resume_after_user_consent_and_host_read_only_probe"
+              : action.history.some((entry) => entry.event === "verified_preexisting")
+                ? "preexisting_local_configuration"
+                : "resume_after_user_consent_and_host_read_only_probe",
           },
         },
       };
     }
     if (action.state === "canceled") {
-      return { ...baseResult("connection_canceled", action, at), message: "The local handoff was canceled. No remote access was revoked or changed." };
+      return {
+        ...baseResult("connection_canceled", action, at),
+        message: "The local handoff was canceled. No remote access was revoked or changed.",
+        revocation: getProvider(action.provider).revocation ?? [],
+      };
     }
     if (action.state === "expired") {
       return { ...baseResult("connection_expired", action, at), message: "The handoff expired. Begin a new action; do not reuse an old browser consent URL." };
@@ -232,6 +273,7 @@ export function createConnectionService({
         return {
           id,
           displayName: provider.displayName,
+          revocation: provider.revocation ?? [],
           agentToolConfiguration: agentToolConfiguration(provider),
           projectVerification: {
             policy,
@@ -270,6 +312,40 @@ export function createConnectionService({
               ? agentToolInput(prior, at)
               : projectInput(prior, at, projectVerification(provider), "An existing connection handoff is still active");
           }
+        }
+
+        // Check first, ask second: when every safe local probe already passes there is
+        // nothing to redirect to and nothing to consent to — the receipt is born ready
+        // and no browser, command, or question ever reaches the user.
+        const preexistingConfiguration = agentToolConfiguration(provider);
+        const preexistingVerification = projectVerification(provider);
+        if (
+          preexistingConfiguration.passed &&
+          provider.projectProvisioning.verification.policy === "machine" &&
+          preexistingVerification.passed
+        ) {
+          const bornAt = timestamp(at);
+          const action = {
+            schemaVersion: 1,
+            actionId: idFactory(),
+            provider: providerId,
+            host: hostId,
+            state: "ready",
+            phase: "complete",
+            createdAt: bornAt,
+            updatedAt: bornAt,
+            expiresAt: timestamp(new Date(at.getTime() + provider.actionTtlMinutes * 60_000)),
+            verificationAttempts: 0,
+            completedPhases: ["agent_tool_authorization", "project_provisioning"],
+            agentToolAttestedAt: null,
+            projectAttestedAt: null,
+            history: [
+              { event: "created", at: bornAt },
+              { event: "verified_preexisting", at: bornAt },
+            ],
+          };
+          store.write(action);
+          return terminalResult(action, at, preexistingVerification);
         }
 
         const createdAt = timestamp(at);

@@ -15,6 +15,9 @@ const EVENTS = new Set([
   "verification_failed",
   "verification_blocked",
   "connection_ready",
+  // begin's check-first path: every safe probe already passed, so the receipt is born
+  // ready without a consent question, redirect, or command.
+  "verified_preexisting",
   "project_configuration_drifted",
   "canceled",
 ]);

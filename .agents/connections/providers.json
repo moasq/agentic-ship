@@ -21,12 +21,22 @@
           "type": "mcp_server",
           "server": "convex",
           "required": true
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "npx convex login",
+              "opensBrowser": true,
+              "why": "Authorize the Convex CLI for this machine. The browser asks for consent; the command waits until it is granted."
+            }
+          ]
         }
       },
       "projectProvisioning": {
         "setupUrl": "https://dashboard.convex.dev/",
         "instructions": [
-          "Run `npx convex dev` and finish the project-selection flow in the browser.",
+          "The project choice is yours: the decision below creates a new project or links an existing one by team and project slug (both visible at dashboard.convex.dev).",
+          "The manual equivalent is `npx convex dev` in an interactive terminal, which prompts for the same choice.",
           "Wait until Convex writes the deployment URLs to `.env.local` and generates `convex/_generated/`.",
           "Do not paste deployment credentials into chat or this connection action."
         ],
@@ -47,7 +57,9 @@
               "type": "env_file_key",
               "file": ".env.local",
               "key": "NEXT_PUBLIC_CONVEX_URL",
-              "allowPrefixes": ["https://"],
+              "allowPrefixes": [
+                "https://"
+              ],
               "required": true
             },
             {
@@ -56,48 +68,117 @@
               "type": "env_file_key",
               "file": ".env.local",
               "key": "NEXT_PUBLIC_CONVEX_SITE_URL",
-              "allowPrefixes": ["https://"],
+              "allowPrefixes": [
+                "https://"
+              ],
               "required": true
             },
             {
               "id": "generated-api",
               "label": "Convex generated API exists",
               "type": "any_file_exists",
-              "paths": ["convex/_generated/api.d.ts", "convex/_generated/api.js"],
+              "paths": [
+                "convex/_generated/api.d.ts",
+                "convex/_generated/api.js"
+              ],
               "required": true
             }
           ]
+        },
+        "automation": {
+          "decision": {
+            "id": "convex-project",
+            "question": "Create a new Convex project or link an existing one?",
+            "options": [
+              {
+                "value": "new-project",
+                "label": "Create a new project",
+                "placeholders": [
+                  "team",
+                  "project"
+                ],
+                "run": [
+                  {
+                    "command": "npx convex dev --once --configure new --team {team} --project {project}",
+                    "opensBrowser": false,
+                    "why": "Create the project non-interactively, write its dev deployment URLs to .env.local, and generate convex/_generated/."
+                  }
+                ]
+              },
+              {
+                "value": "existing-project",
+                "label": "Link an existing project",
+                "placeholders": [
+                  "team",
+                  "project"
+                ],
+                "run": [
+                  {
+                    "command": "npx convex dev --once --configure existing --team {team} --project {project}",
+                    "opensBrowser": false,
+                    "why": "Link the chosen project non-interactively and write its dev deployment URLs to .env.local."
+                  }
+                ]
+              }
+            ]
+          },
+          "run": [
+            {
+              "command": "pnpm setup:auth",
+              "opensBrowser": false,
+              "why": "Generate BETTER_AUTH_SECRET and set it with SITE_URL in the deployment env. The secret value is never printed."
+            }
+          ]
         }
-      }
+      },
+      "revocation": [
+        {
+          "command": "npx convex logout",
+          "why": "Remove the CLI credential from this machine."
+        },
+        {
+          "text": "Revoke the session in the Convex dashboard and delete the project if it should not exist."
+        }
+      ]
     },
     "stripe": {
       "displayName": "Stripe",
-      "docsUrl": "https://docs.stripe.com/",
+      "docsUrl": "https://docs.stripe.com/stripe-cli",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
       "agentTool": {
-        "authFlow": "remote_oauth",
+        "authFlow": "cli_browser_login",
         "mcpServer": "stripe",
         "setupUrl": "https://dashboard.stripe.com/",
         "instructions": [
-          "Authorize only the Stripe account and scopes needed for the current task.",
-          "Use sandbox mode while building and testing.",
-          "After browser authorization returns, ask the agent to make one read-only Stripe MCP call before resuming."
+          "Stripe's validated OAuth for tooling is CLI pairing: the browser shows a pairing code and approving it is the whole consent — no keys are typed or pasted anywhere.",
+          "The manual equivalent is installing the Stripe CLI (docs.stripe.com/stripe-cli) and running `stripe login` yourself.",
+          "Stay in test mode while building; the pairing is test-mode by default.",
+          "The hosted Stripe MCP can additionally be authorized from the host for in-chat Stripe tools; it is optional and not required for provisioning."
         ],
         "configurationProbe": {
-          "id": "stripe-mcp",
-          "label": "Stripe MCP server is declared",
-          "type": "mcp_server",
-          "server": "stripe",
+          "id": "stripe-cli-paired",
+          "label": "Stripe CLI is paired with an account",
+          "type": "home_file_exists",
+          "homePath": ".config/stripe/config.toml",
           "required": true
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm provider:login stripe",
+              "opensBrowser": true,
+              "why": "Install the official Stripe CLI if missing, then pair it: the browser shows a pairing code and waits for your approval. No keys are typed or pasted."
+            }
+          ]
         }
       },
       "projectProvisioning": {
         "setupUrl": "https://dashboard.stripe.com/test/apikeys",
         "instructions": [
-          "Create or select a Stripe sandbox and create the product price used by the application.",
-          "Configure the Convex Stripe webhook endpoint and the required Stripe values in Convex environment storage.",
-          "Keep secret keys and webhook secrets out of chat, `.env.local`, and connection-state files.",
+          "Provisioning runs through the paired CLI: the webhook endpoint for `/stripe/webhook` is created and its signing secret goes straight into the Convex deployment env without ever being printed.",
+          "Prices are a product decision, not a setup step: when the price is chosen, run `pnpm stripe:provision --plan pro --usd <amount>` and the price id is stored as STRIPE_PRICE_PRO.",
+          "The API secret key is the one human-held value: run `pnpm secret:set STRIPE_SECRET_KEY` in your own terminal. It prompts with hidden input and pipes the key into the Convex env — never chat, never shell history, never .env.local.",
           "Complete one sandbox checkout and confirm entitlement changes from the webhook, not the return URL."
         ],
         "verification": {
@@ -120,8 +201,96 @@
               "required": true
             }
           ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm stripe:provision",
+              "opensBrowser": false,
+              "why": "Create the Convex /stripe/webhook endpoint via the paired CLI and store its signing secret in the Convex deployment env. The secret is parsed and set, never printed."
+            },
+            {
+              "command": "pnpm open:url https://dashboard.stripe.com/test/apikeys",
+              "opensBrowser": true,
+              "why": "Open the API keys page for the one human-held value; copy the test secret key into `pnpm secret:set STRIPE_SECRET_KEY` in your own terminal."
+            }
+          ]
         }
-      }
+      },
+      "revocation": [
+        {
+          "command": "stripe logout",
+          "why": "Unpair the Stripe CLI from this machine."
+        },
+        {
+          "text": "Delete the /stripe/webhook endpoint under Developers → Webhooks and roll the API keys if they were ever exposed."
+        },
+        {
+          "text": "Disconnect the Stripe MCP server in the host if it was authorized (Claude Code /mcp, Cursor Tools & MCP, or the Codex MCP logout for workspace-stripe)."
+        }
+      ]
+    },
+    "github": {
+      "displayName": "GitHub",
+      "docsUrl": "https://cli.github.com/manual/",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "agentTool": {
+        "authFlow": "cli_browser_login",
+        "mcpServer": "github",
+        "setupUrl": "https://github.com/",
+        "instructions": [
+          "GitHub's validated OAuth for tooling is the gh device flow: the browser shows a one-time code and approving it is the whole consent.",
+          "The manual equivalent is installing GitHub CLI (cli.github.com) and running `gh auth login --web` yourself.",
+          "The token stays in the system keyring; nothing is typed or pasted."
+        ],
+        "configurationProbe": {
+          "id": "gh-cli-paired",
+          "label": "GitHub CLI is authenticated",
+          "type": "home_file_exists",
+          "homePath": ".config/gh/hosts.yml",
+          "required": true
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm provider:login github",
+              "opensBrowser": true,
+              "why": "Install GitHub CLI if missing, then authenticate with the browser device flow: approve the one-time code and the command continues."
+            }
+          ]
+        }
+      },
+      "projectProvisioning": {
+        "setupUrl": "https://github.com/new",
+        "instructions": [
+          "Create or link the repository with the authenticated CLI: `gh repo create <name> --private --source . --push` for a new remote, or `git remote add origin <url>` for an existing one.",
+          "Verification is the git remote itself: a `github.com` remote in `.git/config` means the project is connected.",
+          "CI and branch protection are repository decisions made with `gh` or in the dashboard, not by this connection."
+        ],
+        "verification": {
+          "policy": "machine",
+          "probes": [
+            {
+              "id": "github-remote",
+              "label": "A github.com git remote is configured",
+              "type": "file_contains",
+              "file": ".git/config",
+              "text": "github.com",
+              "required": true
+            }
+          ]
+        }
+      },
+      "revocation": [
+        {
+          "command": "gh auth logout",
+          "why": "Remove the GitHub CLI token from this machine's keyring."
+        },
+        {
+          "text": "Revoke the GitHub CLI OAuth grant at github.com → Settings → Applications → Authorized OAuth Apps."
+        }
+      ]
     },
     "resend": {
       "displayName": "Resend",
@@ -133,6 +302,7 @@
         "mcpServer": "resend",
         "setupUrl": "https://resend.com/",
         "instructions": [
+          "Resend has no CLI OAuth; the agent-tool path is the host-managed MCP authorization.",
           "Authorize only the Resend account needed for the current project.",
           "Keep the shipped email integration in test mode during setup.",
           "After browser authorization returns, ask the agent to make one read-only Resend MCP call before resuming."
@@ -148,8 +318,8 @@
       "projectProvisioning": {
         "setupUrl": "https://resend.com/api-keys",
         "instructions": [
-          "Create the project API key and store it only in the Convex deployment environment.",
-          "Register the Convex Resend webhook endpoint and store its signing secret only in Convex.",
+          "Create the API key on the opened page, then run `pnpm secret:set RESEND_API_KEY` in your own terminal — hidden input, piped straight into the Convex deployment env.",
+          "Register the webhook endpoint `<convex-site-url>/resend-webhook` under Webhooks, then run `pnpm secret:set RESEND_WEBHOOK_SECRET` the same way.",
           "Verify delivery with a Resend test inbox while `testMode` remains enabled.",
           "Do not enable production sending until the sending domain and email-verification pair pass production preflight."
         ],
@@ -181,8 +351,30 @@
               "required": true
             }
           ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://resend.com/api-keys",
+              "opensBrowser": true,
+              "why": "Open the API keys page; the key you create there goes into `pnpm secret:set RESEND_API_KEY` in your own terminal, never into chat."
+            },
+            {
+              "command": "pnpm open:url https://resend.com/webhooks",
+              "opensBrowser": true,
+              "why": "Open the webhooks page to register `<convex-site-url>/resend-webhook`; its signing secret goes into `pnpm secret:set RESEND_WEBHOOK_SECRET`."
+            }
+          ]
         }
-      }
+      },
+      "revocation": [
+        {
+          "text": "Disconnect the Resend MCP server in the host."
+        },
+        {
+          "text": "Revoke the authorization and any created API keys in the Resend dashboard."
+        }
+      ]
     },
     "posthog": {
       "displayName": "PostHog",
@@ -194,6 +386,7 @@
         "mcpServer": "posthog",
         "setupUrl": "https://app.posthog.com/",
         "instructions": [
+          "PostHog's agent-tool path is the host-managed MCP OAuth; approve it in the browser when the host asks.",
           "Authorize only the PostHog organization and project needed for this application.",
           "Never provide a `phx_` personal API key to the application or connection CLI.",
           "After browser authorization returns, ask the agent to make one read-only PostHog MCP call before resuming."
@@ -207,10 +400,10 @@
         }
       },
       "projectProvisioning": {
-        "setupUrl": "https://app.posthog.com/",
+        "setupUrl": "https://app.posthog.com/settings/project",
         "instructions": [
-          "Create or select the PostHog project used by this application.",
-          "Put only its public `phc_` project key in `NEXT_PUBLIC_POSTHOG_KEY` inside `.env.local`.",
+          "The only value this application needs is the project's public `phc_` key — it is public by design and safe to read aloud.",
+          "Copy it from the opened settings page into `NEXT_PUBLIC_POSTHOG_KEY` in `.env.local` (or tell the agent the `phc_` value; it may write that one key for you).",
           "Keep personal `phx_` keys out of the repository, browser bundle, chat, and connection state.",
           "Confirm an allowlisted event reaches the selected development project."
         ],
@@ -231,8 +424,12 @@
               "type": "env_file_key",
               "file": ".env.local",
               "key": "NEXT_PUBLIC_POSTHOG_KEY",
-              "allowPrefixes": ["phc_"],
-              "denyPrefixes": ["phx_"],
+              "allowPrefixes": [
+                "phc_"
+              ],
+              "denyPrefixes": [
+                "phx_"
+              ],
               "required": true
             },
             {
@@ -244,29 +441,55 @@
               "required": true
             }
           ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://app.posthog.com/settings/project",
+              "opensBrowser": true,
+              "why": "Open project settings to copy the public `phc_` project key — the only value the application needs, and it is public by design."
+            }
+          ]
         }
-      }
+      },
+      "revocation": [
+        {
+          "text": "Disconnect the PostHog MCP server in the host."
+        },
+        {
+          "text": "Revoke the authorization in PostHog organization settings; rotate the project key if it must be withdrawn."
+        }
+      ]
     },
     "render": {
       "displayName": "Render",
-      "docsUrl": "https://render.com/docs",
+      "docsUrl": "https://render.com/docs/cli",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
       "agentTool": {
-        "authFlow": "remote_oauth",
+        "authFlow": "cli_browser_login",
         "mcpServer": "render",
         "setupUrl": "https://dashboard.render.com/",
         "instructions": [
-          "Authorize only the Render workspace needed for the current project.",
-          "Review the requested access before approving the browser handoff.",
-          "After browser authorization returns, ask the agent to make one read-only Render MCP call before resuming."
+          "Render's validated OAuth for tooling is the CLI: `render login` opens a confirmation page in the Render dashboard and approving it is the whole consent.",
+          "The manual equivalent is installing the CLI (`brew install render`, or the release binary on Windows) and running `render login` yourself.",
+          "The host-managed Render MCP OAuth is an alternative for in-chat tools; either satisfies this step."
         ],
         "configurationProbe": {
-          "id": "render-mcp",
-          "label": "Render MCP server is declared",
-          "type": "mcp_server",
-          "server": "render",
+          "id": "render-cli-paired",
+          "label": "Render CLI is authenticated",
+          "type": "home_file_exists",
+          "homePath": ".config/render/config.json",
           "required": true
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm provider:login render",
+              "opensBrowser": true,
+              "why": "Install the Render CLI if missing (Homebrew core on macOS/Linux), then authenticate: the browser opens a dashboard confirmation page and the command waits for your approval."
+            }
+          ]
         }
       },
       "projectProvisioning": {
@@ -304,8 +527,28 @@
               "required": true
             }
           ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://dashboard.render.com/",
+              "opensBrowser": true,
+              "why": "Open the dashboard to connect the repository as a Blueprint and set CONVEX_DEPLOY_KEY — dashboard-only steps no CLI covers."
+            }
+          ]
         }
-      }
+      },
+      "revocation": [
+        {
+          "text": "Run the Render CLI logout or delete `~/.config/render/config.json` to unpair this machine."
+        },
+        {
+          "text": "Disconnect the Render MCP server in the host if it was authorized."
+        },
+        {
+          "text": "Revoke the authorization in the Render dashboard; rotate CONVEX_DEPLOY_KEY if it was ever shared."
+        }
+      ]
     }
   }
 }

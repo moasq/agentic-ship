@@ -62,6 +62,9 @@ Windows. The buyer may be on any of the three.
 | `pnpm health` | machine-checkable half of `workspace-health` — pins, SSOT, adapters, tokens, env leaks, backend status |
 | `pnpm onboard [provider] --host <host>` | provider-selective status or the next resumable human step |
 | `pnpm connect` | begin, inspect, resume, or cancel safe service-connection receipts |
+| `pnpm provider:login <cli>` | install + browser-OAuth pair a vendor's official CLI (stripe, render, github) |
+| `pnpm stripe:provision` | webhook endpoint and plan prices through the paired CLI; secrets flow straight into Convex env, never printed |
+| `pnpm secret:set NAME` | hidden-input prompt in the user's terminal, piped into Convex env — no chat, no history, no files |
 | `pnpm agent:work` | durable dependency-aware work queue shared across supported AI hosts |
 | `pnpm check:ui` | component direction, purity, fixtures, naming, tokens, and unsafe-code gate |
 | `pnpm font` · `pnpm asset` | fetch a licensed font / an allowlisted image, cross-platform |
@@ -143,6 +146,32 @@ briefs: follow the named skills directly.
 - Human pauses are first-class. Return `input_required` with the safe action ID,
   provider-owned URL or host instruction, expiry, verification predicate, exact resume
   command, and cancel command. Stop only dependent work; continue independent items.
+- The split between agent and human is **runner-based, not step-based**: every step the
+  connection catalog marks as a command (`automation.run`) is the agent's to execute on
+  the user's behalf — including logins that open a browser and block until consent. The
+  human's part is the consent itself, plus dashboard work no CLI covers. Setup
+  instructions and commands live in this process — `pnpm onboard`, `pnpm connect`, the
+  work queue — and **never render in product UI**; an unconnected surface shows
+  product-voice copy only, with no command, vendor name, or onboarding pointer.
+- **Check first, ask second, then act.** `connect begin` runs the safe local probes
+  before anything else; a provider whose checks already pass is reported ready and is
+  never redirected to. Anything less than ready is gated behind the payload's single
+  yes/no `consent` question. On yes, the agent acts: it runs the commands and opens the
+  provider page itself (`pnpm open:url`, restricted to catalog origins). On no, it
+  cancels the receipt and runs nothing.
+- **Authorization is the vendor's own OAuth wherever one exists.** Convex, Stripe,
+  Render, and GitHub authorize through their official CLI browser flows
+  (`pnpm provider:login`), where approving in the browser is the entire consent and
+  the credential lands only in the CLI's machine-local store. Choices the catalog
+  cannot make — such as Convex's new-vs-existing project — are payload `decision`s
+  the user answers before anything runs. What no vendor lets a machine mint (a
+  dashboard-issued API key) goes through `pnpm secret:set`: hidden input in the
+  user's own terminal, piped into Convex env, printed nowhere. No redirect, command, or browser open precedes
+  the answer.
+- Every connection is revocable. `pnpm connect cancel` retires the local receipt, and
+  the catalog's `revocation` steps name how access itself is withdrawn (CLI logout,
+  host MCP disconnect, provider dashboard). Offer them whenever a connection is
+  canceled or questioned.
 - Keep three connection types separate: AI-host MCP authorization, application project
   provisioning, and the product customer's runtime redirect. A Stripe customer returns
   from hosted Checkout, but entitlement still comes only from the webhook-backed query.
@@ -257,9 +286,10 @@ Full detail and the fixed feature-building sequence: `.agents/skills/convex-stru
   The only Convex values Next sees are `NEXT_PUBLIC_CONVEX_URL` and
   `NEXT_PUBLIC_CONVEX_SITE_URL` — both URLs, both public by design.
 - `convex/_generated/` is committed and never hand-edited. **It does not exist on a
-  fresh clone** — `npx convex dev` creates it, and that command opens a browser, so it
-  is the buyer's step and never yours. Until then the frontend runs untyped through
-  `anyApi` and the app still builds. Never fake, stub, or hand-write `_generated/`.
+  fresh clone** — `npx convex dev` creates it. The agent runs that command on the
+  buyer's behalf; the browser consent it opens is the buyer's only part. Until it has
+  run, the frontend stays untyped through `anyApi` and the app still builds. Never
+  fake, stub, or hand-write `_generated/`.
 - The frontend imports function references from **`src/lib/convex-api.ts` only** — one
   seam, one line to change when the generated types arrive.
 - A component that calls a Convex hook must not render when there is no

@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const IDENTIFIER = /^[a-z][a-z0-9-]*$/;
-const PROBE_TYPES = new Set(["any_file_exists", "env_file_key", "file_contains", "file_exists", "mcp_server"]);
+const PLACEHOLDER = /\{([a-z][a-z0-9-]*)\}/g;
+const PROBE_TYPES = new Set(["any_file_exists", "env_file_key", "file_contains", "file_exists", "home_file_exists", "mcp_server"]);
 const AUTH_FLOWS = new Set(["cli_browser_login", "remote_oauth"]);
 const VERIFICATION_POLICIES = new Set(["machine", "probe_and_attestation"]);
 
@@ -35,6 +36,67 @@ function validateProbe(probe, owner) {
     assert(typeof probe.file === "string" && typeof probe.key === "string", `${owner}.${probe.id} needs file and key`);
   }
   if (probe.type === "mcp_server") assert(IDENTIFIER.test(probe.server ?? ""), `${owner}.${probe.id} needs a server id`);
+  if (probe.type === "home_file_exists") {
+    assert(typeof probe.homePath === "string" && probe.homePath.length > 0, `${owner}.${probe.id} needs a homePath`);
+    assert(
+      !probe.homePath.startsWith("/") && !/^[A-Za-z]:/.test(probe.homePath) && !probe.homePath.split("/").includes(".."),
+      `${owner}.${probe.id} homePath must stay relative to the home directory`,
+    );
+  }
+}
+
+function validateSteps(steps, owner, allowedPlaceholders = []) {
+  if (steps === undefined) return;
+  assert(Array.isArray(steps), `${owner} must be an array`);
+  for (const step of steps) {
+    assert(step && typeof step === "object", `${owner} has a malformed step`);
+    const hasCommand = typeof step.command === "string" && step.command.length > 0;
+    const hasText = typeof step.text === "string" && step.text.length > 0;
+    assert(hasCommand !== hasText, `${owner} steps need exactly one of command or text`);
+    if (hasCommand) {
+      assert(typeof step.why === "string" && step.why.length > 0, `${owner} command steps need a why`);
+      if (step.opensBrowser !== undefined) assert(typeof step.opensBrowser === "boolean", `${owner} opensBrowser must be boolean`);
+      for (const match of step.command.matchAll(PLACEHOLDER)) {
+        assert(allowedPlaceholders.includes(match[1]), `${owner} command uses undeclared placeholder {${match[1]}}`);
+      }
+    }
+    for (const key of Object.keys(step)) {
+      assert(["command", "text", "why", "opensBrowser"].includes(key), `${owner} step has unsupported key ${key}`);
+    }
+  }
+}
+
+function validateDecision(decision, owner) {
+  if (decision === undefined) return;
+  assert(decision && typeof decision === "object", `${owner}.decision must be an object`);
+  assert(IDENTIFIER.test(decision.id ?? ""), `${owner}.decision id must be kebab-case`);
+  assert(typeof decision.question === "string" && decision.question.length > 0, `${owner}.decision needs a question`);
+  assert(Array.isArray(decision.options) && decision.options.length >= 2, `${owner}.decision needs at least two options`);
+  for (const option of decision.options) {
+    assert(option && typeof option === "object", `${owner}.decision has a malformed option`);
+    assert(IDENTIFIER.test(option.value ?? ""), `${owner}.decision option values must be kebab-case`);
+    assert(typeof option.label === "string" && option.label.length > 0, `${owner}.decision.${option.value} needs a label`);
+    const placeholders = option.placeholders ?? [];
+    assert(
+      Array.isArray(placeholders) && placeholders.every((name) => IDENTIFIER.test(name)),
+      `${owner}.decision.${option.value} placeholders must be kebab-case strings`,
+    );
+    assert(Array.isArray(option.run) && option.run.length > 0, `${owner}.decision.${option.value} needs run steps`);
+    validateSteps(option.run, `${owner}.decision.${option.value}.run`, placeholders);
+    for (const key of Object.keys(option)) {
+      assert(["value", "label", "placeholders", "run"].includes(key), `${owner}.decision option has unsupported key ${key}`);
+    }
+  }
+}
+
+function validateAutomation(automation, owner) {
+  if (automation === undefined) return;
+  assert(automation && typeof automation === "object", `${owner}.automation must be an object`);
+  for (const key of Object.keys(automation)) {
+    assert(["run", "decision"].includes(key), `${owner}.automation has unsupported key ${key}`);
+  }
+  validateSteps(automation.run, `${owner}.automation.run`);
+  validateDecision(automation.decision, `${owner}.automation`);
 }
 
 export function loadConnectionCatalog({ projectRoot, catalogDirectory } = {}) {
@@ -60,6 +122,9 @@ export function loadConnectionCatalog({ projectRoot, catalogDirectory } = {}) {
       `${id} needs agent-tool instructions`,
     );
     validateProbe(provider.agentTool.configurationProbe, `${id}.agentTool`);
+    validateAutomation(provider.agentTool.automation, `${id}.agentTool`);
+    validateAutomation(provider.projectProvisioning?.automation, `${id}.projectProvisioning`);
+    validateSteps(provider.revocation, `${id}.revocation`);
 
     const verification = provider.projectProvisioning?.verification;
     assert(

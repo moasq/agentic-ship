@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { isAbsolute, relative, resolve } from "node:path";
 
 function projectPath(projectRoot, candidate) {
@@ -45,9 +46,26 @@ function probeResult(probe, passed, detail) {
   };
 }
 
-export function runConnectionProbe(probe, { projectRoot }) {
+function homePath(homeDirectory, candidate) {
+  const root = resolve(homeDirectory ?? homedir());
+  const path = resolve(root, candidate);
+  const fromRoot = relative(root, path);
+  if (fromRoot === ".." || fromRoot.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) || isAbsolute(fromRoot)) {
+    throw new Error(`Connection probe path escapes the home directory: ${candidate}`);
+  }
+  return path;
+}
+
+export function runConnectionProbe(probe, { projectRoot, homeDirectory }) {
   if (probe.type === "file_exists") {
     const passed = existsSync(projectPath(projectRoot, probe.path));
+    return probeResult(probe, passed, passed ? "detected" : "not detected");
+  }
+
+  // Existence only, never contents: CLI pairing files (Stripe, Convex) hold credentials,
+  // so the probe may prove the login happened but must never read what it produced.
+  if (probe.type === "home_file_exists") {
+    const passed = existsSync(homePath(homeDirectory, probe.homePath));
     return probeResult(probe, passed, passed ? "detected" : "not detected");
   }
 

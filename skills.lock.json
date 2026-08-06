@@ -149,6 +149,8 @@
       { "name": "pnpm check:ui", "file": "scripts/check-ui.mjs", "owns": "authored component architecture and untrusted-code gate" },
       { "name": "pnpm agent:work", "file": "scripts/agent-work.mjs", "owns": "safe dependency-aware cross-host work state" },
       { "name": "pnpm connect", "file": "scripts/connect.mjs", "owns": "safe resumable provider receipts" },
+      { "name": "pnpm setup:auth", "file": "scripts/setup-auth-env.mjs", "owns": "auth seam secrets set straight into Convex env; the value is never printed or stored" },
+      { "name": "pnpm open:url", "file": "scripts/open-url.mjs", "owns": "consent-gated browser redirects, restricted to connection-catalog origins" },
       { "name": "pnpm audit:supply-chain", "file": "scripts/audit-supply-chain.mjs", "owns": "fail-closed production dependency advisories" },
       { "name": "pnpm verify / verify:full", "file": "scripts/verify.mjs", "owns": "offline definition of done and complete release proof" }
     ],

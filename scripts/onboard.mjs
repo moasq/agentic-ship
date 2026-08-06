@@ -41,6 +41,27 @@ function printInput(result) {
   console.log(`\n${result.inputRequired.title}`);
   console.log(`\n  action: ${result.action.actionId}`);
   console.log(`  phase:  ${result.action.phase}`);
+  if (result.inputRequired.consent) {
+    console.log(`\n  Ask first — one yes/no question, nothing runs before the answer:`);
+    console.log(`    ${result.inputRequired.consent.question}`);
+    console.log(`    yes → ${result.inputRequired.consent.onYes}`);
+    console.log(`    no  → ${result.inputRequired.consent.onNo}`);
+  }
+  if (result.inputRequired.decision) {
+    console.log(`\n  Your call first — ${result.inputRequired.decision.question}`);
+    for (const option of result.inputRequired.decision.options) {
+      console.log(`    [${option.value}] ${option.label}`);
+      for (const step of option.run) console.log(`      $ ${step.command}`);
+    }
+    console.log("    {placeholders} are filled with your answer before anything runs.");
+  }
+  if (result.inputRequired.agentRuns?.length) {
+    console.log("\n  Agent runs these on your behalf — your part is only the browser consent:");
+    for (const step of result.inputRequired.agentRuns) {
+      console.log(`    $ ${step.command}${step.opensBrowser ? "   ← opens a browser; approve it" : ""}`);
+    }
+    console.log("\n  Manual equivalent, if no agent is driving:");
+  }
   for (const instruction of result.inputRequired.instructions) console.log(`\n  - ${instruction}`);
   if (result.inputRequired.browserUrl) console.log(`\n  open: ${result.inputRequired.browserUrl}`);
   console.log(`\n  resume: ${result.inputRequired.resumeCommand}`);
