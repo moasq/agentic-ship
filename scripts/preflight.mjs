@@ -18,6 +18,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { envNamesFrom, inspectBillingCoherence } from "./lib/billing-coherence.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => (existsSync(join(root, p)) ? readFileSync(join(root, p), "utf8") : "");
@@ -65,8 +66,26 @@ add("site identity is real", placeholder ? "FAIL" : "PASS", placeholder ? "src/l
 
 // The public URL is env-driven per environment; the prod value is audited in the
 // --prod section below. Locally, the blueprint is the thing that must be intact:
-const blueprint = read("render.yaml");
-add("deploy blueprint intact", /convex deploy/.test(blueprint) ? "PASS" : "FAIL", /convex deploy/.test(blueprint) ? "" : "render.yaml missing or its buildCommand no longer runs `npx convex deploy` — frontend would ship against a stale backend");
+const blueprint = read("netlify.toml");
+add("deploy blueprint intact", /convex deploy/.test(blueprint) ? "PASS" : "FAIL", /convex deploy/.test(blueprint) ? "" : "netlify.toml missing or its build command no longer runs `npx convex deploy` — frontend would ship against a stale backend");
+
+/* ---------- the CSP that actually ships ---------- */
+
+// React's dev build needs eval(), so `next.config.ts` allows it under a NODE_ENV guard.
+// The guard is the entire safety property: `unsafe-eval` in a production policy is what
+// lets an injected string become executable code. Assert it is still conditional — an
+// unguarded occurrence would be trivially easy to introduce while silencing a console
+// warning, and impossible to notice afterwards.
+const nextConfigSrc = read("next.config.ts");
+const evalOccurrences = (nextConfigSrc.match(/unsafe-eval/g) ?? []).length;
+const evalIsGuarded = /isDev\s*\?\s*\[\s*["']'unsafe-eval'["']\s*\]/.test(nextConfigSrc);
+add(
+  "no unsafe-eval in the production CSP",
+  evalOccurrences === 0 || evalIsGuarded ? "PASS" : "FAIL",
+  evalOccurrences === 0 || evalIsGuarded
+    ? ""
+    : "`unsafe-eval` appears in next.config.ts outside the development-only guard — production would ship a policy that lets an injected string execute",
+);
 
 /* ---------- dev-side leaks that become launch incidents ---------- */
 
@@ -95,13 +114,16 @@ if (withProd) {
     const val = (k) => (env.match(new RegExp(`^${k}=(.*)$`, "m")) ?? [])[1] ?? "";
 
     add("prod Stripe key is LIVE", /^(sk|rk)_live_/.test(val("STRIPE_SECRET_KEY")) ? "PASS" : "FAIL", "prod has a test key (or none) — production would take test payments. Set the live key with `npx convex env set --prod STRIPE_SECRET_KEY ...`");
-    add("prod Stripe webhook secret set", has("STRIPE_WEBHOOK_SECRET") ? "PASS" : "FAIL", "create the PROD webhook endpoint in the Stripe dashboard (the `stripe listen` secret is dev-only) and set its whsec_");
-    add("prod price configured", /^STRIPE_PRICE_/m.test(env) ? "PASS" : "FAIL", "no STRIPE_PRICE_* in prod — checkout cannot resolve a plan");
+    // The individual keys are audited above; this states the COMBINATIONS, from the same
+    // module `pnpm health` uses, so the rule has one home rather than two drifting copies.
+    const coherence = inspectBillingCoherence(envNamesFrom(env));
+    add("prod billing coherence", coherence.status === "PASS" ? "PASS" : "FAIL", coherence.status === "PASS" ? "" : coherence.detail);
     add("prod Resend key set", has("RESEND_API_KEY") ? "PASS" : "FAIL", "production sends no email without it");
     add("prod EMAIL_FROM on a verified domain", has("EMAIL_FROM") && !/resend\.dev/.test(val("EMAIL_FROM")) ? "PASS" : "FAIL", "EMAIL_FROM missing or still the onboarding fallback — verify a sending domain and set it");
     add("prod SITE_URL is https and not localhost", /^https:\/\//.test(val("SITE_URL")) && !/localhost/.test(val("SITE_URL")) ? "PASS" : "FAIL", "auth callbacks and emails will point at the wrong host");
     add("prod auth secret set", has("BETTER_AUTH_SECRET") ? "PASS" : "FAIL", "pnpm secret, then npx convex env set --prod BETTER_AUTH_SECRET ...");
     add("NO test-seed backdoor in prod", has("ALLOW_TEST_SEED") ? "FAIL" : "PASS", "ALLOW_TEST_SEED is set on PROD — anyone-callable seeding of production data. Remove it: `npx convex env remove --prod ALLOW_TEST_SEED`");
+    add("NO extra trusted auth origin in prod", has("E2E_ORIGIN") ? "FAIL" : "PASS", "E2E_ORIGIN is set on PROD — it adds a trusted origin to Better Auth, which is a CSRF hole outside the browser gate. Remove it: `npx convex env remove --prod E2E_ORIGIN`");
   }
 } else {
   add("prod env audit", "SKIP", "run `pnpm preflight --prod` once connected — it verifies live keys, webhook secrets and the seed gate on the real deployment");
@@ -119,7 +141,7 @@ console.log(
   failed
     ? `\nNOT READY — ${failed} blocking issue(s). Every one above ships a real incident: test payments, dead email, or an open seed gate.\n`
     : withProd
-      ? "\nREADY — code, build, tests and the prod deployment all check out. The go-live checklist in deploy-render.md covers the two manual webhooks.\n"
+      ? "\nREADY — code, build, tests and the prod deployment all check out. The go-live checklist in deploy-netlify.md covers the two manual webhooks.\n"
       : "\nCODE READY — now run `pnpm preflight --prod` to audit the real deployment before launch.\n",
 );
 process.exit(failed ? 1 : 0);

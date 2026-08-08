@@ -13,8 +13,11 @@
  * Exit code: 0 = HEALTHY or DEGRADED, 1 = BROKEN.
  */
 import { existsSync, lstatSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { join, resolve, dirname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { envNamesFrom, inspectBillingCoherence } from "./lib/billing-coherence.mjs";
+import { inspectEmailCoherence, inspectSocialAuthCoherence } from "./lib/email-coherence.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const rows = [];
@@ -191,15 +194,15 @@ add(".cursor/mcp.json mirror", mcpRaw !== null && mcpRaw === mirrorRaw ? "PASS" 
 }
 
 // Every server must have lockfile provenance, and every lockfile entry must still be
-// wired (21st is the documented off-by-default exception). Catches the exact failure
-// `npx playwright init-agents` caused once: it OVERWRITES .mcp.json wholesale.
+// wired. Catches the exact failure `npx playwright init-agents` caused once: it
+// OVERWRITES .mcp.json wholesale.
 {
   const mcpServers = json(".mcp.json")?.mcpServers ?? {};
   const mcpNames = Object.keys(mcpServers);
   const lockEntries = json("skills.lock.json")?.mcp ?? [];
   const lockNames = lockEntries.map((entry) => entry.name);
   const unlocked = mcpNames.filter((name) => !lockNames.includes(name));
-  const unwired = lockNames.filter((name) => !mcpNames.includes(name) && name !== "21st");
+  const unwired = lockNames.filter((name) => !mcpNames.includes(name));
   add(
     "mcp servers match lockfile",
     unlocked.length || unwired.length ? "FAIL" : "PASS",
@@ -227,6 +230,41 @@ add(".cursor/mcp.json mirror", mcpRaw !== null && mcpRaw === mirrorRaw ? "PASS" 
 
 if (process.platform === "win32") {
   add("MCP launcher on Windows", "WARN", "if a server never starts, wrap it: \"command\": \"cmd\", \"args\": [\"/c\", \"npx\", ...] — see references/platform-notes.md");
+}
+
+// Registries are `npx shadcn add` execution sources: whatever they serve lands in the
+// repository as code. Adding one is a human decision (frontend-security section 2), and
+// this is what makes that rule checkable rather than merely stated — an agent that edits
+// components.json without recording provenance fails the gate.
+{
+  const configured = Object.entries(json("components.json")?.registries ?? {});
+  const locked = json("skills.lock.json")?.registries ?? [];
+  const lockedByName = new Map(locked.map((entry) => [entry.name, entry]));
+  const unlocked = configured.filter(([name]) => !lockedByName.has(name)).map(([name]) => name);
+  const unwired = locked.filter((entry) => !configured.some(([name]) => name === entry.name)).map((entry) => entry.name);
+  const urlDrift = configured
+    .filter(([name, url]) => lockedByName.has(name) && lockedByName.get(name).url !== url)
+    .map(([name]) => name);
+  const problems = [
+    unlocked.length ? `no provenance for: ${unlocked.join(", ")} — adding a registry is a human decision; record it in skills.lock.json` : "",
+    unwired.length ? `in lockfile but missing from components.json: ${unwired.join(", ")}` : "",
+    urlDrift.length ? `URL differs from provenance: ${urlDrift.join(", ")}` : "",
+  ].filter(Boolean);
+  add("registries match lockfile", problems.length ? "FAIL" : "PASS", problems.join("; "));
+
+  // What will this project's UI actually be built from? A buyer cannot answer that from
+  // the wiring checks above, and the answer decides whether a page looks composed or
+  // generated. Keyless catalogs are always reachable, so this never fails and never
+  // warns: 21st is an upgrade, and an unauthorized one costs nothing.
+  const keyless = ["@shadcn", ...configured.map(([name]) => name)];
+  const paired = existsSync(join(process.env.HOME ?? process.env.USERPROFILE ?? "", ".config", "21st"));
+  add(
+    "component catalogs reachable",
+    "PASS",
+    `keyless, no account: ${keyless.join(" ")}${
+      paired ? " · 21st CLI paired" : " · 21st not authorized (optional — free account, browser OAuth in the host or `pnpm provider:login 21st`)"
+    }`,
+  );
 }
 
 /* ---------- 6. design system ---------- */
@@ -410,10 +448,10 @@ if (!existsSync(join(root, "convex", "schema.ts"))) {
   /* email — the testMode / requireEmailVerification interlock */
   const emailSrc = read("convex/email.ts") ?? "";
   const authSrc = read("convex/auth.ts") ?? "";
+  // Line-anchored: comments discussing these flags must never satisfy the check
+  // (the comment-vs-code bug class — heal-ledger.md).
+  const testMode = /^\s*testMode:\s*true/m.test(emailSrc);
   if (emailSrc) {
-    // Line-anchored: comments discussing these flags must never satisfy the check
-    // (the comment-vs-code bug class — heal-ledger.md).
-    const testMode = /^\s*testMode:\s*true/m.test(emailSrc);
     const requireVerify = /^\s*requireEmailVerification:\s*true/m.test(authSrc);
     // Both directions are broken states, and both are silent in production.
     if (testMode && requireVerify) {
@@ -424,6 +462,59 @@ if (!existsSync(join(root, "convex", "schema.ts"))) {
       add("email testMode interlock", "PASS", testMode ? "testMode on — only Resend test inboxes receive mail" : "");
     }
     add("resend webhook route", /resend-webhook/.test(read("convex/http.ts") ?? "") ? "PASS" : "WARN", "without it, bounces and complaints are invisible");
+  }
+
+  /* billing coherence — the one check that has to ask the DEPLOYMENT */
+  //
+  // Every other check here reads files. This one cannot: the Stripe keys live in Convex
+  // env by rule R1, so the file system has nothing to inspect and a repo can look
+  // perfect while billing is silently off. Names only — values are dropped by
+  // `envNamesFrom` and never reach this process's output.
+  //
+  // Guarded on both sides. It runs only when a deployment is connected, and any failure
+  // to reach it is a SKIP rather than a red gate, so a fresh clone and an offline
+  // machine both stay green.
+  const wantsBilling = existsSync(join(root, "convex", "billing.ts"));
+  const wantsEmail = Boolean(emailSrc);
+  const skip = (reason) => {
+    if (wantsBilling) add("billing coherence", "SKIP", reason);
+    if (wantsEmail) add("email coherence", "SKIP", reason);
+  };
+
+  if (!wantsBilling && !wantsEmail) {
+    // Neither seam is in this repo; nothing to ask the deployment about.
+  } else if (!connected) {
+    skip("no deployment connected yet — checked once `npx convex dev` has run");
+  } else {
+    // One round trip serves both checks. Reading the deployment env is the slowest
+    // thing in this script, and asking twice for the same list would double it.
+    const listed = spawnSync("npx convex env list", {
+      cwd: root,
+      shell: true,
+      encoding: "utf8",
+      timeout: 20_000,
+    });
+    if (listed.status !== 0) {
+      skip("could not read the deployment env (offline, or not logged in) — run `pnpm health` again when connected");
+    } else {
+      const names = envNamesFrom(listed.stdout);
+      if (wantsBilling) {
+        const { status, detail } = inspectBillingCoherence(names);
+        add("billing coherence", status, detail);
+      }
+      if (wantsEmail) {
+        // EMAIL_FROM is an address, not a credential, and only its domain is inspected —
+        // "still on resend.dev" is the difference between a verified sender and the
+        // onboarding fallback that only works in test mode.
+        const fromDomainIsResendDefault = /^EMAIL_FROM=.*resend\.dev/m.test(listed.stdout);
+        const { status, detail } = inspectEmailCoherence(names, { testMode, fromDomainIsResendDefault });
+        add("email coherence", status, detail);
+      }
+      if (existsSync(join(root, "convex", "auth.ts"))) {
+        const social = inspectSocialAuthCoherence(names);
+        add("social sign-in coherence", social.status, social.detail);
+      }
+    }
   }
 }
 
@@ -445,18 +536,18 @@ if (!analyticsSeam) {
   add("posthog key", publicKey ? "PASS" : "WARN", publicKey ? "" : "not configured — analytics is a no-op. Run `pnpm onboard`");
 }
 
-/* ---------- 11. deploy (Render) ---------- */
+/* ---------- 11. deploy (Netlify) ---------- */
 
-const blueprint = read("render.yaml");
+const blueprint = read("netlify.toml");
 if (!blueprint) {
-  add("deploy blueprint", "WARN", "no render.yaml — deployment topology is not captured in the repo");
+  add("deploy blueprint", "WARN", "no netlify.toml — deployment topology is not captured in the repo");
 } else {
   const deploysBackend = /convex deploy/.test(blueprint);
-  add("render.yaml deploys Convex", deploysBackend ? "PASS" : "CRITICAL", deploysBackend ? "" : "buildCommand must run `npx convex deploy --cmd 'pnpm build'` or the frontend ships against a stale backend");
+  add("netlify.toml deploys Convex", deploysBackend ? "PASS" : "CRITICAL", deploysBackend ? "" : "the build command must run `npx convex deploy --cmd 'pnpm build'` or the frontend ships against a stale backend");
   // Prefix + payload only, for the same reason as the PostHog check above: this file
   // deliberately names the secrets it must never contain.
   const holdsSecret = /\b(sk_live_|rk_live_|whsec_|phx_|prod:)[A-Za-z0-9]{16,}/.test(blueprint);
-  add("no secret values in render.yaml", holdsSecret ? "CRITICAL" : "PASS", holdsSecret ? "this file is committed — secrets must use `sync: false` and be set in the dashboard" : "");
+  add("no secret values in netlify.toml", holdsSecret ? "CRITICAL" : "PASS", holdsSecret ? "this file is committed — secrets belong in `netlify env:set --secret` or the prod Convex env, never here" : "");
 }
 
 /* ---------- 12. env hygiene ---------- */

@@ -14,10 +14,17 @@
  *                    the amount is a deliberate product decision, so it is required
  *   --rotate         delete + recreate the webhook endpoint to mint a fresh secret
  *   --status         booleans only: paired, webhook registered, env names present
+ *   --test-key       copy the paired CLI's TEST-mode key into Convex env as
+ *                    STRIPE_SECRET_KEY, so a sandbox can take a 4242 payment without a
+ *                    human fetching anything. Read straight out of the CLI's own store,
+ *                    piped to `convex env set`, never printed and never written here
  *
- * The one value this script cannot mint is STRIPE_SECRET_KEY — Stripe deliberately
- * issues it only in the dashboard. That single step stays human:
- * `pnpm secret:set STRIPE_SECRET_KEY`.
+ * `--test-key` is hard-limited to test mode in three ways: it reads only
+ * `test_mode_api_key`, it refuses any value that is not `sk_test_`/`rk_test_`, and it
+ * refuses `--prod` outright. A LIVE key is never minted, copied or touched by this
+ * script — Stripe issues those in the dashboard and they stay human, through
+ * `pnpm secret:set STRIPE_SECRET_KEY`, which is also the right path for a restricted
+ * key with a narrower scope than the CLI's.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -80,7 +87,31 @@ const value = (name) => {
   return index >= 0 ? args[index + 1] : undefined;
 };
 
-const paired = existsSync(join(homedir(), ".config", "stripe", "config.toml"));
+const stripeConfigPath = join(homedir(), ".config", "stripe", "config.toml");
+const paired = existsSync(stripeConfigPath);
+
+/**
+ * The paired CLI's TEST key, out of its own config, for the named profile only.
+ *
+ * `live_mode_api_key` sits in the same file and is deliberately unreachable from here:
+ * this reads exactly one field name. The value is returned to the caller, handed to
+ * `convex env set` over stdin, and never logged, echoed, or written to disk.
+ */
+function testModeKeyFromCli(profile) {
+  if (!paired) return null;
+  let inProfile = false;
+  for (const raw of readFileSync(stripeConfigPath, "utf8").split(/\r?\n/)) {
+    const line = raw.trim();
+    if (line.startsWith("[")) {
+      inProfile = line === `[${profile}]`;
+      continue;
+    }
+    if (!inProfile) continue;
+    const match = /^test_mode_api_key\s*=\s*(.+)$/.exec(line);
+    if (match) return match[1].trim().replace(/^["']|["']$/g, "");
+  }
+  return null;
+}
 const siteUrl = envLocalValue("NEXT_PUBLIC_CONVEX_SITE_URL");
 const webhookUrl = siteUrl ? `${siteUrl.replace(/\/$/, "")}/stripe/webhook` : null;
 
@@ -108,6 +139,18 @@ if (flag("status")) {
 
 if (!paired) fail("The Stripe CLI is not paired. Run `pnpm provider:login stripe` first — the browser approval is the whole consent.");
 if (!webhookUrl) fail("NEXT_PUBLIC_CONVEX_SITE_URL is missing from .env.local. Connect Convex first (`pnpm connect begin convex --host <host>`).");
+
+if (flag("test-key")) {
+  // Three independent refusals, because the same file holds a live key.
+  if (flag("prod")) fail("--test-key never targets production. A live deployment takes a live key, set by a person: `pnpm secret:set STRIPE_SECRET_KEY`.");
+  const profile = process.env.STRIPE_PROFILE ?? "default";
+  const key = testModeKeyFromCli(profile);
+  if (!key) fail(`No test_mode_api_key for profile "${profile}" in ${stripeConfigPath}. Run \`pnpm provider:login stripe\` to pair in test mode.`);
+  if (!/^(sk|rk)_test_/.test(key)) fail("The paired key is not a TEST key. Refusing — this path never handles live credentials.");
+  convexEnvSet("STRIPE_SECRET_KEY", key);
+  console.log("STRIPE_SECRET_KEY set in Convex env from the paired CLI's TEST key (value never printed).");
+  console.log("This is a sandbox credential. Going live is a separate, human step: `pnpm secret:set STRIPE_SECRET_KEY` against the prod deployment.");
+}
 
 const planKey = value("plan");
 const usd = value("usd");
