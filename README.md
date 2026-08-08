@@ -51,7 +51,7 @@ pinned MCP catalog, one copy of every rule:
 | Payments | Stripe hosted checkout, webhook entitlement | authorize, secrets only in Convex |
 | Email | Resend | authorize, secrets only in Convex |
 | Analytics | PostHog, proxied on your own origin | add the public key |
-| Deploy | Render (`render.yaml`) | connect the repo |
+| Deploy | Netlify (`netlify.toml`) | `netlify init` then `netlify deploy --prod` |
 | A blog that ranks | MDX + sitemap + metadata + OG image | write the article |
 
 A fresh clone builds green with nothing connected. Providers connect one at a time

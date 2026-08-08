@@ -3,9 +3,11 @@ import { basename, dirname, extname, join, relative, resolve, sep } from "node:p
 import ts from "typescript";
 
 const AUTHORED_COMPONENT_DIRS = [
+  "src/components/aceternity",
   "src/components/blocks",
   "src/components/features",
   "src/components/magicui",
+  "src/components/twentyfirst",
 ];
 
 const CLASS_SCAN_FILES = ["mdx-components.tsx"];
@@ -16,6 +18,21 @@ const ARBITRARY_VALUE = /(?:^|:)(?:[a-z][\w-]*)-\[[^\]]+\]$/;
 const ARBITRARY_PROPERTY = /^\[--[^\]]+\]$/;
 const HEX_COLOR = /#[\da-fA-F]{3,8}\b/;
 const CLASS_HELPERS = new Set(["cn", "clsx", "cva"]);
+
+/**
+ * Vendor parts that read a parent's React context and THROW when it is absent.
+ *
+ * These type-check, lint and build clean, and fail only when a person opens the menu —
+ * which is how a crashing account menu shipped here once. Base UI's `Menu.GroupLabel`,
+ * `Menu.RadioItem` and submenu parts are all context-bound, unlike the Radix components
+ * of the same name, and that muscle memory is what produces the bug.
+ */
+const REQUIRED_JSX_ANCESTOR = new Map([
+  ["DropdownMenuLabel", ["DropdownMenuGroup", "DropdownMenuRadioGroup"]],
+  ["DropdownMenuRadioItem", ["DropdownMenuRadioGroup"]],
+  ["DropdownMenuSubTrigger", ["DropdownMenuSub"]],
+  ["DropdownMenuSubContent", ["DropdownMenuSub"]],
+]);
 
 function walk(directory, files = []) {
   if (!existsSync(directory)) return files;
@@ -129,6 +146,46 @@ function inspectUnsafeUi({ file, sourceFile, violations }) {
   visit(sourceFile);
 }
 
+/**
+ * Assert that every context-bound vendor part is composed inside the parent it reads.
+ *
+ * Ancestry is checked lexically, within one file. That is the shape these menus are
+ * always written in here, and the alternative — a part extracted into its own component
+ * and rendered under the parent elsewhere — reports a violation that is fixed by
+ * inlining it back where its parent is visible.
+ */
+function inspectContextParts({ file, sourceFile, violations }) {
+  const ancestors = [];
+  const visit = (node) => {
+    const tag = ts.isJsxElement(node)
+      ? node.openingElement.tagName.getText(sourceFile)
+      : ts.isJsxSelfClosingElement(node)
+        ? node.tagName.getText(sourceFile)
+        : null;
+
+    if (tag) {
+      const required = REQUIRED_JSX_ANCESTOR.get(tag);
+      if (required && !required.some((name) => ancestors.includes(name))) {
+        violations.push({
+          file,
+          line: lineOf(sourceFile, node),
+          rule: "vendor-context-part",
+          message: `<${tag}> reads its parent's context and throws when opened; wrap it in <${required.join("> or <")}>`,
+        });
+      }
+    }
+
+    if (ts.isJsxElement(node)) {
+      ancestors.push(tag);
+      ts.forEachChild(node, visit);
+      ancestors.pop();
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+}
+
 function lineOf(sourceFile, node) {
   return sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
 }
@@ -204,7 +261,7 @@ function inspectBlock({ root, absolute, file, body, sourceFile, violations }) {
       file,
       line: item.line,
       rule: "block-dependency",
-      message: `block cannot import \`${item.specifier}\`; blocks only compose ui/ and magicui/ primitives`,
+      message: `block cannot import \`${item.specifier}\`; blocks only compose ui/, magicui/, aceternity/ and twentyfirst/ primitives`,
     });
   }
 
@@ -248,6 +305,7 @@ export function inspectUiContract(root) {
     const sourceFile = parse(file, body);
     inspectClassTokens({ file, sourceFile, violations });
     inspectUnsafeUi({ file, sourceFile, violations });
+    inspectContextParts({ file, sourceFile, violations });
   }
 
   for (const absolute of authoredFiles) {

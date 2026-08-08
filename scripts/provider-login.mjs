@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * pnpm provider:login <stripe|render|github>
+ * pnpm provider:login <stripe|render|netlify|github|21st>
  *
  * One journey per provider: install the official CLI if it is missing, then run its
  * browser OAuth login and wait for consent. The terminal never carries a credential —
@@ -43,7 +43,10 @@ const PROVIDERS = {
   render: {
     binary: "render",
     docs: "https://render.com/docs/cli",
-    pairedFile: join(".config", "render", "config.json"),
+    // The CLI writes $HOME/.render/cli.yaml, NOT .config/render/config.json. The old
+    // path meant `verified()` never found a paired install, so this provider always
+    // reported itself unauthenticated no matter how many times login succeeded.
+    pairedFile: join(".render", "cli.yaml"),
     install: {
       darwin: [["brew", "install", "render"]],
       linux: [["brew", "install", "render"]],
@@ -51,6 +54,26 @@ const PROVIDERS = {
     },
     login: ["render", "login"],
     feedEnter: true,
+    // A token alone is not a usable pairing here: every other render command fails with
+    // "no workspace set" until one is chosen, so the read-only probe has to be one of
+    // the commands that actually needs a workspace.
+    verify: ["render", "services", "-o", "json", "--confirm"],
+    afterLogin: selectRenderWorkspace,
+  },
+  netlify: {
+    binary: "netlify",
+    docs: "https://docs.netlify.com/cli/get-started/",
+    // Only a fallback; `verify` below is what actually decides, because a config file
+    // on disk has never once proven a credential works (heal-ledger.md, three times).
+    pairedFile: join(".netlify", "config.json"),
+    install: {
+      darwin: [["brew", "install", "netlify-cli"]],
+      linux: [["brew", "install", "netlify-cli"]],
+      win32: null,
+    },
+    login: ["netlify", "login"],
+    // Read-only and account-scoped: it needs the credential and touches no site.
+    verify: ["netlify", "api", "getCurrentUser", "--data", "{}"],
   },
   github: {
     binary: "gh",
@@ -65,6 +88,22 @@ const PROVIDERS = {
     feedEnter: true,
     verify: ["gh", "auth", "status"],
   },
+  // 21st.dev's CLI pairs the component catalog (search free, code retrieval metered).
+  // Its `whoami` exits 0 even when signed out, so `usage` — which exits 1 signed out
+  // and prints tier + quota signed in — is the read-only verification call.
+  "21st": {
+    binary: "21st",
+    docs: "https://help.21st.dev/cli",
+    pairedFile: join(".config", "21st"),
+    install: {
+      darwin: [["npm", "i", "-g", "@21st-dev/cli"]],
+      linux: [["npm", "i", "-g", "@21st-dev/cli"]],
+      win32: [["npm", "i", "-g", "@21st-dev/cli"]],
+    },
+    login: ["21st", "login"],
+    feedEnter: true,
+    verify: ["21st", "usage"],
+  },
 };
 
 function pause(milliseconds) {
@@ -75,6 +114,39 @@ function verified(provider) {
   if (!provider.verify) return existsSync(join(homedir(), provider.pairedFile));
   const result = spawnSync(provider.verify[0], provider.verify.slice(1), { stdio: "ignore" });
   return result.status === 0;
+}
+
+/**
+ * Render's login saves a token but leaves the CLI with no active workspace, and every
+ * command except `workspaces` and `whoami` then fails. Picking one is a real choice, so
+ * it is only made automatically when there is exactly ONE — with several, which
+ * workspace a project deploys into is the user's decision and the script says so rather
+ * than guessing.
+ */
+function selectRenderWorkspace() {
+  const current = spawnSync("render", ["workspace", "current", "-o", "json", "--confirm"], { stdio: "ignore" });
+  if (current.status === 0) return;
+
+  const listed = spawnSync("render", ["workspaces", "-o", "json", "--confirm"], { encoding: "utf8" });
+  if (listed.status !== 0) return;
+
+  let workspaces = [];
+  try {
+    workspaces = JSON.parse(listed.stdout ?? "[]") ?? [];
+  } catch {
+    return;
+  }
+
+  if (workspaces.length === 1) {
+    const only = workspaces[0];
+    run(["render", "workspace", "set", only.id, "--confirm", "-o", "text"]);
+    return;
+  }
+  if (workspaces.length > 1) {
+    console.log("\nrender: several workspaces are available. Choose the one this project deploys into:");
+    for (const workspace of workspaces) console.log(`  ${workspace.name}  (${workspace.id})`);
+    console.log("Then run: render workspace set <workspaceID>");
+  }
 }
 
 function completeHeadlessPairing(loginOutput) {
@@ -164,6 +236,10 @@ if (provider.captureAndComplete) {
     fail(`${providerId} login did not complete (exit ${login.status}). Rerun when ready, or follow ${provider.docs}.`);
   }
 }
+// Some providers need one more machine-local step before the credential is usable at
+// all. It runs before verification, because verification is what it exists to satisfy.
+if (provider.afterLogin) provider.afterLogin();
+
 if (!verified(provider)) {
   fail(`${providerId} login finished but a read-only verification call still fails. Rerun, or follow ${provider.docs}.`);
 }

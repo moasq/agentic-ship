@@ -21,6 +21,21 @@ const convexOrigins = (() => {
 })();
 
 /**
+ * React's DEVELOPMENT build calls `eval()` — it is how it reconstructs a callstack that
+ * crossed the server/client boundary, so a strict `script-src` turns every dev session
+ * into a console error and costs the React error overlay its stack traces.
+ *
+ * The allowance is therefore scoped to `next dev` and nothing else. `next build` sets
+ * NODE_ENV=production, so the shipped policy is byte-for-byte the strict one and never
+ * carries `unsafe-eval` — which is the whole point, because `unsafe-eval` in production
+ * is what turns an injected string into executable code. React never uses eval() in
+ * production, so there is nothing to trade away.
+ *
+ * `pnpm preflight` fails if this ever reaches the production policy unguarded.
+ */
+const isDev = process.env.NODE_ENV === "development";
+
+/**
  * Security headers ship on by default.
  * When you leave a hosted builder, the security posture becomes yours.
  * Reasoning for each header: .agents/skills/frontend-security/SKILL.md
@@ -32,7 +47,8 @@ const securityHeaders = [
       "default-src 'self'",
       // 'unsafe-inline' is required by Next's inline bootstrap script.
       // Move to a nonce-based policy before production if your host allows it.
-      "script-src 'self' 'unsafe-inline'",
+      // 'unsafe-eval' is DEV ONLY — see the isDev note above.
+      ["script-src 'self' 'unsafe-inline'", ...(isDev ? ["'unsafe-eval'"] : [])].join(" "),
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://images.unsplash.com https://images.pexels.com",
       "font-src 'self' data:",

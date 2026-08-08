@@ -78,8 +78,9 @@ Expose each family as a CSS variable and map those variables to `--font-sans`,
 Distilled from how people who build good AI-assisted UI actually work:
 
 1. **Never raw-prompt UI.** Layer curated sources: shadcn for structure, MagicUI for
-   motion, 21st.dev for marketing sections. "Make it look modern" produces the
-   average of the internet.
+   motion, Aceternity and 21st.dev for marketing sections. "Make it look modern"
+   produces the average of the internet. Search them through their MCP servers —
+   `component-picker` owns which one answers what.
 2. **References in, adjectives out.** Feed screenshots or links to specific designs
    rather than describing a vibe.
 3. **Ration the motion.** At most one or two animated pieces per viewport, on an

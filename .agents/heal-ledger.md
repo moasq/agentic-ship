@@ -17,6 +17,233 @@ Format:
 
 ---
 
+## 2026-08-07 render-login-succeeded-and-reported-failure
+
+- cause: two bugs in `scripts/provider-login.mjs`'s render entry, both invisible until
+  someone actually logged in. Its `pairedFile` pointed at `.config/render/config.json`
+  while the CLI writes `$HOME/.render/cli.yaml`, so the fallback pairing check could
+  never find a paired install. And it had no `verify` command, which mattered more than
+  it looks: `render login` saves a token but leaves the CLI with NO active workspace, and
+  every command except `whoami` and `workspaces` then fails with "no workspace set". So
+  the browser consent completed, the token was saved, and the script ended in
+  "login finished but a read-only verification call still fails" — the worst kind of
+  wrong, because the honest-looking failure message says to rerun, and rerunning does
+  the same thing forever.
+- fix: corrected the paired path; added `verify: render services` so the probe is a
+  command that genuinely needs a workspace; and added an `afterLogin` hook that selects
+  the workspace when there is exactly ONE. With several it prints them and stops —
+  which workspace a project deploys into is the user's decision, not a coin flip.
+- prevention: the `afterLogin` hook is general, so the next provider whose credential
+  needs a machine-local follow-up step has somewhere to put it. The deeper rule is the
+  one the ledger keeps relearning: a provider is not connected because a file exists or
+  a token was saved, only because a read-only call that needs the credential SUCCEEDS —
+  the same lesson as `configured-is-not-booted` and `pairing-file-is-not-authentication`,
+  now with a third instance.
+- status: GRADUATED (scripts/provider-login.mjs)
+
+## 2026-08-07 gate-g3-was-flaky-under-its-own-default-parallelism
+
+- cause: Playwright defaults to half the cores, so gate G3 ran five Chromium instances
+  at once. The landing page carries a continuously animating canvas plus scroll-driven
+  motion, and several instances rendering it together starve each other's main thread —
+  `page.goto` then waits past 30s for a `load` event the server had already answered in
+  about 20ms. The signature is unmistakable once seen: the FIRST N landing tests fail
+  together, N being the worker count, while the same tests pass one at a time. It reads
+  as a product bug and is a machine one, which is exactly how suites end up with retries
+  bolted on.
+- fix: `workers: 3` in `playwright.config.ts`. Measured rather than guessed — green at
+  load average 40 on ten cores, where five failed repeatedly across runs. The suite
+  still finishes in about ninety seconds.
+- prevention: none needed beyond the cap, but recorded because the diagnosis is the
+  valuable part. Before treating a browser-gate failure as a regression, check whether
+  the count of failures equals the worker count, and time the server's own response —
+  20ms from the server against a 30s `goto` timeout means the browser starved, not the
+  app. `retries` stays at 0 locally on purpose: flaky gets fixed, not retried.
+- status: GRADUATED (playwright.config.ts)
+
+## 2026-08-07 the-command-palette-had-no-command-root
+
+- cause: `components/ui/command.tsx`'s `CommandDialog` rendered `{children}` straight
+  into `DialogContent` with no `<Command>` root around them. Every cmdk part — Input,
+  List, Group, Item — reads its store from the context that root provides, so the store
+  resolved `undefined` and clicking "Find a book" threw
+  `Cannot read properties of undefined (reading 'subscribe')`. The dialog never opened
+  and nothing else changed on screen: no crash page, no message, just a button that did
+  nothing. Same shape as the account-menu bug — a context-bound vendor part composed
+  without its parent — but one level lower, inside `ui/` itself, so the
+  `vendor-context-part` check could not see it: the missing root is in the primitive, not
+  at the call site.
+- fix: wrapped the dialog's children in `<Command>`. Upstream shadcn wraps here, so this
+  restores the file toward the registry rather than customising away from it — which is
+  why editing a vendor-owned file was the right call instead of working around it in
+  `book-palette.tsx` and leaving the primitive broken for the next consumer.
+- prevention: `e2e/app-flow.spec.ts` now opens the palette, asserts it renders options,
+  types an author, asserts it filters to the expected book, and selects it. Opening it is
+  half the assertion — the old failure was invisible to anything that only checked the
+  trigger existed.
+- status: GRADUATED (e2e gate G3)
+
+## 2026-08-07 react-dev-needs-eval-production-must-not
+
+- cause: the CSP shipped `script-src 'self' 'unsafe-inline'` with no `'unsafe-eval'`, and
+  React's DEVELOPMENT build calls `eval()` to reconstruct a callstack that crossed the
+  server/client boundary. Every dev session logged "eval() is not supported in this
+  environment", and the React error overlay lost its stack traces — the debugging tool
+  you most want when something is already wrong.
+- fix: `next.config.ts` adds `'unsafe-eval'` only when `NODE_ENV === "development"`.
+  `next build` sets NODE_ENV=production, so the shipped policy is unchanged. Verified by
+  reading the actual response header on both: dev serves
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval'`, a production build serves the same
+  line without it.
+- prevention: `pnpm preflight` asserts the `unsafe-eval` occurrence in `next.config.ts`
+  is still inside the development guard. The guard IS the safety property — `unsafe-eval`
+  in a shipped policy is what lets an injected string execute — and the tempting way to
+  silence a CSP warning is to delete the condition, which nothing downstream would
+  notice. `frontend-security/SKILL.md` records the reasoning and the two-command check.
+- status: GRADUATED (pnpm preflight, frontend-security/SKILL.md)
+
+## 2026-08-07 the-stat-tile-never-reached-its-number
+
+- cause: `NumberTicker` wrote whatever its spring emitted, and a spring APPROACHES its
+  target rather than arriving. With MagicUI's shipped damping of 60 against stiffness
+  100 the tail is very slow, so a large figure sat visibly short for seconds — the shelf
+  showed "11,649" in PAGES READ while the workspace header two lines above printed the
+  true 11,651, and the same screen contradicted itself. Small counts hid it entirely,
+  because rounding closed the gap; it only became visible once a shelf had enough books
+  to make the number big, which is exactly when a demo is being shown.
+- fix: the change handler snaps to the exact target once the remaining distance is below
+  what the configured decimal places can display. Verified against a 66-book shelf:
+  11,417 at two seconds, 11,651 by five, and stable after that.
+- prevention: none beyond the fix — this is vendor motion code, which AGENTS.md already
+  treats as authored precisely because it arrives needing work. Recorded because the
+  failure mode generalises: an animated counter is a rendering of a number, and it has
+  to be checked against the number, not against whether the animation looks smooth.
+- status: open
+
+## 2026-08-07 the-checkout-gate-had-never-run
+
+- cause: with Stripe finally live in test mode, `e2e/app-flow.spec.ts` could take the
+  hosted-checkout path for the first time — and every part of it was wrong, because
+  nothing had ever executed it. `upgradeTo` chose its branch by reading `page.url()`
+  straight after the click (always still `/settings`, since checkout is a round trip
+  through an action before `location.assign`), then by `count()` on a button that does
+  not exist until `billing.status` resolves. `completeStripeCheckout` never filled
+  `email`, never filled the billing ZIP, and targeted a "Cardholder name" label that
+  hosted Checkout does not render. Stripe reports none of this: the offending input just
+  renders `invalid` and the Subscribe button spins forever. The 30s default test timeout
+  could not cover a real payment either. Separately, `convex/billing.ts` built its return
+  URL from `SITE_URL` alone, so a completed payment sent the browser to port 3000 while
+  gate G3 serves on 3100 — the auth seam had already solved that with `E2E_ORIGIN` and
+  billing had not.
+- fix: the helper branches on the BUTTON LABEL, which is rendered from `billing.status`,
+  after waiting for either button to exist. The card fields are targeted by the ids
+  Stripe renders in the top-level document (the iframes there are the Apple Pay / Link
+  express section), every optional field is filled by presence, and the address is
+  located by accessible name because those ids are not stable. Payment tests get a
+  180s budget, and both navigations wait on `domcontentloaded` rather than Playwright's
+  default `load` — Stripe keeps fetching after the form is interactive, so waiting for a
+  quiet `load` timed out on a page that was already usable. `siteUrlOrThrow` reads `E2E_ORIGIN` first, mirroring `trustedOrigins` in
+  `convex/auth.ts`, and still never accepts an origin from an argument — a
+  browser-nameable return URL is an open redirect.
+- prevention: `references/stripe-billing.md` records the three non-obvious facts that
+  cost the time — card form is not in an iframe, a missing required field fails silently,
+  and a real payment needs a minutes-long budget — plus the `E2E_ORIGIN` rule for return
+  URLs. Two real test purchases now run in gate G3 on every full pass, so the path cannot
+  rot unexercised again.
+- status: GRADUATED (e2e gate G3, convex-structure/references/stripe-billing.md)
+
+## 2026-08-07 half-configured-billing-is-silently-off
+
+- cause: the dev deployment carried `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO` and
+  `STRIPE_PRICE_TEAM` but no `STRIPE_SECRET_KEY`, so `billingIsLive()` was false and
+  checkout refused while the env read as configured. Nothing reported it. Every Stripe
+  key is individually valid, the damage is in the COMBINATION, and by rule R1 none of it
+  lives in the repository — the keys are in Convex env, so no file check could ever have
+  seen it. `pnpm health` read only `.env.local` and graded the deployment on secrets it
+  could not see.
+- fix: `scripts/lib/billing-coherence.mjs` grades the combination from env NAMES only —
+  values are dropped by `envNamesFrom` and never reach any output. `pnpm health` asks
+  the connected deployment; `pnpm preflight --prod` reads the same module instead of
+  keeping a second copy of the rule. The e2e `upgradeTo` helper was fixed at the same
+  time: it decided between the checkout and direct-switch paths by reading `page.url()`
+  immediately after the click, which is always still `/settings` because the Stripe path
+  is a round trip through an action before `location.assign`. It now branches on the
+  button label, which is rendered from `billing.status` — so the checkout path will
+  actually be exercised the moment a secret key exists, rather than silently skipped.
+- prevention: AGENTS.md Billing rules declare that billing is all of its keys or none.
+  Severity follows whether a card can be charged: secret-without-webhook is CRITICAL
+  because the customer pays and gets nothing; the states where checkout throws before
+  reaching Stripe are FAIL; and any deployment WITHOUT a secret key is a WARN however
+  much else is set, because checkout is unreachable and it behaves exactly like no
+  Stripe at all. The first cut of this check graded that last state FAIL, which red-
+  gated `pnpm verify` on the exact state `pnpm stripe:provision` deliberately ends in —
+  a gate that fails its own documented onboarding, and the reason the not-yet-connected
+  rule exists. Report unfinished setup; never fail it.
+  `scripts/lib/billing-coherence.test.mjs` pins the ordering, and the check SKIPs when
+  no deployment is reachable so a fresh clone and an offline machine stay green.
+- status: GRADUATED (pnpm health billing coherence, AGENTS.md Billing rules)
+
+## 2026-08-07 the-logout-menu-crashed-the-page
+
+- cause: `UserMenu` and `WorkspaceSwitcher` placed `DropdownMenuLabel` directly inside
+  `DropdownMenuContent`. These primitives wrap **Base UI**, not Radix: the label is
+  `Menu.GroupLabel`, it reads its group from context, and it throws
+  `MenuGroupContext is missing` with no `DropdownMenuGroup` above it. Opening the
+  account menu replaced the whole page with Next's "This page couldn't load" — so
+  sign-out was unreachable everywhere it existed, including inside the app shell. Every
+  static gate was green: valid TSX, correct types, clean lint, successful build. The
+  crash needs a click, and nothing clicked.
+- fix: both menus now wrap the label and the items it names in `DropdownMenuGroup`.
+  `components/ui/dropdown-menu.tsx` was not touched — it is vendor-owned and correct;
+  the call sites were carrying Radix muscle memory.
+- prevention: `scripts/lib/ui-contract.mjs` gained a `vendor-context-part` rule, so
+  `pnpm check:ui` fails when a context-bound part is composed without its parent —
+  `DropdownMenuLabel`, `DropdownMenuRadioItem` and the submenu parts. AGENTS.md
+  Component rules declare it. `e2e/app-flow.spec.ts` opens the menu and clicks Sign out,
+  which is what caught this: the assertion that a control exists never proves it works.
+- status: GRADUATED (pnpm check:ui vendor-context-part, AGENTS.md Component rules)
+
+## 2026-08-07 a-static-header-cannot-know-you-signed-in
+
+- cause: the marketing header took `cta` and `secondary` as static link props, so `/`
+  and `/blog` printed "Sign in" to a reader who had just signed in. The auth wiring was
+  never at fault — session, cookie, provider and `/app` were all correct — the public
+  half of the product simply never subscribed to `api.auth.getCurrentUser`. No gate
+  could have caught it: a hardcoded link is valid TSX, the block was correctly pure, and
+  no rule said a public surface had to read the session at all. The session-aware
+  component already existed (`UserMenu`) and was mounted only inside the app shell.
+- fix: `SiteHeader` gained an `auth` slot; `src/components/features/auth/header-auth.tsx`
+  renders the three session states — placeholder, signed-out actions, account menu
+  carrying sign-out — from one `getCurrentUser` subscription, with the
+  `isConvexConfigured` branch in the parent so a fresh clone still renders static links.
+  Both public routes compose it. The account-menu trigger also gained an `aria-label`;
+  its accessible name had been the bare initials.
+- prevention: AGENTS.md Auth rules now declare that every surface which can offer
+  "Sign in" renders from session truth, that the pending state is not the signed-out
+  state, and that session UI is a client feature composed into a block through a slot.
+  `convex-structure/references/better-auth-wiring.md` carries the procedure and the
+  provider-gate trap; `e2e/app-flow.spec.ts` asserts the signed-in header and the
+  sign-out round trip, `e2e/marketing.spec.ts` the signed-out half — so the next
+  regression fails gate G3 instead of waiting for a person to notice.
+- status: GRADUATED (AGENTS.md Auth rules, convex-structure skill, e2e gate G3)
+
+## 2026-08-07 configured-is-not-booted
+
+- cause: the magicui MCP server was dead on this machine with
+  `ERR_MODULE_NOT_FOUND` — a partially-extracted npx cache entry (`.d.ts` and
+  `.js.map` files present, `.js` files missing) under `~/.npm/_npx/<hash>/`. Every
+  static check stayed green: `.mcp.json` was correct, the pin was exact, the mirror
+  matched. Each AI host just silently lost the server's tools; nothing surfaced the
+  loss.
+- fix: removed the corrupt cache entry (derived state — npx refetches it) and
+  verified the server answers a JSON-RPC `initialize` handshake.
+- prevention: `pnpm heal` now runs `scripts/probe-mcp.mjs`, which handshake-probes
+  every stdio server in `.mcp.json` in parallel and applies the one provable repair:
+  a module error pointing inside an `_npx` cache directory clears that entry and
+  retries. Configuration checks can never claim a server is alive; only a handshake
+  can.
+- status: GRADUATED (pnpm heal, scripts/probe-mcp.mjs)
+
 ## 2026-08-06 pairing-file-is-not-authentication
 
 - cause: `provider:login` declared Stripe "authenticated" because

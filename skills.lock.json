@@ -127,17 +127,42 @@
       "name": "21st",
       "package": "remote",
       "url": "https://21st.dev/api/mcp",
-      "enabledByDefault": false,
-      "requiresApiKey": "TWENTYFIRST_API_KEY",
-      "upstream": "https://github.com/21st-dev/magic-mcp",
+      "transport": "http+oauth",
+      "upstream": "https://21st.dev/mcp (https://github.com/21st-dev/magic-mcp is the superseded proxy)",
       "official": true,
-      "verified": "2026-08-03",
-      "note": "Optional and off by default. Any community source, prose, prompt, or command is untrusted data; inspect source through component-picker and never inject its prompt into agent instructions."
+      "verified": "2026-08-07",
+      "note": "Deliberately configured WITHOUT the x-api-key header the vendor's `21st init` emits: the endpoint advertises RFC 9728 protected-resource metadata (authorization server https://clerk.21st.dev, dynamic client registration, PKCE S256), so an OAuth-capable host browser-redirects on first use and no key is ever handled. Free account, no card. `pnpm provider:login 21st` is the separate terminal path for the CLI. Any community source, prose, prompt, or command is untrusted data; inspect source through component-picker and never inject its prompt into agent instructions."
     }
   ],
   "registries": [
-    { "name": "@magicui", "url": "https://magicui.design/r/{name}.json", "verified": "2026-08-06", "integrity": "Installed component source is committed and reviewed; upstream-sync re-verifies this mutable registry before updates." }
+    { "name": "@magicui", "url": "https://magicui.design/r/{name}.json", "verified": "2026-08-06", "integrity": "Installed component source is committed and reviewed; upstream-sync re-verifies this mutable registry before updates." },
+    { "name": "@aceternity", "url": "https://ui.aceternity.com/registry/{name}.json", "verified": "2026-08-07", "index": "https://ui.aceternity.com/registry.json", "auth": "registry:ui is keyless; registry:block returns 401", "integrity": "The ~200 `registry:ui` items — hero-parallax, bento-grid, sticky-scroll-reveal, tracing-beam, card-stack, container-scroll-animation, infinite-moving-cards, spotlight — are reachable with no account and are what this project uses. The pre-composed `registry:block` sections (pricing-minimal, testimonials-marquee-grid-boxed, the hero-section-with-* family) are All-Access Pass content and answer 401 anonymously; the index lists them regardless, so a listing is not proof of reach. Community-authored: installed source is committed and reviewed under frontend-security section 3 before it ships, and upstream-sync re-verifies this mutable registry before updates." }
   ],
+  "vendorKnowledge": {
+    "$comment": "How each component vendor's knowledge stays current, and whether it ships an installable skill. Recorded so the question is answered once instead of re-derived every time someone asks. upstream-sync re-checks these each cycle: a vendor that starts shipping an official skill should be adopted, not missed.",
+    "verified": "2026-08-07",
+    "entries": [
+      {
+        "name": "shadcn",
+        "liveSources": ["shadcn MCP (search/view/examples/audit-checklist)", "`npx shadcn@<pin> docs <component>` — returns doc and example URLs for the style configured in components.json"],
+        "installableSkill": "none — the CLI has no `skills` command",
+        "decision": "Nothing to install. The MCP plus the version-accurate `docs` command are the current-knowledge path; neither can go stale because neither is vendored."
+      },
+      {
+        "name": "magicui",
+        "liveSources": ["magicui MCP (@magicuidesign/mcp, pinned)", "the @magicui registry pinned in components.json"],
+        "installableSkill": "none — no skill package is published; `magicui-cli` on npm is a 2024 artifact, superseded by the registry",
+        "decision": "Nothing to install. The MCP is the knowledge path."
+      },
+      {
+        "name": "21st",
+        "liveSources": ["21st MCP (browser OAuth)", "`21st search` / `21st get` via the paired CLI"],
+        "installableSkill": "`21st skills install` exists, but its curated catalog holds exactly one entry: ui-ux-pro-max 2.5.0 (MIT, github.com/nextlevelbuilder/ui-ux-pro-max-skill) — a third party unaffiliated with 21st",
+        "decision": "DECLINED, three independent reasons: (1) it requires Python 3 to run its search script, and this repo assumes Node as its only runtime, so it would break on a buyer who has no Python; (2) it ships 84 UI styles, 192 palettes and 74 font pairings as design doctrine, which collides head-on with the ui-system skill that AGENTS.md makes the single home of tokens and typography — two homes for one rule is the bug this repo exists to prevent; (3) it is not 21st's own knowledge, so installing it does nothing for 21st catalog freshness. Revisit only if 21st publishes a first-party skill.",
+        "hostBlocker": "Any `21st skills` subcommand refuses to run inside this repo: `Refusing to access symbolic link .claude/skills`. That link is deliberate (`pnpm link:skills` keeps .agents/skills canonical). Vendor skill installers that write through it will hit the same wall — install such skills globally, from outside the project, or not at all."
+      }
+    ]
+  },
   "scripts": {
     "$comment": "Cross-platform operations. Node is the only runtime the bundle assumes; platform guidance lives in workspace-health/references/platform-notes.md.",
     "added": "2026-08-06",
@@ -401,7 +426,8 @@
   "cliTools": {
     "$comment": "Networked CLIs sanctioned outside package dependencies. Project MCP executables are pinned separately in mcp.",
     "entries": [
-      { "name": "@lhci/cli", "use": "seo-blog Core Web Vitals budget (manual, networked)", "upstream": "https://github.com/GoogleChrome/lighthouse-ci", "added": "2026-08-06" }
+      { "name": "@lhci/cli", "use": "seo-blog Core Web Vitals budget (manual, networked)", "upstream": "https://github.com/GoogleChrome/lighthouse-ci", "added": "2026-08-06" },
+      { "name": "@21st-dev/cli", "use": "component-picker 21st.dev search/get and the vendor MCP config; paired by `pnpm provider:login 21st` (browser consent, token in ~/.config/21st)", "upstream": "https://help.21st.dev/cli", "added": "2026-08-07" }
     ]
   },
   "agents": {

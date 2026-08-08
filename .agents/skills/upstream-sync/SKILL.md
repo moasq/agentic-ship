@@ -33,15 +33,49 @@ For each entry under `mcp`:
 - Patch and minor bumps → fine, note them.
 - **Major bumps → flag as breaking.** Read the upstream changelog before updating, and
   say what changed in the report.
-- Remote servers (stripe, resend, posthog, render — and 21st when enabled) → confirm
-  the documented URL and auth scheme still match what is in `.mcp.json`. Vendors do
-  migrate; that is exactly how the old Magic MCP configuration went stale.
+- Remote servers (stripe, resend, posthog, render, 21st) → confirm the documented URL
+  and auth scheme still match what is in `.mcp.json`. Vendors do migrate; that is
+  exactly how the old Magic MCP configuration went stale. For 21st, `GET
+  /.well-known/oauth-protected-resource/api/mcp` must still return an authorization
+  server — that metadata is what lets the host authorize by browser instead of by key,
+  and losing it silently would put an API key back in the buyer's hands.
 
 ## 3. Registries
 
 Every URL under `registries` in both `components.json` and `skills.lock.json` must
 return HTTP 200. A dead registry is reported, never quietly replaced with hand-written
 components.
+
+## 3b. Vendor knowledge
+
+The bundle can go stale in a way no version pin catches: a vendor starts publishing an
+official skill, and this repo never notices because nothing was ever tracking the
+question. `vendorKnowledge` in `skills.lock.json` is that tracker — one entry per
+component vendor recording its live knowledge sources, whether it ships an installable
+skill, and the decision taken. Each cycle:
+
+- Re-run the discovery, do not trust the recorded answer: `21st skills catalog`,
+  `npx shadcn@<pin> --help` (look for a `skills` command), and the MagicUI repo and npm
+  org for a skill package.
+- **A vendor that has started shipping a first-party skill is a finding.** Report it and
+  propose adopting it — that is the whole reason this section exists.
+- A recorded `decision` of DECLINED is re-examined against its stated reasons, not
+  carried forward on authority. If the reasons no longer hold, the decision reopens.
+- Update `verified` whether or not anything changed. An unchanged date is how a skipped
+  check hides.
+
+Two standing constraints when adopting any vendor skill:
+
+- **It must not need a runtime beyond Node.** A skill that shells out to Python or Ruby
+  breaks the buyer who does not have it, and AGENTS.md makes Node the only assumed
+  runtime.
+- **It must not restate a rule this repo already declares.** A vendor design skill that
+  ships its own token, palette or typography doctrine collides with `ui-system`, which
+  AGENTS.md makes the single home for that. Two homes for one rule is the bug.
+
+Vendor skill installers generally refuse to write through `.claude/skills`, because it
+is a symlink to `.agents/skills`. That is the layout working as designed, not a fault to
+route around: install such a skill globally from outside the project, or not at all.
 
 ## 4. Framework pins
 

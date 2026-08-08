@@ -164,6 +164,32 @@ Swapping providers touches exactly three files — `convex/auth.ts`, `convex/aut
 and the provider component. Nothing in a domain file references the auth vendor; domain
 code only ever calls `requireUser`. Keep it that way.
 
+Session state in the interface is its own discipline. The engine ships no auth UI, but
+the moment a surface can say "Sign in" it renders from `api.auth.getCurrentUser` and its
+three states rather than from static copy — the marketing header included, which is the
+one every visitor sees and the one that gets hardcoded. The account-cluster procedure
+(block slot → client island → provider gate) is in `references/better-auth-wiring.md`.
+
+## 7b. Showcase data
+
+`convex/seed.ts` fills an existing shelf with books, notes and one published link, for
+demos and screenshots: `pnpm seed --slug <workspace-slug>`.
+
+Three properties keep it out of a real tenant, and a seed you add for another domain
+needs all three:
+
+- **`internalMutation`.** No browser path exists, so no customer can seed anything and
+  no public surface grows because the file exists.
+- **`ALLOW_TEST_SEED` gated.** It refuses without the flag, and `pnpm preflight --prod`
+  FAILS if that flag is ever set on production.
+- **It fills a workspace that already exists**, found by slug, writing every row against
+  that workspace's own `ownerId`. It creates no user, grants no membership and moves no
+  plan — so seeding can never be a way to reach a tenant or hand out access.
+
+Counters are **recomputed** from the rows that exist afterwards rather than incremented,
+because the seed may run on a shelf that already has books, and a header disagreeing
+with its own list is a visible bug.
+
 ## 8. Secrets
 
 Action secrets (API keys) live in **Convex env**: `npx convex env set NAME value`.
@@ -190,5 +216,7 @@ Deviating from this order is what produces the half-wired states agents get lost
 - [ ] No `.filter()` where an index belongs; no unbounded `.collect()`
 - [ ] Every `fetchQuery` outside a server-only surface has its why-comment
 - [ ] Blocks still stateless; no `useQuery` under `components/blocks/`
+- [ ] No hardcoded "Sign in" on a surface that can read a session — three states from
+      `getCurrentUser`, and the pending one is not the signed-out one
 - [ ] Secrets in Convex env, absent from `.env.local`
 - [ ] `npx convex dev --once` clean (when a deployment is connected), `pnpm verify` green

@@ -14,12 +14,21 @@ import type { QueryCtx, MutationCtx, ActionCtx } from "../_generated/server";
 export type Identity = {
   subject: string;
   email?: string;
+  name?: string;
 };
 
 export async function getUser(ctx: QueryCtx | MutationCtx | ActionCtx): Promise<Identity | null> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return null;
-  return { subject: identity.subject, email: identity.email };
+  return { subject: identity.subject, email: identity.email, name: identity.name };
+}
+
+/** A human label for a member row. Falls back through name → email local part → "Reader". */
+export function displayName(user: Identity): string {
+  if (user.name?.trim()) return user.name.trim().slice(0, 60);
+  const local = user.email?.split("@")[0];
+  if (local) return local.slice(0, 60);
+  return "Reader";
 }
 
 export async function requireUser(ctx: QueryCtx | MutationCtx | ActionCtx): Promise<Identity> {

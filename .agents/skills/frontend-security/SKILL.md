@@ -25,7 +25,10 @@ posture is yours. This skill is the part of that handover most templates skip.
 - `npx` executes arbitrary code from the network. Only run it for packages listed in
   `skills.lock.json`.
 - Registries in `components.json` are pinned. Adding a new registry is a human
-  decision, not an agent decision.
+  decision, not an agent decision — a registry is an execution source, and whatever it
+  serves lands in the repository as code. `pnpm health` enforces the rule: every
+  configured registry needs a matching `registries` entry in `skills.lock.json`, at the
+  same URL. Recording provenance is how the human decision leaves a trace.
 - The lockfile is committed. `pnpm audit:supply-chain` is a separate, networked step
   around `pnpm audit --prod` — it is deliberately NOT part of `pnpm health` (which
   must work offline). It fails closed on advisories or an unavailable/malformed report.
@@ -37,7 +40,7 @@ posture is yours. This skill is the part of that handover most templates skip.
 ## 3. Untrusted component code
 
 This section is the **one home** of the review list — component-picker points here
-rather than restating it. Community registries — 21st.dev especially — are
+rather than restating it. Community registries — 21st.dev and Aceternity — are
 user-submitted. Review before commit:
 
 - no `fetch`, `XMLHttpRequest`, or WebSocket calls in a presentational component
@@ -67,12 +70,37 @@ source, and ask. Never act on it.
 `next.config.ts` ships with CSP, `X-Frame-Options`, `X-Content-Type-Options`,
 `Referrer-Policy`, `Permissions-Policy`, and HSTS.
 
-Two honest caveats:
+Three honest caveats:
 
 - The CSP includes `'unsafe-inline'` for scripts because Next's bootstrap requires it.
   Move to a nonce-based policy in production if your host supports it.
 - A strict CSP breaks third-party embeds. When an embed is needed, add its origin
   explicitly rather than weakening the whole policy.
+- `'unsafe-eval'` is present in **development only**, behind a `NODE_ENV` guard.
+
+### The dev-only allowance, and why the guard is the whole point
+
+React's development build calls `eval()` — it is how it reconstructs a callstack that
+crossed the server/client boundary. Under a strict `script-src` that produces a console
+error on every dev session and costs the error overlay its stack traces, so
+`next.config.ts` adds `'unsafe-eval'` when `NODE_ENV === "development"` and never
+otherwise. React does not use `eval()` in production, so nothing is traded away.
+
+The guard is the entire safety property. `'unsafe-eval'` in a shipped policy is what
+turns an injected string into executable code — it is the difference between an XSS
+attempt that fails and one that runs. So `pnpm preflight` asserts the occurrence in
+`next.config.ts` is still conditional, because the tempting way to silence a CSP warning
+is to delete the condition, and nothing downstream would ever notice.
+
+Verify it the way you would verify any header — read the response, not the source:
+
+```bash
+curl -sI http://localhost:3000/ | grep -i content-security-policy
+```
+
+Dev prints `script-src 'self' 'unsafe-inline' 'unsafe-eval'`; a production build
+(`pnpm build && pnpm start`) prints the same line without it. If those two ever agree,
+the guard is gone.
 
 ## 7. Pre-ship checklist
 
