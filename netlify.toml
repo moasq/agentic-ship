@@ -1,0 +1,53 @@
+# Netlify configuration — the deployment as a committed, reviewable file.
+#
+# Same principle as the Render blueprint beside it: the topology lives in the repo,
+# diffable in a pull request and reproducible from a fork. Settings here OVERRIDE the
+# Netlify UI, so this file is the source of truth and a dashboard edit cannot silently
+# win. Nothing about the running site exists only in a dashboard.
+#
+# Netlify detects Next.js and applies its own adapter automatically — the App Router,
+# Server Components, streaming and the Full Route Cache are all handled, so there is no
+# plugin to declare here.
+#
+# Full env matrix and the go-live checklist:
+#   .agents/skills/convex-structure/references/deploy-netlify.md
+
+[build]
+  # `convex deploy` pushes the backend to the PROD Convex deployment and only then runs
+  # the frontend build, with NEXT_PUBLIC_CONVEX_URL injected for it. One command keeps
+  # backend and frontend from ever shipping out of step — the single most common way a
+  # Convex app breaks in production. `pnpm build` alone ships a frontend against a stale
+  # backend.
+  command = "npx convex deploy --cmd 'pnpm build'"
+
+[build.environment]
+  # Pinned so a Netlify default bump cannot silently change the runtime under the app.
+  NODE_VERSION = "22"
+  # Netlify detects pnpm from pnpm-lock.yaml and installs with it. Nothing else belongs
+  # here: this file is committed, so it holds configuration and never a secret.
+
+# Deploy previews get a Convex PREVIEW deployment rather than production, so a pull
+# request can never write to prod data. Convex reads this from the deploy key type.
+[context.deploy-preview]
+  command = "npx convex deploy --cmd 'pnpm build'"
+
+# ---------------------------------------------------------------------------------
+# SECRETS ARE NOT IN THIS FILE, and that is deliberate — it is committed.
+#
+# Netlify holds exactly two kinds of value:
+#   CONVEX_DEPLOY_KEY        full-write credential for the PROD Convex deployment,
+#                            generated in the Convex dashboard (Project Settings ->
+#                            Deploy Keys). It is on `pnpm health`'s CRITICAL list for
+#                            .env.local for exactly this reason.
+#   NEXT_PUBLIC_*            public by design: the PostHog project key (phc_, never a
+#                            phx_ personal key) and the PostHog host.
+#
+# Everything else — BETTER_AUTH_SECRET, SITE_URL, STRIPE_SECRET_KEY,
+# STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_*, RESEND_API_KEY, RESEND_WEBHOOK_SECRET,
+# EMAIL_FROM — belongs to the PROD CONVEX DEPLOYMENT's environment, not to Netlify.
+# The web host never sees a backend secret. That separation is the whole point of
+# running the backend in Convex, and it is what keeps live Stripe keys off every dev
+# machine (rule R7).
+#
+# Set them with:  netlify env:set CONVEX_DEPLOY_KEY --secret
+# ---------------------------------------------------------------------------------
