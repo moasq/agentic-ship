@@ -47,8 +47,8 @@ pinned MCP catalog, one copy of every rule:
 | --- | --- | --- |
 | A website | Next.js 16 · React 19 · Tailwind v4 · shadcn/ui · MagicUI | nothing |
 | A database | Convex | run `npx convex dev` once |
-| Sign in | Better Auth, wired — no screens | connect Convex |
-| Payments | Stripe hosted checkout, webhook entitlement | authorize, secrets only in Convex |
+| Sign in | Better Auth, wired — email + password, Google and GitHub, no screens | connect Convex |
+| Payments | Stripe hosted checkout, webhook entitlement | `pnpm provider:login stripe`, then provision |
 | Email | Resend | authorize, secrets only in Convex |
 | Analytics | PostHog, proxied on your own origin | add the public key |
 | Deploy | Netlify (`netlify.toml`) | `netlify init` then `netlify deploy --prod` |
@@ -61,12 +61,18 @@ through resumable handoffs; credentials never enter chat, state, or the repo.
 
 | Command | Answers |
 | --- | --- |
-| `pnpm health` | is anything wrong — every failure includes the fix |
+| `pnpm health` | is anything wrong — including what only the deployment knows, like a Stripe secret key with no webhook secret behind it |
 | `pnpm verify` | is my work actually finished |
 | `pnpm verify:full` | release gates: audit, unit tests, production browser suite |
 | `pnpm heal` | can it fix itself (links, mirrors, lockfile), with proof |
 | `pnpm onboard --host <host>` | which provider does this product still need |
+| `pnpm provider:login <cli>` | authorize a vendor through its own browser OAuth |
 | `pnpm preflight --prod` | am I actually ready to launch |
+
+Provider keys are graded as **combinations**, not one at a time, because that is where
+the damage lives: each key is individually valid while a secret key with no webhook
+secret means the customer pays and never gets the plan. The checks read env *names* from
+the connected deployment — never a value.
 
 ## Works with any agent
 
@@ -82,7 +88,7 @@ Host marks above are vendored, not hotlinked — provenance in
 
 - [AGENTS.md](AGENTS.md) — every rule, in one file
 - [.agents/skills/](.agents/skills) — procedures: product lifecycle, connections, UI, backend, security, testing, launch
-- [.agents/agents/](.agents/agents) — the five specialist role briefs
+- [.agents/agents/](.agents/agents) — five specialist role briefs, plus the vendor-generated Playwright trio
 
 ## License
 

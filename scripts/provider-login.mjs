@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * pnpm provider:login <stripe|render|netlify|github|21st>
+ * pnpm provider:login <stripe|netlify|github|21st>
  *
  * One journey per provider: install the official CLI if it is missing, then run its
  * browser OAuth login and wait for consent. The terminal never carries a credential —
@@ -39,26 +39,6 @@ const PROVIDERS = {
     login: ["stripe", "login"],
     captureAndComplete: true,
     verify: ["stripe", "products", "list", "--limit", "1"],
-  },
-  render: {
-    binary: "render",
-    docs: "https://render.com/docs/cli",
-    // The CLI writes $HOME/.render/cli.yaml, NOT .config/render/config.json. The old
-    // path meant `verified()` never found a paired install, so this provider always
-    // reported itself unauthenticated no matter how many times login succeeded.
-    pairedFile: join(".render", "cli.yaml"),
-    install: {
-      darwin: [["brew", "install", "render"]],
-      linux: [["brew", "install", "render"]],
-      win32: null,
-    },
-    login: ["render", "login"],
-    feedEnter: true,
-    // A token alone is not a usable pairing here: every other render command fails with
-    // "no workspace set" until one is chosen, so the read-only probe has to be one of
-    // the commands that actually needs a workspace.
-    verify: ["render", "services", "-o", "json", "--confirm"],
-    afterLogin: selectRenderWorkspace,
   },
   netlify: {
     binary: "netlify",
@@ -116,38 +96,6 @@ function verified(provider) {
   return result.status === 0;
 }
 
-/**
- * Render's login saves a token but leaves the CLI with no active workspace, and every
- * command except `workspaces` and `whoami` then fails. Picking one is a real choice, so
- * it is only made automatically when there is exactly ONE — with several, which
- * workspace a project deploys into is the user's decision and the script says so rather
- * than guessing.
- */
-function selectRenderWorkspace() {
-  const current = spawnSync("render", ["workspace", "current", "-o", "json", "--confirm"], { stdio: "ignore" });
-  if (current.status === 0) return;
-
-  const listed = spawnSync("render", ["workspaces", "-o", "json", "--confirm"], { encoding: "utf8" });
-  if (listed.status !== 0) return;
-
-  let workspaces = [];
-  try {
-    workspaces = JSON.parse(listed.stdout ?? "[]") ?? [];
-  } catch {
-    return;
-  }
-
-  if (workspaces.length === 1) {
-    const only = workspaces[0];
-    run(["render", "workspace", "set", only.id, "--confirm", "-o", "text"]);
-    return;
-  }
-  if (workspaces.length > 1) {
-    console.log("\nrender: several workspaces are available. Choose the one this project deploys into:");
-    for (const workspace of workspaces) console.log(`  ${workspace.name}  (${workspace.id})`);
-    console.log("Then run: render workspace set <workspaceID>");
-  }
-}
 
 function completeHeadlessPairing(loginOutput) {
   const start = loginOutput.indexOf("{");
