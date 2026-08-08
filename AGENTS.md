@@ -57,14 +57,15 @@ Windows. The buyer may be on any of the three.
 | `pnpm verify` | **the offline definition of done** — health + agent/MCP/UI contracts + lint + build |
 | `pnpm verify:full` | verify + fail-closed production audit + unit tests + e2e; use before a PR or deploy |
 | `pnpm test` · `pnpm test:e2e` | gate G2 (vitest, in-memory) · gate G3 (Playwright, production build) |
-| `pnpm heal` | tier-1 deterministic repairs (links, mirrors, env, lockfile), then health as proof |
+| `pnpm heal` | tier-1 deterministic repairs (links, mirrors, env, lockfile, MCP server boot), then health as proof |
 | `pnpm preflight [--prod]` | **the go-live gate** — live keys, email flips, no seed backdoor |
 | `pnpm health` | machine-checkable half of `workspace-health` — pins, SSOT, adapters, tokens, env leaks, backend status |
 | `pnpm onboard [provider] --host <host>` | provider-selective status or the next resumable human step |
 | `pnpm connect` | begin, inspect, resume, or cancel safe service-connection receipts |
-| `pnpm provider:login <cli>` | install + browser-OAuth pair a vendor's official CLI (stripe, render, github) |
-| `pnpm stripe:provision` | webhook endpoint and plan prices through the paired CLI; secrets flow straight into Convex env, never printed |
+| `pnpm provider:login <cli>` | install + browser-OAuth pair a vendor's official CLI (stripe, netlify, github, 21st) |
+| `pnpm stripe:provision` | webhook endpoint and plan prices through the paired CLI; secrets flow straight into Convex env, never printed. `--test-key` copies the CLI's TEST key so a sandbox can take a 4242 payment; it refuses anything that is not `sk_test`/`rk_test`, and refuses `--prod` |
 | `pnpm secret:set NAME` | hidden-input prompt in the user's terminal, piped into Convex env — no chat, no history, no files |
+| `pnpm seed --slug <slug>` | fill an existing shelf with showcase books, notes and one published link. Internal mutation, `ALLOW_TEST_SEED` gated, dev only |
 | `pnpm agent:work` | durable dependency-aware work queue shared across supported AI hosts |
 | `pnpm check:ui` | component direction, purity, fixtures, naming, tokens, and unsafe-code gate |
 | `pnpm font` · `pnpm asset` | fetch a licensed font / an allowlisted image, cross-platform |
@@ -160,7 +161,7 @@ briefs: follow the named skills directly.
   provider page itself (`pnpm open:url`, restricted to catalog origins). On no, it
   cancels the receipt and runs nothing.
 - **Authorization is the vendor's own OAuth wherever one exists.** Convex, Stripe,
-  Render, and GitHub authorize through their official CLI browser flows
+  Netlify, and GitHub authorize through their official CLI browser flows
   (`pnpm provider:login`), where approving in the browser is the entire consent and
   the credential lands only in the CLI's machine-local store. Choices the catalog
   cannot make — such as Convex's new-vs-existing project — are payload `decision`s
@@ -204,6 +205,7 @@ src/
   app/blog/               the article pipeline; publishing is the seo-blog skill's job
   components/ui/          shadcn primitives — vendor-owned, never edited in place
   components/magicui/     (you create) MagicUI accents, moved here after install
+  components/aceternity/  (you create) Aceternity primitives, tokenized on arrival
   components/blocks/      (you create) composed sections — props in, JSX out
   components/features/    (you create) feature-owned components — Convex hooks live HERE
   stores/                 (you create) Zustand stores, one per domain
@@ -220,17 +222,38 @@ else. Metadata derives from it; never hardcode the product's name in a component
 
 - Pick sources with the `component-picker` matrix: shadcn for structure, MagicUI for
   motion, 21st.dev for marketing sections, Lucide for icons.
+- Discovery runs through the wired MCP servers in `.mcp.json` — shadcn, magicui, and
+  21st — before memory or the open web. An agent that hand-writes a section one of
+  those catalogs already ships is the "plain generated page" failure mode.
+- **Nothing in the component path costs money or requires an account.** shadcn,
+  MagicUI, and Aceternity are keyless registries pinned in `components.json`; use them
+  first. 21st.dev is the one source that needs an identity, and it authorizes through
+  its own browser OAuth — an OAuth-capable host redirects on first use, no key is ever
+  handled, and the account is free. `pnpm provider:login 21st` is the same consent for
+  the terminal CLI. A buyer who never signs in loses one catalog and nothing else.
 - Reuse before installing. Search `src/components/` first.
 - `components/ui/` is vendor-owned. Customize by wrapping, never by editing, so the
   files stay diffable against the registry. Vendor compound exports and registry class
   shapes are exempt from authored one-component and token checks.
-- Blocks import **down only**: `blocks/` → `ui/` and `magicui/`. Never block → block.
+- **A vendor part that reads a parent's context must be composed inside that parent.**
+  The shadcn primitives here wrap Base UI, not Radix, and its menu group and submenu
+  parts are context-bound despite carrying the familiar names — `DropdownMenuLabel` is
+  `Menu.GroupLabel` and throws with no `DropdownMenuGroup` above it. Nothing catches
+  that at build time, because it fails only when a person opens the menu, so
+  `pnpm check:ui` asserts the ancestor statically instead.
+- Blocks import **down only**: `blocks/` → `ui/`, `magicui/` and `aceternity/`. Never
+  block → block.
+- Vendor motion catalogs (`magicui/`, `aceternity/`) are **tokenized on arrival**, not
+  left as shipped: registry source carries its own palette, hex and arbitrary values,
+  and `pnpm check:ui` treats both directories as authored for exactly that reason. Only
+  `ui/` is exempt, because it stays diffable against the shadcn registry.
 - Props in, JSX out. No data fetching inside `blocks/`.
 - One component per file; file name matches the export.
 - Every block renders standalone with mock props through a sibling
   `<name>.fixture.tsx` that exports `fixture`.
-- `pnpm check:ui` enforces these authored boundaries plus unsafe pasted-code and token
-  checks. A failing component contract is a failing definition of done.
+- `pnpm check:ui` enforces these authored boundaries plus context-bound vendor parts,
+  unsafe pasted-code and token checks. A failing component contract is a failing
+  definition of done.
 
 ## Styling rules
 
@@ -306,8 +329,28 @@ needs, against these seams, when the user asks for them:
   throws. Client actions (sign in/up/out) go through `authClient` in
   `src/lib/auth-client.ts`; RSC/Server Action data goes through `src/lib/auth-server.ts`
   (`preloadAuthQuery`, `fetchAuthMutation`).
+- **Every surface that can offer "Sign in" renders from session truth, never from static
+  copy.** A header, nav, or call to action with a hardcoded sign-in link is a defect: it
+  asks a signed-in reader to sign in again. Such a surface renders three states from one
+  `api.auth.getCurrentUser` subscription — `undefined` a placeholder of the same
+  footprint, `null` the signed-out actions, a user the account menu carrying sign-out.
+  Falling back to the signed-out actions while the session resolves is the same defect,
+  one frame shorter, and reads to a signed-in reader as having been logged out. This
+  binds the marketing surfaces too: signing in and returning to `/` is the check.
+- Session UI is a **client feature composed into a block through a slot** — it lives in
+  `components/features/`, never as a hook inside `components/blocks/`, and the parent
+  branches on `isConvexConfigured` before it mounts. Public pages stay statically
+  rendered and resolve the session in the browser; a surface that cannot afford the
+  placeholder uses `preloadAuthQuery` and gives up static delivery to do it.
 - Adding an auth method = a plugin toggle in **both** `convex/auth.ts` and
   `src/lib/auth-client.ts`. Never a new endpoint, never a custom credential flow.
+- **Social sign-in is all of a provider's credential pair or none of it.** Google and
+  GitHub are wired and enable themselves when their id AND secret are both in Convex
+  env. Better Auth registers a provider with only an id, and the failure then lands on
+  the customer as a broken redirect at the provider's own domain — so a half-set pair is
+  treated as absent, and `pnpm health` reports it. The sign-in screen renders its buttons
+  from `api.auth.enabledSocialProviders`, never a hardcoded list: a button must not exist
+  for a provider this deployment cannot complete.
 - `src/app/api/auth/[...all]/route.ts` is the one sanctioned Next API route. It answers
   503 with the onboarding pointer until the backend is connected.
 - `better-auth` is pinned **exact** (`1.6.26`): it includes the account-takeover fix
@@ -331,6 +374,31 @@ product. Full flow and rule list: `.agents/skills/convex-structure/references/st
 - `/stripe/webhook` belongs to the `@convex-dev/stripe` component — never parse a
   webhook body yourself, never add a second webhook route in front of it.
 - No money math in our code. Stripe computed it; read it from the synced tables.
+- **Billing is all of its keys or none of them.** Every Stripe key is individually valid
+  in isolation, so the damage lives in the combinations, and none of it is visible in
+  the repository — the keys live in Convex env by rule R1, which means no file check can
+  ever see this. `pnpm health` asks the connected deployment, using names only, never a
+  value. Severity follows whether a card can be charged: a secret key without a webhook
+  secret is CRITICAL, because checkout completes and entitlement never arrives. A
+  deployment with no secret key is a WARN however much else is set — checkout is
+  unreachable, so it behaves exactly like one with no Stripe at all, and
+  `pnpm stripe:provision` ends in precisely that state by design. Unfinished setup is
+  reported, never failed; that is the not-yet-connected rule, and a gate that reddens on
+  its own onboarding is a bug.
+- A **live** `STRIPE_SECRET_KEY` is the one value no CLI may mint. It goes in through
+  `pnpm secret:set STRIPE_SECRET_KEY` (hidden input in the user's own terminal, piped
+  into Convex env) and is the human's step by design. In **test mode** the paired CLI
+  already holds a sandbox key, so `pnpm stripe:provision --test-key` copies it into
+  Convex env without printing it and a buyer can watch a 4242 payment land before ever
+  opening a dashboard. That path reads only `test_mode_api_key`, refuses any value that
+  is not `sk_test`/`rk_test`, and refuses `--prod` — the live key beside it in the same
+  file is never touched. Everything else — webhook endpoint, products, prices — is
+  `pnpm stripe:provision`.
+- **Seeded rows never reach a real tenant.** `convex/seed.ts` is an `internalMutation`
+  gated on `ALLOW_TEST_SEED`, so there is no browser path to it, and `pnpm preflight`
+  FAILS if that flag exists on production. It fills a workspace that already exists,
+  writing every row against that workspace's own `ownerId` — it creates no user, grants
+  no membership and moves no plan, so seeding can never hand anyone access.
 
 ## Email rules (Resend, wired)
 
@@ -362,21 +430,26 @@ Detail: `.agents/skills/frontend-security/references/analytics-posthog.md`.
 - `autocapture` is off and inputs are masked in replay. Turning either on is a
   `frontend-security` decision, not a convenience.
 
-## Deploy rules (Render)
+## Deploy rules (Netlify)
 
-Detail: `.agents/skills/convex-structure/references/deploy-render.md`.
+Detail: `.agents/skills/convex-structure/references/deploy-netlify.md`.
 
-- `render.yaml` is the deployment. Change the topology there, in a reviewable diff —
-  never by clicking in a dashboard.
+- `netlify.toml` is the deployment. Change the topology there, in a reviewable diff —
+  never by clicking in a dashboard. Netlify treats the file as authoritative and it
+  **overrides** the UI, so a dashboard edit cannot silently win.
 - The build command must run `npx convex deploy --cmd 'pnpm build'`, so backend and
   frontend ship together. `pnpm build` alone ships a frontend against a stale backend.
-- Render holds `CONVEX_DEPLOY_KEY` and public keys only. Every backend secret lives in
+- Netlify holds `CONVEX_DEPLOY_KEY` and public keys only. Every backend secret lives in
   the **prod Convex deployment's** env, which is what keeps live Stripe keys off dev
   machines.
-- Secret **values** never appear in `render.yaml` — declare them `sync: false` and set
-  them in the dashboard. The file is committed; a value written into it is published.
-- Connecting Render is a browser step and the buyer's, not yours: the repo is linked at
-  render.com, and `CONVEX_DEPLOY_KEY` is copied out of the Convex dashboard by hand.
+- Secret **values** never appear in `netlify.toml` — it is committed, and a value
+  written into it is published. Set them with `netlify env:set <NAME> --secret`.
+- **The whole path is the terminal**, which is why this host and not another:
+  `netlify init` creates the site and links the repo, `netlify env:set` configures it,
+  `netlify deploy --prod` ships. Nothing here needs a dashboard. Render was replaced for
+  exactly this reason — `render deploys create` requires a `serviceID` that only the
+  dashboard can mint, and `render blueprints` can validate a blueprint but never apply
+  one, so the first deploy could not be reached from a terminal at all.
 
 ## Security rules
 
@@ -401,14 +474,14 @@ The kit's defaults are deliberately test-safe; going live is a set of **delibera
 flips**, gated by `pnpm preflight` and the `production-preflight` skill:
 
 - Live Stripe keys exist **only** in the prod Convex deployment's env. A live key on a
-  dev machine or in Render is a CRITICAL, and preflight `--prod` fails if prod still
+  dev machine or in Netlify is a CRITICAL, and preflight `--prod` fails if prod still
   holds a test key — that is production taking test payments.
 - Email leaves `testMode` **together with** `requireEmailVerification: true`, after a
   sending domain is verified. Never one without the other.
 - `ALLOW_TEST_SEED` must not exist on prod. Preflight fails if it does.
 - `src/lib/site.ts` placeholders must be replaced before launch — they are the
   `<title>`, the OG card and llms.txt.
-- Prod incidents: rollback first (last green deploy in Render), diagnose locally
+- Prod incidents: rollback first (last green deploy in Netlify), diagnose locally
   through the gates second. Never a patch loop against production.
 
 ## SEO / AEO rules

@@ -21,6 +21,9 @@
       "@magicuidesign/mcp@2.0.0"
     ]
   },
+  "21st": {
+    "url": "https://21st.dev/api/mcp"
+  },
   "context7": {
     "command": "npx",
     "args": [

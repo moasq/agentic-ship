@@ -12,6 +12,10 @@
       "command": "npx",
       "args": ["-y", "@magicuidesign/mcp@2.0.0"]
     },
+    "21st": {
+      "type": "http",
+      "url": "https://21st.dev/api/mcp"
+    },
     "context7": {
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp@3.2.5"]

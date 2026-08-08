@@ -53,6 +53,12 @@ const repairs = [
     fix: "pnpm install --lockfile-only",
     why: "pnpm-lock.yaml regenerated from the UNCHANGED ranges in package.json — the exact failure CI once caught",
   },
+  {
+    name: "mcp servers boot",
+    check: "node scripts/probe-mcp.mjs --check",
+    fix: "node scripts/probe-mcp.mjs",
+    why: "stdio servers handshake-probed; a provably corrupt npx cache entry is cleared and refetched — config can be green while a server is dead",
+  },
 ];
 
 console.log("\n  tier-1 heal — deterministic repairs only\n");

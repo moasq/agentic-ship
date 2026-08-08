@@ -18,6 +18,10 @@ args = ["-y", "next-devtools-mcp@0.4.0"]
 command = "npx"
 args = ["-y", "@magicuidesign/mcp@2.0.0"]
 
+# Source server: 21st
+[mcp_servers.workspace-21st]
+url = "https://21st.dev/api/mcp"
+
 # Source server: context7
 [mcp_servers.workspace-context7]
 command = "npx"
