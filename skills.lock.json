@@ -184,7 +184,7 @@
   "installer": {
     "command": "npx github:moasq/create-agentic-ship my-app",
     "repo": "https://github.com/moasq/create-agentic-ship",
-    "verified": "2026-08-04",
+    "verified": "2026-08-09",
     "design": "Zero dependencies, in its own repo. npx installs a package before running it, so any dependency is time the user spends waiting — and npm cannot install from a subdirectory of this repo, which rules out shipping the CLI here. It downloads the GitHub tarball and unpacks it with node:zlib plus a ~40-line tar reader: no git, no curl, no tar binary, no shell, so it behaves the same on Windows.",
     "notes": "The .claude/skills symlink is skipped by the tarball (symlink entries are not extracted) and recreated by postinstall's link-skills — the same repair path that fixes Windows checkouts. Publishing to npm would shorten the command to `npx create-agentic-ship`; that needs the owner's npm account."
   },
