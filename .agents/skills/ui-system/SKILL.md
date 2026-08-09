@@ -5,22 +5,22 @@ description: Establish and enforce the project's visual system — design tokens
 
 # UI System
 
-Hosted builders sell a design harness. This skill is that harness. Its whole job is to
-make every generation land inside one consistent visual system instead of drifting
-toward the defaults that make AI-built sites recognisable at a glance.
+This skill implements the tokens, type, density, shape and themes selected in the
+validated UI plan. Use `visual-direction` first for substantial interface work; a
+coherent token system cannot rescue an unexamined composition by itself.
 
 ## Why AI sites look identical
 
-Roughly ninety percent of the sameness comes from four defaults, all of which this
-skill overrides:
+Four defaults frequently signal an unexamined visual system:
 
 1. The untouched shadcn neutral palette.
 2. Inter, Geist, Space Grotesk, or Poppins as the primary face.
 3. `rounded-lg` on everything.
 4. Violet-to-blue gradient on white.
 
-Override those four and the site stops reading as generated, before a single custom
-component is written.
+Changing those four removes common residue, but does not prove the hierarchy, content,
+assets, responsive intent or composition are product-specific. The visual-direction
+rubric owns that review.
 
 ## 1. Tokens live in exactly one place
 
@@ -73,16 +73,23 @@ detail: `references/font-pairings.md`.
 Expose each family as a CSS variable and map those variables to `--font-sans`,
 `--font-mono` and `--font-heading` in `@theme`. Components never name a family.
 
-## 3. Composition rules
+## 3. Implement the selected composition
 
-Distilled from how people who build good AI-assisted UI actually work:
+Read `.agents/ui/plan.json` and validate it before implementation:
+
+```text
+pnpm ui:plan check
+```
+
+Then preserve the plan's hierarchy, responsive intent, motion purpose and signature
+element while applying the system:
 
 1. **Never raw-prompt UI.** Layer curated sources: shadcn for structure, MagicUI for
    motion, Aceternity and 21st.dev for marketing sections. "Make it look modern"
    produces the average of the internet. Search them through their MCP servers —
    `component-picker` owns which one answers what.
-2. **References in, adjectives out.** Feed screenshots or links to specific designs
-   rather than describing a vibe.
+2. **References inform decisions, not copying.** The plan records take/avoid lessons;
+   research screenshots never become product assets.
 3. **Ration the motion.** At most one or two animated pieces per viewport, on an
    otherwise calm base.
 4. **One signature element per page** — a bento grid, one gradient field, or one 3D
@@ -100,4 +107,5 @@ on real components and make sure the accent still works on the dark ground.
 - [ ] `--radius` chosen deliberately
 - [ ] Dark mode reviewed on a real page, not just tokens
 - [ ] No raw hex anywhere under `src/`
+- [ ] Selected visual plan still matches the rendered hierarchy and signature element
 - [ ] `pnpm verify` green — the definition of done, same as every completion

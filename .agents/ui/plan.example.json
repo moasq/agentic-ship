@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "name": "Example product",
+    "audience": "People completing one clearly named job"
+  },
+  "actors": ["visitor", "signed-in customer"],
+  "journey": [
+    "Understand the product's concrete promise",
+    "Inspect evidence relevant to the decision",
+    "Take one obvious next action"
+  ],
+  "contentHierarchy": [
+    "Concrete product promise and primary action",
+    "Fixture-backed proof in the signature element",
+    "Supporting detail and objections",
+    "Closing decision"
+  ],
+  "directionExploration": {
+    "candidates": [
+      {
+        "id": "editorial-workbench",
+        "thesis": "A quiet editorial frame organized around one real working artifact.",
+        "composition": "Asymmetric narrative column paired with a dense product workbench.",
+        "typography": "Expressive serif-like display rhythm with a compact sans-serif body.",
+        "palette": "Paper neutrals, dark ink, and one annotation accent.",
+        "signatureElement": "An inspectable product artifact carrying real fixture content."
+      },
+      {
+        "id": "technical-index",
+        "thesis": "A precise reference index that makes comparison the visual story.",
+        "composition": "Dense ruled rows and marginal labels with almost no card containers.",
+        "typography": "Narrow display labels paired with highly legible tabular body text.",
+        "palette": "Cool monochrome surfaces with status colors used only as data.",
+        "signatureElement": "A live comparison index with a persistent reading cursor."
+      },
+      {
+        "id": "human-collage",
+        "thesis": "A warm, human proof wall built from outcomes and annotated evidence.",
+        "composition": "Overlapping editorial fragments anchored by one clear action column.",
+        "typography": "Friendly grotesk headlines with restrained handwritten annotations.",
+        "palette": "Warm off-white, charcoal, and a tactile print-inspired accent.",
+        "signatureElement": "A layered proof wall made from licensed or product-owned assets."
+      }
+    ],
+    "selectedDirection": {
+      "id": "editorial-workbench",
+      "rationale": "It makes the product itself the proof while preserving a direct reading order and modest asset budget.",
+      "rejections": [
+        {
+          "id": "technical-index",
+          "reason": "Its comparison density overstates the amount of structured product data on this route."
+        },
+        {
+          "id": "human-collage",
+          "reason": "Its asset dependence would compete with the working artifact and slow responsive delivery."
+        }
+      ]
+    },
+    "refinementVariants": [
+      {
+        "id": "artifact-forward",
+        "change": "Give the workbench the first viewport's dominant area and compress supporting copy.",
+        "tradeoff": "Stronger proof, but less room to explain an unfamiliar category."
+      },
+      {
+        "id": "narrative-forward",
+        "change": "Lead with a compact product narrative before revealing the full workbench.",
+        "tradeoff": "Clearer category framing, but the product proof arrives later."
+      }
+    ],
+    "selectedVariant": {
+      "id": "artifact-forward",
+      "rationale": "The audience already understands the category and needs evidence of a specific product advantage."
+    }
+  },
+  "visualThesis": "Editorial restraint with one product-specific working surface, not a generic SaaS montage.",
+  "signatureElement": "A real, fixture-backed product artifact that carries the page's primary proof.",
+  "surfaces": [
+    {
+      "id": "home",
+      "route": "/",
+      "owner": "frontend-builder",
+      "states": [
+        {
+          "id": "default",
+          "description": "Public landing state with deterministic content",
+          "query": "",
+          "marker": { "role": "heading", "name": "Example product" }
+        }
+      ],
+      "themes": ["light", "dark"],
+      "interactions": [
+        {
+          "id": "primary-action",
+          "role": "link",
+          "name": "Start",
+          "purpose": "Advance to the product's first meaningful task"
+        }
+      ]
+    }
+  ],
+  "viewports": [
+    { "name": "narrow", "width": 320, "height": 640 },
+    { "name": "tablet", "width": 768, "height": 1024 },
+    { "name": "desktop", "width": 1440, "height": 900 }
+  ],
+  "references": [
+    {
+      "title": "A directly inspected reference",
+      "url": "https://example.com/",
+      "provenance": "live-site",
+      "lesson": "Name the transferable hierarchy or interaction lesson; do not copy its composition or assets."
+    }
+  ],
+  "tokens": {
+    "typography": "One expressive display face paired with a highly legible body face.",
+    "palette": "A calm neutral base with one semantic accent tied to product meaning.",
+    "density": "Compact around controls and evidence; more open around the primary narrative transition.",
+    "shapeLanguage": "Mostly square working surfaces with restrained rounding on interactive controls."
+  },
+  "motionBudget": {
+    "maxSimultaneousPieces": 1,
+    "purpose": "Motion explains a state change or directs attention to the signature element."
+  },
+  "componentSources": [
+    {
+      "need": "Primary action",
+      "source": "existing shadcn primitive",
+      "decision": "Reuse and wrap; do not edit the vendor primitive."
+    }
+  ],
+  "responsiveIntent": {
+    "narrow": "Recompose into one reading column; keep the primary action and proof visible without horizontal scrolling.",
+    "tablet": "Preserve hierarchy while introducing the first useful side-by-side relationship.",
+    "desktop": "Use width for stronger composition and evidence density, not simply larger empty margins."
+  },
+  "accessibilityConstraints": [
+    "One main landmark and a coherent heading order",
+    "Every meaningful interaction is named and keyboard reachable",
+    "No horizontal overflow at 320 CSS pixels"
+  ],
+  "antiGoals": [
+    "No interchangeable gradient-and-glow hero",
+    "No repeated card grid without content-driven grouping",
+    "No motion that competes with the signature element"
+  ],
+  "dataPolicy": "public-or-synthetic-only"
+}

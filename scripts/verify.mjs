@@ -2,8 +2,8 @@
 /**
  * The definition of done. Nothing is finished until this passes.
  *
- *   pnpm verify        health + architecture checks + lint + build
- *   pnpm verify:full   verify + supply-chain audit + unit + browser gates
+ *   pnpm verify        tool health + adapter and MCP integrity + unit contracts
+ *   pnpm verify:full   verify + supply-chain audit
  *
  * It exists as one command so that "did you check?" has a single answer, and so the
  * Stop hook in .claude/settings.json can enforce it without judgment: the hook runs
@@ -41,19 +41,16 @@ if (asHook) {
 }
 
 const steps = [
-  { name: "health", cmd: "pnpm health", why: "single source of truth, pins, secrets, backend stage" },
+  { name: "health", cmd: "pnpm health", why: "tool assets and no bundled product application" },
   { name: "agent adapters", cmd: "pnpm check:agents", why: "canonical roles and generated host-native adapters" },
   { name: "MCP mirror", cmd: "pnpm check:mcp", why: "one pinned tool catalog across supported hosts" },
-  { name: "UI contract", cmd: "pnpm check:ui", why: "component boundaries, fixtures, tokens, and unsafe pasted code" },
-  { name: "lint", cmd: "pnpm lint", why: "" },
-  { name: "build", cmd: "pnpm build", why: "the only check that proves the rest were real" },
+  { name: "UI tooling", cmd: "pnpm check:ui", why: "visual-plan tooling remains valid with no bundled UI" },
+  { name: "unit", cmd: "pnpm test", why: "deterministic tool contracts" },
 ];
 
 if (full) {
   steps.push(
     { name: "supply chain", cmd: "pnpm audit:supply-chain", why: "fail-closed production dependency audit" },
-    { name: "unit", cmd: "pnpm test", why: "deterministic contracts and backend logic" },
-    { name: "browser", cmd: "pnpm test:e2e", why: "production server, accessibility skeleton, viewports, headers, and SEO" },
   );
 }
 
@@ -74,8 +71,8 @@ if (failures.length === 0) {
   if (!quiet) {
     console.log(
       full
-        ? "\n  fully verified — architecture, security, unit, build and browser gates are green.\n"
-        : "\n  verified — health, architecture, lint and build gates are green.\n",
+        ? "\n  fully verified — tool health, integrity, contracts, and supply-chain gates are green.\n"
+        : "\n  verified — tool health, adapters, MCP, UI tooling, and unit gates are green.\n",
     );
   }
   process.exit(0);

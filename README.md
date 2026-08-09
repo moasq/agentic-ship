@@ -1,95 +1,55 @@
 # Agentic Ship
 
-[![CI](https://github.com/moasq/agentic-ship/actions/workflows/ci.yml/badge.svg)](https://github.com/moasq/agentic-ship/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+Agentic Ship is a tool-only repository for directing and verifying AI-assisted product
+work. It intentionally contains **no web application, product routes, database,
+deployment configuration, demo content, or screenshots**.
 
-<p align="center">
-  <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/claude-code-dark.svg"><img alt="Claude Code" src=".github/assets/hosts/claude-code-light.svg" height="30"></picture>
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/codex-dark.svg"><img alt="Codex" src=".github/assets/hosts/codex-light.svg" height="30"></picture>
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/cursor-dark.svg"><img alt="Cursor" src=".github/assets/hosts/cursor-light.svg" height="30"></picture>
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/hermes-dark.svg"><img alt="Hermes" src=".github/assets/hosts/hermes-light.svg" height="30"></picture>
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/openclaw-dark.svg"><img alt="OpenClaw" src=".github/assets/hosts/openclaw-light.svg" height="30"></picture>
-</p>
+Use it as a plugin or copy its guidance into the product repository you are building.
+The tool provides one canonical set of rules, skills, contracts, agent briefs, MCP
+wiring, visual-direction and visual-QA procedures, durable work coordination, and
+connection handoffs across Codex, Claude Code, Cursor, Hermes, and OpenClaw.
 
-Stop paying for Lovable, Bolt, v0 and Replit. Hosted builders sell the **setup around
-the AI** — a configured project, design system, database, auth, payments, deploy.
-Agentic Ship is that setup in a repo you own, driven by the coding agent you already pay for.
-
-## Quick start
+## Use
 
 ```bash
-npx github:moasq/create-agentic-ship my-app
-cd my-app
-pnpm dev
+pnpm install
+pnpm verify
 ```
 
-Keep the `github:` prefix — the installer ships from GitHub, not npm. Open the folder in
-your coding agent and say what you want to build; it reads [AGENTS.md](AGENTS.md) and
-follows the rules there. No demo app to delete.
+For a product workspace, use the relevant skills before changing it:
 
-## Install as a plugin
-
-In Claude Code or Codex, the same repo installs as a plugin — canonical skills and a
-pinned MCP catalog, one copy of every rule:
-
-```text
-/plugin marketplace add moasq/agentic-ship
-/plugin install agentic-ship@agentic-ship
+```bash
+pnpm agent:work
+pnpm connect status
+pnpm ui:plan init
+pnpm ui:review capture --base-url <local-url>
 ```
 
-## What's wired
+The UI commands are project-targeted: they become applicable only when a downstream
+product contains authored UI and an approved visual plan. A tool-only checkout reports
+them as not applicable rather than inventing an example application.
 
-| You want | Ships with | You do |
-| --- | --- | --- |
-| A website | Next.js 16 · React 19 · Tailwind v4 · shadcn/ui · MagicUI | nothing |
-| A database | Convex | run `npx convex dev` once |
-| Sign in | Better Auth, wired — email + password, Google and GitHub, no screens | connect Convex |
-| Payments | Stripe hosted checkout, webhook entitlement | `pnpm provider:login stripe`, then provision |
-| Email | Resend | authorize, secrets only in Convex |
-| Analytics | PostHog, proxied on your own origin | add the public key |
-| Deploy | Netlify (`netlify.toml`) | `netlify init` then `netlify deploy --prod` |
-| A blog that ranks | MDX + sitemap + metadata + OG image | write the article |
+## What remains here
 
-A fresh clone builds green with nothing connected. Providers connect one at a time
-through resumable handoffs; credentials never enter chat, state, or the repo.
+- [AGENTS.md](AGENTS.md): canonical cross-host doctrine.
+- [.agents/skills](.agents/skills): implementation, security, product, visual, and QA procedures.
+- [.agents/contracts](.agents/contracts): product, feature, input, visual-plan, and visual-review schemas.
+- [.agents/agents](.agents/agents): canonical role briefs; generated adapters live in the host folders.
+- [scripts](scripts): Node-only health, verification, synchronization, connection, and review tools.
+- [.mcp.json](.mcp.json): pinned component and research-tool catalog.
+- [visual direction](.agents/skills/visual-direction/SKILL.md), [anti-slop rubric](.agents/skills/visual-direction/references/anti-slop-rubric.md), [research sources](.agents/skills/visual-direction/references/sources.md), and [real-site gallery](.agents/skills/visual-direction/references/real-site-gallery.md): project-facing UI guidance.
+- [visual-plan example](.agents/ui/plan.example.json) and [visual-QA policy](.agents/skills/visual-qa/references/review-policy.md): portable plan and review evidence formats.
 
-## Commands
+## Verification
 
-| Command | Answers |
-| --- | --- |
-| `pnpm health` | is anything wrong — including what only the deployment knows, like a Stripe secret key with no webhook secret behind it |
-| `pnpm verify` | is my work actually finished |
-| `pnpm verify:full` | release gates: audit, unit tests, production browser suite |
-| `pnpm heal` | can it fix itself (links, mirrors, lockfile), with proof |
-| `pnpm onboard --host <host>` | which provider does this product still need |
-| `pnpm provider:login <cli>` | authorize a vendor through its own browser OAuth |
-| `pnpm preflight --prod` | am I actually ready to launch |
+```bash
+pnpm health
+pnpm check:agents
+pnpm check:mcp
+pnpm check:ui
+pnpm verify
+pnpm verify:full
+```
 
-Provider keys are graded as **combinations**, not one at a time, because that is where
-the damage lives: each key is individually valid while a secret key with no webhook
-secret means the customer pays and never gets the plan. The checks read env *names* from
-the connected deployment — never a value.
-
-## Works with any agent
-
-Claude Code, Codex (plugins + native adapters), Cursor (generated agents, MCP mirror,
-hooks), Hermes (installable profile), and OpenClaw (repo as agent workspace; non-secret
-template in `.openclaw/`). Windsurf, Cline, Copilot and Gemini CLI read `AGENTS.md` and
-the plain-markdown skills directly. One authored rule set, generated adapters per host.
-
-Host marks above are vendored, not hotlinked — provenance in
-[.github/assets/hosts/credits.md](.github/assets/hosts/credits.md).
-
-## Documentation
-
-- [AGENTS.md](AGENTS.md) — every rule, in one file
-- [.agents/skills/](.agents/skills) — procedures: product lifecycle, connections, UI, backend, security, testing, launch
-- [.agents/agents/](.agents/agents) — five specialist role briefs, plus the vendor-generated Playwright trio
-
-## License
-
-[MIT](LICENSE) — built by [@moasq](https://github.com/moasq).
+`pnpm verify` proves the tool itself is coherent. It deliberately does not start,
+build, deploy, or test a website because none is bundled here.

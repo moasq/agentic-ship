@@ -10,15 +10,18 @@ and never reaches for the flashy source when the plain one is correct.
 
 ## Order of operations
 
-1. **Reuse first.** Search `src/components/` before installing anything. An existing
-   block with a new prop beats a new dependency almost every time.
-2. **Classify the need** using the matrix below.
-3. **Search the catalogs through their MCP servers** (below) — never write a section
+1. **Confirm direction.** Before sourcing a marketing section or substantial visual
+   component, run `pnpm ui:plan check`. A catalog supplies implementation, not taste.
+2. **Reuse first.** Run `pnpm component:list [query]` before installing anything. An
+   existing block with a new prop beats a new dependency almost every time.
+3. **Classify the need** using the matrix below.
+4. **Search the catalogs through their MCP servers** (below) — never write a section
    or primitive from memory that a wired catalog already ships.
-4. **Install through the right channel.**
-5. **Wrap, don't edit.** Apply project tokens in a wrapper under `blocks/` or
+5. **Install through the right channel.**
+6. **Wrap, don't edit.** Apply project tokens in a wrapper under `blocks/` or
    `features/`, leaving the vendored file untouched.
-6. **Verify** it renders standalone with mock props.
+7. **Verify** it renders standalone with mock props and supports the plan rather than
+   preserving the catalog demo's composition.
 
 ## Discovery through the wired MCP servers
 
@@ -112,7 +115,9 @@ unexplained → do not commit it. Report it and ask.
 - One component per file. File name matches the export.
 - Every block must render on its own with mock props, so it can be screenshotted and
   iterated on in isolation.
+- A block composes at most two catalog accents; the selected plan still permits only
+  one signature element for the page.
 - Run `pnpm check:ui`. It enforces authored dependency direction, stateless blocks,
-  matching component/file names, standalone fixtures, and token-only classes. The
-  vendor-owned `components/ui/` directory is intentionally exempt from authored-file
-  shape checks.
+  matching component/file names, standalone fixtures, token-only classes, effect
+  budget, and current visual evidence. The vendor-owned `components/ui/` directory is
+  intentionally exempt from authored-file shape checks.

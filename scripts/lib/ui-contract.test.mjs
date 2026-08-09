@@ -56,6 +56,16 @@ describe("inspectUiContract", () => {
     expect(inspectUiContract(root).map((item) => item.rule)).toContain("block-dependency");
   });
 
+  test("rejects a block that stacks more than two catalog accents", () => {
+    const root = workspace({
+      "src/components/blocks/hero.tsx":
+        'import { A } from "@/components/magicui/a"; import { B } from "@/components/aceternity/b"; import { C } from "@/components/twentyfirst/c"; export function Hero() { return <section><A /><B /><C /></section>; }',
+      "src/components/blocks/hero.fixture.tsx": "export const fixture = {};",
+    });
+
+    expect(inspectUiContract(root).map((item) => item.rule)).toContain("effect-budget");
+  });
+
   test("rejects missing fixtures, mismatched exports, palette utilities, and arbitrary values", () => {
     const root = workspace({
       "src/components/blocks/banner.tsx":

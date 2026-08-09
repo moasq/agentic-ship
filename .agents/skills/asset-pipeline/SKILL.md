@@ -8,6 +8,10 @@ description: Source and treat images, illustrations, icons, and 3D so a site fee
 Ten random stock photos look like a template. Ten photos under one consistent treatment
 look like a brand. The treatment matters more than the photo.
 
+For substantial interface work, take the asset role and treatment from the selected
+`.agents/ui/plan.json`. Use `visual-direction` when that decision is absent; do not let
+an available image invent the page's direction after implementation has started.
+
 ## Sources
 
 | Asset | Source | Why | Rule |

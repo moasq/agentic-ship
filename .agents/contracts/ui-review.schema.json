@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-workspace.dev/contracts/ui-review.schema.json",
+  "title": "Accepted UI visual-review evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "acceptedAt",
+    "captureSession",
+    "planFingerprint",
+    "sourceFingerprint",
+    "evidenceFingerprint",
+    "review",
+    "captures"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "acceptedAt": { "type": "string", "format": "date-time" },
+    "captureSession": { "type": "string", "minLength": 1 },
+    "planFingerprint": { "$ref": "#/$defs/hash" },
+    "sourceFingerprint": { "$ref": "#/$defs/hash" },
+    "evidenceFingerprint": { "$ref": "#/$defs/hash" },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewer", "responsibility", "reason", "changedSurfaceSummary"],
+      "properties": {
+        "reviewer": { "type": "string", "minLength": 1 },
+        "responsibility": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "changedSurfaceSummary": { "type": "string", "minLength": 1 }
+      }
+    },
+    "captures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "file", "sha256"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "file": {
+            "type": "string",
+            "pattern": "^\\.agents/ui/evidence/captures/(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"
+          },
+          "sha256": { "$ref": "#/$defs/hash" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}
