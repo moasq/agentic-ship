@@ -9,9 +9,45 @@ The tool provides one canonical set of rules, skills, contracts, agent briefs, M
 wiring, visual-direction and visual-QA procedures, durable work coordination, and
 connection handoffs across Codex, Claude Code, Cursor, Hermes, and OpenClaw.
 
-## Use
+## Install
+
+Use `npx` to launch the zero-dependency installer from GitHub:
 
 ```bash
+npx github:moasq/create-agentic-ship agentic-ship
+cd agentic-ship
+pnpm verify
+```
+
+If you prefer pnpm as the package runner, `pnpm dlx` is equivalent:
+
+```bash
+pnpm dlx github:moasq/create-agentic-ship agentic-ship
+cd agentic-ship
+pnpm verify
+```
+
+`npx` or `pnpm dlx` downloads and runs the installer. The installed Agentic Ship
+checkout itself uses `pnpm` for synchronization, health, review, and verification.
+
+To install the skills into Codex instead of creating a standalone checkout, ask Codex:
+
+```text
+Install every skill from https://github.com/moasq/agentic-ship/tree/main/.agents/skills using the built-in skill installer.
+```
+
+Claude Code can install the same repository as a marketplace plugin:
+
+```text
+/plugin marketplace add moasq/agentic-ship
+/plugin install agentic-ship@agentic-ship
+```
+
+## Develop the tool locally
+
+```bash
+git clone https://github.com/moasq/agentic-ship.git
+cd agentic-ship
 pnpm install
 pnpm verify
 ```
