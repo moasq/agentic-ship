@@ -18,6 +18,8 @@ const ARBITRARY_VALUE = /(?:^|:)(?:[a-z][\w-]*)-\[[^\]]+\]$/;
 const ARBITRARY_PROPERTY = /^\[--[^\]]+\]$/;
 const HEX_COLOR = /#[\da-fA-F]{3,8}\b/;
 const CLASS_HELPERS = new Set(["cn", "clsx", "cva"]);
+const ACCENT_COMPONENT_PATH = /(?:^|\/)components\/(?:aceternity|magicui|twentyfirst)(?:\/|$)/;
+const MAX_ACCENT_IMPORTS_PER_BLOCK = 2;
 
 /**
  * Vendor parts that read a parent's React context and THROW when it is absent.
@@ -213,6 +215,7 @@ function inspectClassTokens({ file, sourceFile, violations }) {
 
 function inspectBlock({ root, absolute, file, body, sourceFile, violations }) {
   const forbiddenImports = [];
+  const accentImports = [];
   const statefulHooks = new Set([
     "useAction",
     "useEffect",
@@ -228,6 +231,9 @@ function inspectBlock({ root, absolute, file, body, sourceFile, violations }) {
   const visit = (node) => {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       const specifier = node.moduleSpecifier.text;
+      if (ACCENT_COMPONENT_PATH.test(specifier)) {
+        accentImports.push({ specifier, line: lineOf(sourceFile, node) });
+      }
       const resolvedRelative = specifier.startsWith(".")
         ? toPosix(root, resolve(dirname(absolute), specifier))
         : "";
@@ -262,6 +268,15 @@ function inspectBlock({ root, absolute, file, body, sourceFile, violations }) {
       line: item.line,
       rule: "block-dependency",
       message: `block cannot import \`${item.specifier}\`; blocks only compose ui/, magicui/, aceternity/ and twentyfirst/ primitives`,
+    });
+  }
+
+  if (accentImports.length > MAX_ACCENT_IMPORTS_PER_BLOCK) {
+    violations.push({
+      file,
+      line: accentImports[MAX_ACCENT_IMPORTS_PER_BLOCK].line,
+      rule: "effect-budget",
+      message: `a block may compose at most ${MAX_ACCENT_IMPORTS_PER_BLOCK} catalog accents; found ${accentImports.length} (${accentImports.map(({ specifier }) => specifier).join(", ")}). Keep one signature element and remove competing effects`,
     });
   }
 

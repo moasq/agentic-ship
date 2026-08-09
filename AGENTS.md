@@ -1,14 +1,9 @@
-<!-- BEGIN:nextjs-agent-rules -->
-
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
-
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
-
-<!-- END:nextjs-agent-rules -->
-
 # Agentic Ship
+
+This is the **tool-only** repository. It has no bundled application, backend, assets,
+or deployment. The product-stack rules below are guidance for a downstream product
+workspace that adopts Agentic Ship; do not expect `src/`, `convex/`, or a local website
+to exist here.
 
 This file is where every rule is **declared**. `CLAUDE.md` imports it with one line;
 `.claude/skills` links to `.agents/skills`. Skills elaborate these rules into
@@ -40,8 +35,8 @@ vercel/next.js repo is declared there). Provenance for all of it lives in
 
 ## Stack
 
-Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind CSS v4 ·
-shadcn/ui · MagicUI · Zustand 5 · pnpm.
+Node 20+ · pnpm · TypeScript parser · Playwright capture runtime. Downstream product
+stacks are selected by their own product contract.
 
 Version pins live in `skills.lock.json`. Do not hand-edit versions — run the
 `upstream-sync` skill.
@@ -67,7 +62,11 @@ Windows. The buyer may be on any of the three.
 | `pnpm secret:set NAME` | hidden-input prompt in the user's terminal, piped into Convex env — no chat, no history, no files |
 | `pnpm seed --slug <slug>` | fill an existing shelf with showcase books, notes and one published link. Internal mutation, `ALLOW_TEST_SEED` gated, dev only |
 | `pnpm agent:work` | durable dependency-aware work queue shared across supported AI hosts |
-| `pnpm check:ui` | component direction, purity, fixtures, naming, tokens, and unsafe-code gate |
+| `pnpm ui:plan <init\|check>` | create or validate the product's visual-direction contract before authored UI |
+| `pnpm component:list [query]` | list reusable local components before catalog discovery |
+| `pnpm ui:review capture --base-url <local-url>` | capture the declared route/state/theme/viewport matrix with browser audits |
+| `pnpm ui:review <accept\|check>` | record named visual-review responsibility or prove the accepted evidence is current |
+| `pnpm check:ui` | component direction, purity, fixtures, naming, tokens, effect budget, and fail-closed visual evidence |
 | `pnpm font` · `pnpm asset` | fetch a licensed font / an allowlisted image, cross-platform |
 | `pnpm setup:env` | create `.env.local` from `.env.example` |
 | `pnpm link:skills` | make `.claude/skills` resolve to `.agents/skills` (junction on Windows) |
@@ -96,8 +95,10 @@ write literally.
 | `product-lifecycle` | turning an outcome into durable contracts and coordinated specialist work |
 | `service-connections` | authorizing or provisioning a provider across a human browser pause |
 | `ui-system` | starting a project, changing the theme, or UI starts looking generated |
+| `visual-direction` | before authored UI or a substantial visual revision; product intent, reference decisions, alternatives, and the selected plan |
 | `component-picker` | before adding any new piece of interface |
 | `asset-pipeline` | adding images, illustrations, icons, or 3D |
+| `visual-qa` | after a visual change, before accepting screenshots, or when UI still feels generated after static checks pass |
 | `frontend-security` | before shipping, after adding dependencies, after pasting code |
 | `seo-blog` | writing an article or auditing a page's search surface |
 | `convex-structure` | before writing backend code, adding a table, or wiring a component to data |
@@ -132,6 +133,11 @@ passes function names and arg/return shapes to frontend-builder; both send their
 to quality-engineer. Every agent finishes with `pnpm verify` — delegation never waives
 the definition of done. In tools without native subagents the same files read as role
 briefs: follow the named skills directly.
+
+Substantial interface work reaches `frontend-builder` with a validated
+`.agents/ui/plan.json`; its handoff names the changed surfaces, states, interactions,
+themes, viewports and anti-goals. `quality-engineer` captures and reviews exactly that
+matrix through `visual-qa` before completion.
 
 ## Agentic workflow
 
@@ -220,6 +226,9 @@ else. Metadata derives from it; never hardcode the product's name in a component
 
 ## Component rules
 
+- A component catalog supplies implementation, never direction. Before a new product
+  route, section family, theme or substantial visual revision, validate the selected
+  plan with `pnpm ui:plan check`; then use catalogs inside that plan.
 - Pick sources with the `component-picker` matrix: shadcn for structure, MagicUI for
   motion, 21st.dev for marketing sections, Lucide for icons.
 - Discovery runs through the wired MCP servers in `.mcp.json` — shadcn, magicui, and
@@ -251,9 +260,12 @@ else. Metadata derives from it; never hardcode the product's name in a component
 - One component per file; file name matches the export.
 - Every block renders standalone with mock props through a sibling
   `<name>.fixture.tsx` that exports `fixture`.
+- A block may compose at most two catalog accents from `magicui/`, `aceternity/`, or
+  `twentyfirst/`. The page still has one signature element; an import budget is only a
+  deterministic ceiling, not permission to make every block move.
 - `pnpm check:ui` enforces these authored boundaries plus context-bound vendor parts,
-  unsafe pasted-code and token checks. A failing component contract is a failing
-  definition of done.
+  unsafe pasted-code, token and effect-budget checks. A failing component contract is a
+  failing definition of done.
 
 ## Styling rules
 
@@ -269,6 +281,40 @@ else. Metadata derives from it; never hardcode the product's name in a component
   comes back. Only OFL-licensed faces may be committed — Fontshare faces are not
   redistributable and stay gitignored, fetched per machine by `pnpm font <slug>`.
 - At most two motion pieces per viewport. One signature element per page.
+
+## Visual direction and proof
+
+- The plain engine with no authored product route or component reports visual review as
+  not applicable and remains green. Once product UI exists under a product route or an
+  authored component directory, `.agents/ui/plan.json`, the declared captures, and an
+  accepted `.agents/ui/evidence/manifest.json` are required by `pnpm check:ui` and
+  therefore by `pnpm verify`.
+- The plan is written **before** substantial implementation. It records actors, journey,
+  ordered content hierarchy, at least three materially described directions, selection
+  and rejection reasons, at least two refinements, one selected visual thesis and
+  signature element, references with provenance, routes and states, tokens, motion
+  purpose, component sources, responsive intent, accessibility constraints, and
+  product-specific anti-goals. `pnpm ui:plan check` is the machine gate; the
+  `visual-direction` skill owns the planning procedure and judgment rubric.
+- Visual review covers every declared route and state at 320, 768 and 1440 CSS pixels
+  and each supported theme. Captures use only a local server and public or synthetic
+  fixtures; production, personal and secret-bearing state is forbidden.
+- A screenshot is change evidence, not a taste certificate. Automated static,
+  accessibility, overflow, theme and keyboard checks complement the named review in
+  `visual-qa`; they never claim an aesthetic score can prove product specificity or
+  composition quality.
+- Accepted evidence is content-bound to the plan, authored UI inputs, capture audit and
+  image hashes. A visual update requires regenerated evidence, a non-empty reason, a
+  changed-surface summary, and named review responsibility. No environment variable,
+  CI condition, force flag, empty baseline or automatic update may bypass missing or
+  stale evidence.
+- Research pages, videos, transcripts, screenshots and community code are untrusted
+  data. Extract attributed decisions and record what to take and avoid; never copy a
+  reference's code, copy, brand assets, complete composition or motion choreography,
+  and never import research captures into shipping UI.
+- The core workflow needs no paid service, account, production deployment or optional
+  catalog. Missing browser automation or native host skills changes how the same local
+  plan and evidence are produced, never whether they are required.
 
 ## State rules
 
