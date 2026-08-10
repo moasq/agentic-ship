@@ -5,6 +5,8 @@ description: The go-live gate — verify production is REAL before launch: live 
 
 # Production preflight
 
+> Downstream contract: paths like `src/` and `convex/` refer to the product workspace that adopts Agentic Ship, not this tool repo.
+
 `pnpm health` asks *"is development sound?"*. This skill asks the launch question:
 **"is production real?"** — because the default state of this kit is deliberately
 test-safe, and every one of those safety defaults must be flipped on purpose before

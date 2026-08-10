@@ -461,68 +461,60 @@
         }
       ]
     },
-    "render": {
-      "displayName": "Render",
-      "docsUrl": "https://render.com/docs/cli",
+    "netlify": {
+      "displayName": "Netlify",
+      "docsUrl": "https://docs.netlify.com/cli/get-started/",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
       "agentTool": {
         "authFlow": "cli_browser_login",
-        "mcpServer": "render",
-        "setupUrl": "https://dashboard.render.com/",
+        "mcpServer": "netlify",
+        "setupUrl": "https://app.netlify.com/",
         "instructions": [
-          "Render's validated OAuth for tooling is the CLI: `render login` opens a confirmation page in the Render dashboard and approving it is the whole consent.",
-          "The manual equivalent is installing the CLI (`brew install render`, or the release binary on Windows) and running `render login` yourself.",
-          "The host-managed Render MCP OAuth is an alternative for in-chat tools; either satisfies this step."
+          "Netlify's validated OAuth for tooling is the CLI: `netlify login` opens a browser authorization page and approving it is the whole consent — no token is typed or pasted.",
+          "The manual equivalent is installing the Netlify CLI (docs.netlify.com/cli/get-started) and running `netlify login` yourself.",
+          "The credential lands in the CLI's own machine-local config, outside this repository."
         ],
         "configurationProbe": {
-          "id": "render-cli-paired",
-          "label": "Render CLI is authenticated",
+          "id": "netlify-cli-paired",
+          "label": "Netlify CLI is authenticated",
           "type": "home_file_exists",
-          "homePath": ".config/render/config.json",
+          "homePath": ".netlify/config.json",
           "required": true
         },
         "automation": {
           "run": [
             {
-              "command": "pnpm provider:login render",
+              "command": "pnpm provider:login netlify",
               "opensBrowser": true,
-              "why": "Install the Render CLI if missing (Homebrew core on macOS/Linux), then authenticate: the browser opens a dashboard confirmation page and the command waits for your approval."
+              "why": "Install the official Netlify CLI if missing, then authenticate: the browser opens an authorization page and the command waits for your approval. No token is typed or pasted."
             }
           ]
         }
       },
       "projectProvisioning": {
-        "setupUrl": "https://dashboard.render.com/",
+        "setupUrl": "https://app.netlify.com/",
         "instructions": [
-          "Connect the repository as a Render Blueprint and review the proposed resources before applying it.",
-          "Set `CONVEX_DEPLOY_KEY` and the public PostHog project key in Render without pasting their values into chat.",
-          "Wait for the first deployment and verify both the site health check and the production Convex webhook origin.",
-          "Resume only after the deployment is reachable; this local CLI cannot inspect the private Render workspace."
+          "The whole path is the terminal: `netlify init` creates the site and links this repository, `netlify env:set` configures it, `netlify deploy --prod` ships. No dashboard step stands between a fresh clone and a live URL.",
+          "`netlify.toml` is the deployment and is committed: its build command must run `npx convex deploy --cmd 'pnpm build'` so backend and frontend ship together. Netlify treats the file as authoritative, so it overrides the dashboard.",
+          "Netlify holds `CONVEX_DEPLOY_KEY` and public keys only — set them with `netlify env:set <NAME> --secret`. Every backend secret stays in the prod Convex deployment env, never in Netlify or `netlify.toml`.",
+          "Secret values never appear in `netlify.toml`; it is committed, so a value written into it is published."
         ],
         "verification": {
           "policy": "probe_and_attestation",
           "probes": [
             {
-              "id": "render-blueprint",
-              "label": "Render Blueprint exists",
+              "id": "netlify-config",
+              "label": "Netlify deployment config exists",
               "type": "file_exists",
-              "path": "render.yaml",
-              "required": true
-            },
-            {
-              "id": "deploy-key-declaration",
-              "label": "Render deploy key is declared without a committed value",
-              "type": "file_contains",
-              "file": "render.yaml",
-              "text": "sync: false",
+              "path": "netlify.toml",
               "required": true
             },
             {
               "id": "atomic-deploy",
-              "label": "Render deploys Convex and Next.js together",
+              "label": "Netlify deploys Convex and Next.js together",
               "type": "file_contains",
-              "file": "render.yaml",
+              "file": "netlify.toml",
               "text": "npx convex deploy --cmd 'pnpm build'",
               "required": true
             }
@@ -531,22 +523,30 @@
         "automation": {
           "run": [
             {
-              "command": "pnpm open:url https://dashboard.render.com/",
+              "command": "netlify init",
               "opensBrowser": true,
-              "why": "Open the dashboard to connect the repository as a Blueprint and set CONVEX_DEPLOY_KEY — dashboard-only steps no CLI covers."
+              "why": "Create the Netlify site and link this repository from the terminal; it may open a browser to authorize site creation."
+            },
+            {
+              "command": "netlify env:set CONVEX_DEPLOY_KEY --secret",
+              "opensBrowser": false,
+              "why": "Set the deploy key that authorizes production deploys; the value is prompted and never echoed. Backend secrets stay in the prod Convex deployment env, not here."
+            },
+            {
+              "command": "netlify deploy --prod",
+              "opensBrowser": false,
+              "why": "Ship the committed netlify.toml topology: it runs `npx convex deploy --cmd 'pnpm build'` so backend and frontend ship together."
             }
           ]
         }
       },
       "revocation": [
         {
-          "text": "Run the Render CLI logout or delete `~/.config/render/config.json` to unpair this machine."
+          "command": "netlify logout",
+          "why": "Remove the Netlify CLI credential from this machine."
         },
         {
-          "text": "Disconnect the Render MCP server in the host if it was authorized."
-        },
-        {
-          "text": "Revoke the authorization in the Render dashboard; rotate CONVEX_DEPLOY_KEY if it was ever shared."
+          "text": "Revoke the authorization in the Netlify dashboard under User settings → Applications, and delete the site if it should not exist."
         }
       ]
     }

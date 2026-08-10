@@ -5,6 +5,8 @@ description: Frontend security posture for AI-assisted projects — secret handl
 
 # Frontend Security
 
+> Downstream contract: paths like `src/` and `convex/` refer to the product workspace that adopts Agentic Ship, not this tool repo.
+
 Hosted builders run your code in their sandbox. The moment you leave, the security
 posture is yours. This skill is the part of that handover most templates skip.
 

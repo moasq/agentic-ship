@@ -77,7 +77,10 @@ for (const repair of repairs) {
 
 console.log("\n  proof:\n");
 const health = run("pnpm health");
+// health.mjs prints its PASS line to stdout and every FAILURE to stderr, so capturing
+// stdout alone left the proof empty exactly when it was red. Surface both streams.
 process.stdout.write(health.stdout ?? "");
+process.stderr.write(health.stderr ?? "");
 if (health.status !== 0) {
   console.error("  Health is still not green. What remains needs judgment or a human — see the fix column above.");
 }

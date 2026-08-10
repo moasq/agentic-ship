@@ -1,15 +1,22 @@
 #!/usr/bin/env node
 /**
- * Networked production-dependency audit. This stays separate from `pnpm health`,
- * whose contract is to work offline, while giving CI and preflight one stable,
- * cross-platform command to call.
+ * Networked dependency audit of the WHOLE tree — production and development
+ * dependencies alike. In this tool-only repo `dependencies` is empty and every real
+ * package (vitest, typescript, @playwright/test, @types/node) is a devDependency, so a
+ * `--prod`-scoped audit would check zero packages while claiming to have run. Auditing
+ * without `--prod` covers dev deps too, which is the only scope that actually exists
+ * here. This stays separate from `pnpm health`, whose contract is to work offline,
+ * while giving CI and preflight one stable, cross-platform command to call. Fail-closed:
+ * any advisory of any severity, or a non-zero pnpm exit, fails the gate.
  */
 import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const result = spawnSync("pnpm audit --prod --json", {
+// No `--prod`: audit prod AND dev dependencies. See the header — every dependency in
+// this repo is a devDependency, so `--prod` would audit nothing.
+const result = spawnSync("pnpm audit --json", {
   cwd: root,
   shell: true,
   encoding: "utf8",
@@ -47,4 +54,4 @@ if (result.status !== 0 || total > 0) {
 }
 
 console.log(`\nSUPPLY CHAIN AUDIT PASS — ${summary}.`);
-console.log(`Production dependencies checked: ${Number(report.metadata.dependencies || 0)}.\n`);
+console.log(`Dependencies checked (production + development): ${Number(report.metadata.dependencies || 0)}.\n`);

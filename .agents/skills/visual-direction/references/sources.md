@@ -11,12 +11,13 @@ requirement. Repository decisions below are local inferences reconciled with
 
 ## Repository reconciliation note
 
-The current `ui-system` text says “roughly ninety percent” of visual sameness comes from
-four defaults. No source reviewed here supports that percentage. Treat default palette,
-primary typeface, radius, and violet-blue gradients as common diagnostic signals—not a
-measurement, a universal ban, or proof that a page is distinctive once changed. The
-current home capture changes those defaults and still exhibits generic composition and
-catalog-motion residue. `AGENTS.md` remains the rule authority.
+An earlier revision of `ui-system` claimed “roughly ninety percent” of visual sameness
+comes from four defaults. No source reviewed here supports that percentage, and the
+claim has been removed: the skill now presents the four defaults as common diagnostic
+signals—not a measurement, a universal ban, or proof that a page is distinctive once
+changed. The worked example in [`anti-slop-rubric.md`](anti-slop-rubric.md) changes
+those defaults and still exhibits generic composition and catalog-motion residue.
+`AGENTS.md` remains the rule authority.
 
 ## Supplied videos
 

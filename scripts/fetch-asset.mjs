@@ -20,6 +20,7 @@
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ALLOWED_IMAGE_HOSTS as ALLOWED_HOSTS, checkAssetUrl } from "./lib/asset-allowlist.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const [rawUrl, rawName] = process.argv.slice(2);
@@ -29,28 +30,9 @@ if (!rawUrl || !rawName) {
   process.exit(1);
 }
 
-// Mirrors images.remotePatterns in next.config.ts. Extending this list is a human
-// decision made there first — the two must not drift apart silently.
-const ALLOWED_HOSTS = new Set(["images.unsplash.com", "images.pexels.com"]);
-
-/** Every URL crosses this gate — the one you typed and every redirect target. */
-function checkUrl(candidate) {
-  let url;
-  try {
-    url = new URL(candidate);
-  } catch {
-    return { error: "not a valid URL." };
-  }
-  if (url.protocol !== "https:") return { error: `https only (got ${url.protocol}).` };
-  if (!ALLOWED_HOSTS.has(url.hostname)) {
-    return {
-      error:
-        `${url.hostname} is not in the source allowlist (${[...ALLOWED_HOSTS].join(", ")}).\n` +
-        "      Adding a source is a human decision: update images.remotePatterns in next.config.ts first, then this script's list.",
-    };
-  }
-  return { url };
-}
+// The source allowlist and the per-URL gate live in scripts/lib/asset-allowlist.mjs so
+// the security check is unit-tested; this stays the caller that drives the redirect loop.
+const checkUrl = (candidate) => checkAssetUrl(candidate, ALLOWED_HOSTS);
 
 const first = checkUrl(rawUrl);
 if (first.error) {

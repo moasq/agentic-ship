@@ -5,6 +5,8 @@ description: Turn product intent and attributed visual references into a validat
 
 # Visual Direction
 
+> Downstream contract: paths like `src/` and `convex/` refer to the product workspace that adopts Agentic Ship, not this tool repo.
+
 Convert taste into decisions another builder can implement and another reviewer can
 verify. Treat “AI slop” as observable residue, not an aesthetic insult or a numeric
 score.

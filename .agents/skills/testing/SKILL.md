@@ -5,6 +5,8 @@ description: The verification gates, test-data rules, and the self-healing loop 
 
 # Testing & self-healing
 
+> Downstream contract: paths like `src/` and `convex/` refer to the product workspace that adopts Agentic Ship, not this tool repo.
+
 A failure is allowed to happen once. Gates catch it, the heal loop repairs it with
 evidence, and the repair graduates into a rule (`.agents/heal-ledger.md`) so the class
 cannot return.
@@ -13,20 +15,21 @@ cannot return.
 
 | Gate | Command | Proves |
 | --- | --- | --- |
-| G0 | `pnpm health` | SSOT, pins, secrets, mirrors |
-| G1 | `pnpm verify` | G0 + lint + the build |
-| G2 | `pnpm test` | backend logic, in memory, no network |
-| G3 | `pnpm test:e2e` | the app in a real browser: pages, headers, SEO surface |
-| all | `pnpm verify:full` | G0–G3 in one command (CI runs the same gates, plus `pnpm check:mcp`, split across OS jobs) |
+| G0 | `pnpm health` | required tool assets present, no bundled application residue, Node 20+ (in the downstream product: also SSOT, pins, secrets, mirrors) |
+| G1 | `pnpm verify` | the offline definition of done — G0 plus the generated host adapters (`check:agents`), the pinned MCP mirror (`check:mcp`), the UI tooling (`check:ui`), and the unit contracts (`pnpm test`). No lint and no product build run in this tool repo, because neither exists here |
+| G2 | `pnpm test` | deterministic tool contracts (vitest), in memory, no network |
+| G3 | `pnpm test:e2e` | **downstream product only** — the app in a real browser: pages, headers, SEO surface. There is no Playwright config or product build in this tool repo, so this gate runs in the product workspace |
+| all | `pnpm verify:full` | verify + the fail-closed production dependency audit (`pnpm audit:supply-chain`) |
 | launch | `pnpm preflight [--prod]` | production readiness — see the production-preflight skill |
 
 A gate runs only when the ones above it are green. `pnpm verify` is the definition of
 done for every completion; `verify:full` is for PRs and before a deploy.
 
-CI splits the same gates across two jobs: G0–G2 plus the build on macOS, Linux and
-Windows, and G3 on Linux. Every gate runs with no network beyond the install — fonts
-are committed rather than fetched, which is what lets the production build inside
-Playwright's `webServer` succeed on a runner with no egress.
+In the downstream product workspace the same gate names extend: CI there splits G0–G2
+plus the product build across macOS, Linux and Windows, and G3 on Linux. Every gate runs
+with no network beyond the install — fonts are committed rather than fetched, which is
+what lets the production build inside Playwright's `webServer` succeed on a runner with
+no egress.
 
 ## Writing unit tests (G2)
 

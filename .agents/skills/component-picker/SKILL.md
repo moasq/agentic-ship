@@ -5,6 +5,8 @@ description: Decide where a UI component comes from — shadcn/ui, MagicUI, 21st
 
 # Component Picker
 
+> Downstream contract: paths like `src/` and `convex/` refer to the product workspace that adopts Agentic Ship, not this tool repo.
+
 The point of this skill is that the agent never invents a primitive that already exists,
 and never reaches for the flashy source when the plain one is correct.
 

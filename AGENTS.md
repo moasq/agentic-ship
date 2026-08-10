@@ -49,18 +49,18 @@ Windows. The buyer may be on any of the three.
 
 | Command | Does |
 | --- | --- |
-| `pnpm verify` | **the offline definition of done** — health + agent/MCP/UI contracts + lint + build |
-| `pnpm verify:full` | verify + fail-closed production audit + unit tests + e2e; use before a PR or deploy |
-| `pnpm test` · `pnpm test:e2e` | gate G2 (vitest, in-memory) · gate G3 (Playwright, production build) |
+| `pnpm verify` | **the offline definition of done** — tool health + agent/MCP/UI contracts + unit gates (no product lint or build lives in this tool repo) |
+| `pnpm verify:full` | verify + the fail-closed production dependency audit; use before a PR or deploy |
+| `pnpm test` | gate G2 — deterministic tool contracts (vitest, in-memory). The G3 e2e gate (`pnpm test:e2e`, Playwright against the product build) runs in a downstream product workspace, not this tool repo |
 | `pnpm heal` | tier-1 deterministic repairs (links, mirrors, env, lockfile, MCP server boot), then health as proof |
 | `pnpm preflight [--prod]` | **the go-live gate** — live keys, email flips, no seed backdoor |
-| `pnpm health` | machine-checkable half of `workspace-health` — pins, SSOT, adapters, tokens, env leaks, backend status |
+| `pnpm health` | offline tool-repo health — required skill/contract/adapter/MCP assets present, no bundled application residue, Node 20+ runtime. (Product-workspace checks — pins, SSOT, tokens, env leaks, backend status — run downstream where `src/`/`convex/` exist) |
 | `pnpm onboard [provider] --host <host>` | provider-selective status or the next resumable human step |
 | `pnpm connect` | begin, inspect, resume, or cancel safe service-connection receipts |
 | `pnpm provider:login <cli>` | install + browser-OAuth pair a vendor's official CLI (stripe, netlify, github, 21st) |
 | `pnpm stripe:provision` | webhook endpoint and plan prices through the paired CLI; secrets flow straight into Convex env, never printed. `--test-key` copies the CLI's TEST key so a sandbox can take a 4242 payment; it refuses anything that is not `sk_test`/`rk_test`, and refuses `--prod` |
 | `pnpm secret:set NAME` | hidden-input prompt in the user's terminal, piped into Convex env — no chat, no history, no files |
-| `pnpm seed --slug <slug>` | fill an existing shelf with showcase books, notes and one published link. Internal mutation, `ALLOW_TEST_SEED` gated, dev only |
+| `pnpm setup:auth [site-url]` | generate `BETTER_AUTH_SECRET` and set it plus `SITE_URL` straight into a downstream Convex env; the secret is never printed |
 | `pnpm agent:work` | durable dependency-aware work queue shared across supported AI hosts |
 | `pnpm ui:plan <init\|check>` | create or validate the product's visual-direction contract before authored UI |
 | `pnpm component:list [query]` | list reusable local components before catalog discovery |
@@ -72,6 +72,7 @@ Windows. The buyer may be on any of the three.
 | `pnpm link:skills` | make `.claude/skills` resolve to `.agents/skills` (junction on Windows) |
 | `pnpm sync:mcp` · `pnpm check:mcp` | write / verify the `.cursor/mcp.json` mirror |
 | `pnpm sync:agents` · `pnpm check:agents` | write / verify native Claude plugin, Codex, Cursor, Hermes, and OpenClaw role adapters |
+| `pnpm check:commands` | every `pnpm` name in prose resolves to a real script, and `skills.lock.json` matches disk |
 | `pnpm secret` | print one random base64 secret |
 
 `pnpm install` runs the link, MCP, and agent-adapter synchronizers through `postinstall`.
@@ -91,6 +92,7 @@ write literally.
 | Skill | Use it when |
 | --- | --- |
 | `workspace-health` | after install or when local pins, mirrors, adapters, or generation misbehave |
+| `setup-health` | the former all-in-one "check every connection" request — routes to workspace-health, agent-compatibility, service-connections, upstream-sync, or production-preflight without duplicating them |
 | `agent-compatibility` | changing roles, skills, MCP, hooks, plugins, or host-native adapters |
 | `product-lifecycle` | turning an outcome into durable contracts and coordinated specialist work |
 | `service-connections` | authorizing or provisioning a provider across a human browser pause |
@@ -327,6 +329,8 @@ Preference order — reaching for a store first is the classic generated-code sm
 One store per domain in `src/stores/`. Select narrowly at call sites; never subscribe
 to a whole store. Stores are created per request — no module-level mutable store shared
 across SSR requests. `blocks/` stay stateless; stores are consumed in `features/` and
+routes.
+
 ## Backend rules (Convex)
 
 Full detail and the fixed feature-building sequence: `.agents/skills/convex-structure/SKILL.md`.

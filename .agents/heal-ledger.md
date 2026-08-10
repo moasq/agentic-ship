@@ -17,6 +17,37 @@ Format:
 
 ---
 
+## 2026-08-10 tool-only-pivot-stripped-code-not-prose
+
+- cause: the tool-only pivot (commit bb295a0) deleted the bundled application but left
+  the prose that described it. AGENTS.md, `.claude/settings.json`, `skills.lock.json`,
+  and the skills drifted out of agreement with `package.json` and `scripts/`: the
+  Commands table promised `pnpm` names that were never wired (`preflight`,
+  `stripe:provision`, `secret:set`, `setup:auth`, `setup:env`, `font`, `asset`,
+  `component:list`, `component:place`) though their scripts existed; it also sold
+  commands this tool repo does not own (`build`, `lint`, `test:e2e`) as if they were
+  local. `pnpm verify`/`pnpm health` were described doing far more than `verify.mjs`/
+  `health.mjs` actually run. `scripts/seed.mjs` and `scripts/demo.mjs` were Marginalia
+  product residue targeting a `convex/` that no longer exists here. `skills.lock.json`
+  violated its own completeness rule (visual-direction and visual-qa unlisted, a phantom
+  `better-auth-best-practices` entry, wrong skill/server counts, a fiction that
+  `health.mjs` enforces the version pins) and still pinned Render after the Netlify
+  migration. AGENTS.md State rules were truncated mid-sentence.
+- fix: one reconciliation pass. Wired the nine real scripts into `package.json`; deleted
+  the two Marginalia scripts and every stale reference; honest-downed the `verify`,
+  `verify:full`, and `health` descriptions to what the scripts do; reframed `build`/
+  `test:e2e` as downstream-product commands; added a one-line "downstream contract"
+  marker to every product-voice skill; reconciled `skills.lock.json` to disk (added the
+  two visual skills, removed the phantom entry, fixed counts, removed the pin-enforcement
+  fiction, removed all Render vendor entries and made Netlify the deploy target);
+  matched the settings.json allowlist to wired reality; restored the truncated sentence;
+  added the `setup-health` row to the Skills table.
+- prevention: a `check:commands` gate (added in parallel — `scripts/check-commands.mjs`,
+  run by `pnpm verify`) asserts that every `pnpm <name>` named in AGENTS.md and the
+  skills resolves to a real `package.json` script or sits in explicitly downstream-marked
+  prose, so prose and wiring can never silently diverge again.
+- status: GRADUATED (scripts/check-commands.mjs + verify)
+
 ## 2026-08-07 render-login-succeeded-and-reported-failure
 
 - cause: two bugs in `scripts/provider-login.mjs`'s render entry, both invisible until
@@ -457,3 +488,177 @@ Format:
   store, and Convex-seam dependencies.
 - prevention: the UI contract suite contains a relative block import regression case.
 - status: GRADUATED (scripts/lib/ui-contract.test.mjs)
+
+## 2026-08-10 render-pivot-left-derived-layers-behind
+
+- cause: the deploy host moved from Render to Netlify (AGENTS.md Deploy rules; commit
+  8b4bc6a dropped render from `scripts/provider-login.mjs`), but the derived
+  configuration never followed. `.agents/connections/providers.json` still shipped a
+  `render` provider whose agent-tool step dispatched `pnpm provider:login render` — which
+  now exits 1, because that CLI target no longer exists — and shipped NO `netlify`
+  provider at all, so the one host the whole go-live path depends on could not be
+  connected through `pnpm connect`/`pnpm onboard`. In parallel, `.mcp.json` still declared
+  the `render` MCP server and `.claude/settings.json` still enabled the `render`
+  plugin, and `.agents/agents/connection-guide.md` still named Render as an example
+  provider. A rule declared in one place (Deploy rules) had drifted from every layer that
+  applies it. The split was invisible to static gates because a catalog entry pointing at
+  a deleted CLI is still valid JSON.
+- fix: replaced the `render` provider in `providers.json` with a `netlify` provider that
+  matches the catalog's existing shape — CLI browser-login agent-tool step
+  (`pnpm provider:login netlify`), a `home_file_exists` configuration probe, runner-based
+  `netlify init` / `netlify env:set --secret` / `netlify deploy --prod` provisioning
+  steps, `probe_and_attestation` verification on `netlify.toml` + the atomic
+  `npx convex deploy --cmd 'pnpm build'` build command, and `netlify logout` +
+  dashboard revocation. Removed the `render` MCP server from `.mcp.json` and the `render`
+  plugin from `.claude/settings.json` (no Netlify MCP server exists in the repo's pins,
+  so none was added in its place), then regenerated `.cursor/mcp.json`, the Claude/Codex/
+  Cursor/Hermes/OpenClaw agent adapters, and the Codex MCP mirror from source. Updated the
+  connection-guide brief to name Netlify.
+- prevention: the deeper rule is that a vendor pivot is not done until every derived layer
+  that names the old vendor is regenerated — the connection catalog, `.mcp.json`, plugin
+  wiring, and the agent briefs are all downstream of one Deploy-rules decision, and none of
+  them is caught by a JSON or build gate. A catalog `mcpServer`/CLI target that no longer
+  resolves should ideally be validated against `.mcp.json` and `scripts/provider-login.mjs`
+  at load time; today only `pnpm connect status` exercising the catalog reveals it.
+- status: open (residual render references remain in files outside this change's ownership
+  — see report: `scripts/connect.mjs` usage text, `scripts/lib/connections/service.test.mjs`
+  fixtures, and `skills.lock.json` pins/provider list still name render)
+
+## 2026-08-10 auth-secret-was-set-through-argv
+
+- cause: `scripts/setup-auth-env.mjs` generated `BETTER_AUTH_SECRET` and passed it as the
+  final argv element of `npx convex env set NAME VALUE`. A value in argv is visible to
+  `ps` and every process listing for the life of the child process, so the freshly minted
+  secret leaked to any local process — while the script's own docblock claimed the value
+  "never enters a transcript, chat, or agent state". The sibling `scripts/set-secret.mjs`
+  already did this correctly, piping the value over stdin.
+- fix: `setEnv` now spawns `convex env set NAME` with no value argument and feeds the
+  value over stdin (`input`, `stdio: ["pipe", ...]`), the officially documented no-leak
+  path. The docblock was corrected to describe stdin, not argv.
+- prevention: the rule — a secret is moved into Convex env over stdin, never as an argv
+  element — now has two call sites (`set-secret.mjs`, `setup-auth-env.mjs`) and
+  `stripe-provision.mjs`'s `convexEnvSet` following it identically. A future health check
+  could grep scripts for `env", "set", ...,` with a trailing value argument.
+- status: open
+
+## 2026-08-10 supply-chain-audit-checked-zero-packages
+
+- cause: `scripts/audit-supply-chain.mjs` ran `pnpm audit --prod`, but `package.json`'s
+  `dependencies` is `{}` — every real package (vitest, typescript, @playwright/test,
+  @types/node) is a devDependency. A `--prod`-scoped audit therefore inspected zero
+  packages while printing "Production dependencies checked" and passing, and it is wired
+  into `verify:full` as the "fail-closed production dependency audit". A vulnerable dev
+  dependency would never have been seen.
+- fix: dropped `--prod` so the audit covers the whole tree (prod + dev), which is the only
+  scope that exists in this repo. Fail-closed semantics preserved (any advisory of any
+  severity, or a non-zero pnpm exit, fails). Header and pass-line comments now state the
+  real scope.
+- prevention: the header records WHY the scope is the whole tree (all deps here are dev),
+  so a future reader does not "restore" `--prod` and silently disable the audit again. The
+  pass line prints the checked-dependency count, which is now non-zero — a zero there is
+  the tell that the scope is wrong.
+- status: open
+
+## 2026-08-10 ci-narrated-an-app-that-no-longer-exists
+
+- cause: `.github/workflows/ci.yml` had four defects. (1) An `e2e` job installed Chromium,
+  ran `pnpm verify:full`, and uploaded `playwright-report/`, but the repo ships no
+  Playwright config and no specs — the tool-only pivot removed the app — so it ran zero
+  browser tests while claiming to be the release proof. (2) `pnpm/action-setup` was pinned
+  to the mutable `@v4` tag, a supply-chain foothold. (3) There was no `permissions:` block,
+  so jobs ran with the default (broad) token scope. (4) `pnpm test` ran twice per verify
+  job — once inside `pnpm verify` (its `unit` step) and once as a standalone step. Comments
+  narrated `src/fonts/ofl/`, lint and build, and the Windows rationale cited a
+  `.claude/skills resolves` health check that `scripts/health.mjs` no longer contains.
+- fix: deleted the `e2e` job; pinned `pnpm/action-setup` to the full commit SHA of the v4
+  tag (`f40ffcd…`, annotated `# v4`); added top-level `permissions: contents: read`;
+  removed the duplicate standalone `pnpm test` step (verify already runs it); rewrote the
+  comments to match what the jobs do, and restated the Windows rationale as the real one
+  (cross-platform link/junction repair + CLI-spawn behavior under cmd/PowerShell). Added a
+  single-OS `audit` job running `pnpm audit:supply-chain`, so the fail-closed networked
+  audit — previously reachable only through the deleted `verify:full` job — still runs in
+  CI without a fake browser gate.
+- prevention: pin GitHub Actions by SHA, not tag; declare least-privilege `permissions`;
+  never install a browser or upload a report for tests that do not exist. A workflow that
+  builds/tests an application this repo no longer contains is drift from the tool-only
+  pivot — the same class as the render-pivot entry above.
+- status: open
+
+## 2026-08-10 heal-env-repair-failed-forever-and-proof-went-silent-when-red
+
+- cause: two defects in `scripts/heal.mjs`. (1) The `env scaffold` repair runs
+  `scripts/init-env.mjs`, which FAILS when `.env.example` is missing — and the file had
+  been deleted in the tool-only pivot even though `.gitignore` still un-ignores it
+  (`!.env.example`) and `pnpm setup:env` is documented against it — so that repair reported
+  FAILED on every heal. (2) The "proof" section ran `pnpm health` and wrote only
+  `health.stdout`, but `scripts/health.mjs` prints its PASS line to stdout and every
+  FAILURE to stderr, so the proof block was empty exactly when health was red — the one
+  time the receipt matters.
+- fix: recreated a minimal, honest `.env.example` (names only, no values) documenting only
+  the variables this tool-only repo's own scripts read — the two public `NEXT_PUBLIC_CONVEX_*`
+  URLs, optional `STRIPE_PROFILE`, optional `TWENTYFIRST_API_KEY` — with an explicit note
+  that real secrets live in Convex env via `pnpm secret:set`. `heal.mjs` now writes both
+  `health.stdout` and `health.stderr` in the proof block.
+- prevention: `.gitignore`'s `!.env.example` already declares the file is meant to exist
+  and be committed; deleting it should be caught. A "capture both streams when a script's
+  failures go to stderr" rule now applies wherever heal-style proof re-runs a checker.
+- status: open
+
+## 2026-08-10 windows-provider-login-and-stripe-config-were-posix-only
+
+- cause: `scripts/provider-login.mjs` spawned vendor CLIs (npm, gh, scoop, winget,
+  netlify, stripe, 21st) with `spawnSync(cmd, args)` and no shell — dead on win32, where
+  those targets are `.cmd`/`.ps1` batch shims that cannot be exec'd directly, so every
+  provider login failed before doing anything. Separately, `scripts/stripe-provision.mjs`
+  resolved the Stripe CLI config as `homedir()/.config/stripe/config.toml` but ignored
+  `XDG_CONFIG_HOME`, so a user who relocated their config was wrongly reported unpaired.
+- fix: added `const WIN = process.platform === "win32"` and `shell: WIN` to every external-
+  CLI `spawnSync` in `provider-login.mjs` — safe because every command/arg is a static
+  literal from the PROVIDERS catalog and no user input is interpolated (same pattern as
+  `scripts/probe-mcp.mjs`). In `stripe-provision.mjs` the config path now honors
+  `XDG_CONFIG_HOME` and falls back to `homedir()/.config` (which on Windows is
+  `%USERPROFILE%\.config\stripe\config.toml`, exactly where the Windows CLI writes it), so
+  both platforms and a relocated config resolve correctly.
+- prevention: the "bundle works on macOS, Linux AND Windows" claim needs the Windows CI
+  matrix job to actually exercise these paths; the reusable rule is `shell: WIN` for static-
+  arg vendor spawns, never `shell:true` with interpolated caller text.
+- status: open
+
+## 2026-08-10 probe-mcp-deleted-a-path-parsed-from-untrusted-stderr
+
+- cause: `scripts/probe-mcp.mjs` extracted a filesystem path from an MCP server's stderr
+  (untrusted output) with a regex and passed it straight to `rmSync(..., { recursive:
+  true, force: true })`. The regex constrained the path to `_npx/<hex>`, but a crafted or
+  malformed stderr line could still steer the deletion outside the intended npx cache
+  entry.
+- fix: added `safeNpxCacheEntry`, which resolves the candidate and refuses unless it is
+  exactly `<something>/_npx/<hex>` — parent directory literally named `_npx`, own name a
+  non-empty lowercase-hex string with no separators or `..`, reconstruction from validated
+  parts reproduces the resolved path byte-for-byte, and the directory actually exists as a
+  directory. `rmSync` runs only on the returned safe path; anything else is refused and
+  nothing is removed.
+- prevention: a path parsed out of untrusted output is never a delete target until it has
+  been re-validated to the narrowest shape that makes the repair provable — the same
+  "validate the thing you act on, not the pattern near it" lesson as the comment-vs-code
+  false-positive entries.
+- status: open
+
+## 2026-08-10 security-critical-url-gates-had-zero-tests
+
+- cause: the two allowlists that stand between the agent and the open web —
+  `scripts/open-url.mjs` (only catalog origins may be opened) and `scripts/fetch-asset.mjs`
+  (only allowlisted image hosts, re-checked on every redirect hop) — had no unit coverage,
+  so a regression such as origin/host confusion, an http downgrade, or a redirect off the
+  allowlist would ship green.
+- fix: minimally extracted the pure decision logic into `scripts/lib/url-allowlist.mjs`
+  (`catalogOrigins`, `classifyOpenUrl`) and `scripts/lib/asset-allowlist.mjs`
+  (`ALLOWED_IMAGE_HOSTS`, `checkAssetUrl`), imported by the two scripts with byte-identical
+  output and exit behavior (verified by end-to-end smoke runs). Added
+  `url-allowlist.test.mjs` (userinfo `@` smuggling, look-alike subdomain, explicit-port
+  origin, http-before-origin, non-https schemes, unparseable) and `asset-allowlist.test.mjs`
+  (allowed host, disallowed host, http downgrade, unparseable, and per-hop redirect
+  re-validation including scheme-relative and multi-hop chains).
+- prevention: the allowlist logic now lives in one tested module per script, so the check
+  cannot silently drift from its test; a future host or origin change updates one place and
+  the suite guards the confusion cases.
+- status: open

@@ -21,8 +21,8 @@
  * never fails the run — some servers legitimately wait on project state.
  */
 import { spawn } from "node:child_process";
-import { rmSync, readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { rmSync, readFileSync, statSync } from "node:fs";
+import { resolve, dirname, sep, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -88,11 +88,42 @@ function probe(name, server) {
   });
 }
 
-/** A module error inside an npx cache entry is the one failure with a provable repair. */
+/**
+ * A module error inside an npx cache entry is the one failure with a provable repair.
+ * This only pulls the candidate path OUT of the (untrusted) server stderr; it does not
+ * decide anything is safe to delete — safeNpxCacheEntry does that.
+ */
 function corruptNpxCacheDir(stderr) {
   if (!/ERR_MODULE_NOT_FOUND|Cannot find module/.test(stderr ?? "")) return null;
   const match = (stderr ?? "").match(/([A-Za-z]:)?[/\\][^'"\n]*[/\\]_npx[/\\][0-9a-f]+/);
   return match ? match[0] : null;
+}
+
+/**
+ * The rmSync target is parsed from a server's stderr — untrusted input — so it is
+ * validated to the narrowest possible shape before deletion: the resolved path must be
+ * exactly `<something>/_npx/<hex>`, i.e. its parent directory is literally named `_npx`,
+ * its own name is a non-empty lowercase-hex string with no separators or `..`, and the
+ * directory actually exists. Anything else (a traversal, a deeper path, a non-hex name,
+ * a symlink swap that no longer resolves to that shape) returns null and nothing is
+ * removed. Returns the safe absolute path, or null to refuse.
+ */
+function safeNpxCacheEntry(raw) {
+  if (!raw) return null;
+  const resolved = resolve(raw);
+  const entry = basename(resolved);
+  if (!/^[0-9a-f]+$/.test(entry)) return null; // strict hex, no `.`/`..`/separators
+  const parent = resolved.slice(0, resolved.length - entry.length - 1);
+  if (basename(parent) !== "_npx") return null; // must sit directly under an _npx root
+  // Reconstructing the path from its validated parts must reproduce it exactly — this
+  // rejects any residual `..`, doubled separators, or normalization surprise.
+  if (`${parent}${sep}${entry}` !== resolved) return null;
+  try {
+    if (!statSync(resolved).isDirectory()) return null;
+  } catch {
+    return null; // gone or unreadable — nothing to remove
+  }
+  return resolved;
 }
 
 const results = await Promise.all(servers.map(([name, server]) => probe(name, server)));
@@ -107,7 +138,7 @@ for (const result of results) {
     console.log(`  ${result.name}: no handshake before the deadline, process alive — not treated as a failure`);
     continue;
   }
-  const cacheDir = corruptNpxCacheDir(result.stderr);
+  const cacheDir = safeNpxCacheEntry(corruptNpxCacheDir(result.stderr));
   if (cacheDir && !checkOnly) {
     rmSync(cacheDir, { recursive: true, force: true });
     console.log(`  ${result.name}: corrupt npx cache entry removed (${cacheDir}) — refetching`);

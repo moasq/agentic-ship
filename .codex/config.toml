@@ -44,10 +44,6 @@ url = "https://mcp.resend.com/mcp"
 [mcp_servers.workspace-posthog]
 url = "https://mcp.posthog.com/mcp"
 
-# Source server: render
-[mcp_servers.workspace-render]
-url = "https://mcp.render.com/mcp"
-
 # Source server: playwright-test
 [mcp_servers.workspace-playwright-test]
 command = "npx"

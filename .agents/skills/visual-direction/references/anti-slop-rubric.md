@@ -56,7 +56,14 @@ Flag these for examination before detailed review; the motif alone is not a fail
 - a narrow page that is simply the desktop DOM stacked vertically;
 - controls, menus, forms, or states that were never opened during review.
 
-## Current home diagnosis — 2026-08-09 baseline
+## Worked example — home-page diagnosis and repair (Marginalia, 2026-08-09)
+
+This is a preserved case study from **Marginalia**, a reading-tracker product workspace
+built on this engine. The tool repository itself has no home page; read the sections
+below as a demonstration of the rubric in use, not as a claim about any surface in this
+repo. The full capture matrix it mentions lived in that product workspace's
+`.agents/ui/evidence/` directory, which is generated per product and is not part of
+this tool.
 
 Evidence:
 [`current-home-before-2026-08-09.png`](../../visual-qa/references/screenshots/current-home-before-2026-08-09.png)
@@ -119,8 +126,8 @@ The repair keeps the product-specific copy, ink/paper system, and acid annotatio
 but spends the first viewport on a truthful product artifact. The headline no longer
 uses generated pseudo-text, proof values no longer begin at zero, and the layout removes
 the orbit, technical grid, glow, pill eyebrow, gradient or hatch treatment, and repeated
-catalog reveals. These two previews supplement the committed 12-capture light/dark
-matrix under `.agents/ui/evidence/`; they do not replace it.
+catalog reveals. These two previews supplemented the product workspace's committed
+12-capture light/dark matrix; they did not replace it.
 
 This baseline also disproves a simplistic escape hatch: changing four common
 defaults—palette, primary typeface, radius, and violet-blue gradient—does not by itself
@@ -130,9 +137,12 @@ truth, and component or motion residue still require review.
 
 ### Oracle-guided living-depth revision — 2026-08-09
 
-![Marginalia desktop home with a finite shelf plane, five selectable book spines, one pulled-forward book, an attached private note, and a credited notebook photograph supporting the reading loop.](../../../ui/evidence/captures/home--public-default--light--desktop.png)
-
-![Marginalia narrow home where the shelf becomes a two-column book selector followed by one readable selected-book proof panel.](../../../ui/evidence/captures/home--public-default--dark--narrow.png)
+The captures for this revision lived in the product workspace's
+`.agents/ui/evidence/captures/` and are not vendored into this tool repo. What they
+showed: a desktop home with a finite shelf plane, five selectable book spines, one
+pulled-forward book, an attached private note, and a credited notebook photograph
+supporting the reading loop; and a narrow home where the shelf becomes a two-column
+book selector followed by one readable selected-book proof panel.
 
 The first repair removed catalog residue but overcorrected into a well-typeset
 wireframe. Subtraction was necessary, not sufficient: the product still needed one
@@ -154,5 +164,6 @@ because they would add effect count without adding product evidence.
 
 The durable lesson is not “add more 3D.” It is: assign one product-specific object the
 page thesis, give every asset a separate explanatory role, and make each vendor
-component earn its place through truth, interaction, or spatial understanding. The
-complete 12-capture light/dark and 320/768/1440 matrix remains the acceptance record.
+component earn its place through truth, interaction, or spatial understanding. In that
+workspace the complete 12-capture light/dark and 320/768/1440 matrix was the acceptance
+record — the same shape any product built on this engine produces.

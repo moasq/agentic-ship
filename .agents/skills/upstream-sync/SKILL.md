@@ -5,6 +5,8 @@ description: Check every vendored skill, MCP server, registry, and version pin a
 
 # Upstream Sync
 
+> Downstream contract: paths like `src/` and `convex/` refer to the product workspace that adopts Agentic Ship, not this tool repo.
+
 A bundle is only worth what it was worth on the day it was downloaded — unless it can
 update itself. This skill is the difference between a template and a maintained tool.
 
@@ -33,7 +35,7 @@ For each entry under `mcp`:
 - Patch and minor bumps → fine, note them.
 - **Major bumps → flag as breaking.** Read the upstream changelog before updating, and
   say what changed in the report.
-- Remote servers (stripe, resend, posthog, render, 21st) → confirm the documented URL
+- Remote servers (stripe, resend, posthog, 21st) → confirm the documented URL
   and auth scheme still match what is in `.mcp.json`. Vendors do migrate; that is
   exactly how the old Magic MCP configuration went stale. For 21st, `GET
   /.well-known/oauth-protected-resource/api/mcp` must still return an authorization

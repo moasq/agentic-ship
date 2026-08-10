@@ -5,6 +5,8 @@ description: Add and maintain SEO-ready MDX articles — metadata, structured da
 
 # SEO and Blog
 
+> Downstream contract: paths like `src/` and `convex/` refer to the product workspace that adopts Agentic Ship, not this tool repo.
+
 Native Next.js only — `@next/mdx`, first-party. No CMS, no Contentlayer (unmaintained),
 no runtime dependency to keep alive.
 

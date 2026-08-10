@@ -13,8 +13,7 @@
     "convex@claude-plugins-official": true,
     "stripe@claude-plugins-official": true,
     "resend@claude-plugins-official": true,
-    "posthog@claude-plugins-official": true,
-    "render@claude-plugins-official": true
+    "posthog@claude-plugins-official": true
   },
   "$comment:hooks": "Claude's native adapter for the cross-host definition-of-done rule. Codex and Cursor have generated native hooks; Hermes follows AGENTS.md with CI as backstop. --hook exits 2 and honors stop_hook_active so a failure cannot trap the user.",
   "hooks": {
@@ -33,9 +32,6 @@
   "permissions": {
     "allow": [
       "Bash(pnpm install)",
-      "Bash(pnpm dev)",
-      "Bash(pnpm build)",
-      "Bash(pnpm lint)",
       "Bash(pnpm audit:*)",
       "Bash(pnpm health)",
       "Bash(pnpm verify)",
@@ -43,7 +39,6 @@
       "Bash(pnpm heal)",
       "Bash(pnpm preflight)",
       "Bash(pnpm test)",
-      "Bash(pnpm test:e2e)",
       "Bash(pnpm secret)",
       "Bash(pnpm setup:env)",
       "Bash(pnpm link:skills)",
@@ -52,8 +47,10 @@
       "Bash(pnpm sync:agents)",
       "Bash(pnpm check:agents)",
       "Bash(pnpm check:ui)",
+      "Bash(pnpm check:commands)",
       "Bash(pnpm agent:work:*)",
       "Bash(pnpm connect:*)",
+      "Bash(pnpm component:list:*)",
       "Bash(pnpm component:place:*)",
       "Bash(pnpm onboard)",
       "Bash(pnpm asset:*)",

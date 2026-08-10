@@ -25,6 +25,6 @@ For `components.json`, parse the file and validate the declared registry shape l
 Route the live HTTP availability check to `upstream-sync`. Stop using a registry whose
 official endpoint fails; do not silently replace its output with hand-written code.
 
-For Stripe, Resend, PostHog, and Render MCP, let `agent-compatibility` validate the
+For Stripe, Resend, and PostHog MCP, let `agent-compatibility` validate the
 local direct-HTTP declaration. Let `service-connections` own browser OAuth and the
 post-consent provider call. A URL in `.mcp.json` proves configuration only, not access.

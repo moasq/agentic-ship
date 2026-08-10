@@ -19,6 +19,14 @@ import { fileURLToPath } from "node:url";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
+// On Windows the vendor CLIs are batch shims (npm.cmd, netlify.cmd, scoop, winget, gh)
+// that spawnSync cannot exec without a shell — without this every provider login is dead
+// on win32. Every command and argument spawned below is a static literal from the
+// PROVIDERS catalog; no user input is ever interpolated into a shell string, so shell
+// use here is safe (same pattern as scripts/probe-mcp.mjs). Never add shell:true to a
+// call whose args carry caller-supplied text.
+const WIN = process.platform === "win32";
+
 const PROVIDERS = {
   stripe: {
     binary: "stripe",
@@ -92,7 +100,7 @@ function pause(milliseconds) {
 
 function verified(provider) {
   if (!provider.verify) return existsSync(join(homedir(), provider.pairedFile));
-  const result = spawnSync(provider.verify[0], provider.verify.slice(1), { stdio: "ignore" });
+  const result = spawnSync(provider.verify[0], provider.verify.slice(1), { stdio: "ignore", shell: WIN });
   return result.status === 0;
 }
 
@@ -115,7 +123,7 @@ function completeHeadlessPairing(loginOutput) {
   });
   const deadline = Date.now() + 5 * 60_000;
   while (Date.now() < deadline) {
-    const done = spawnSync("stripe", ["login", "--complete", completeUrl], { stdio: "ignore" });
+    const done = spawnSync("stripe", ["login", "--complete", completeUrl], { stdio: "ignore", shell: WIN });
     if (done.status === 0) return true;
     pause(5000);
   }
@@ -128,11 +136,12 @@ function run(argv, { input } = {}) {
     stdio: [input === undefined ? "inherit" : "pipe", "inherit", "inherit"],
     input,
     encoding: "utf8",
+    shell: WIN,
   });
 }
 
 function binaryExists(binary) {
-  const probe = spawnSync(binary, ["--version"], { stdio: "ignore" });
+  const probe = spawnSync(binary, ["--version"], { stdio: "ignore", shell: WIN });
   return probe.error === undefined || probe.error === null;
 }
 
@@ -172,7 +181,7 @@ if (verified(provider)) {
 
 console.log(`${providerId}: starting browser login. Approve the request in the browser; the command waits here.`);
 if (provider.captureAndComplete) {
-  const login = spawnSync(provider.login[0], provider.login.slice(1), { input: "\n", encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
+  const login = spawnSync(provider.login[0], provider.login.slice(1), { input: "\n", encoding: "utf8", stdio: ["pipe", "pipe", "pipe"], shell: WIN });
   if (!completeHeadlessPairing(`${login.stdout}\n${login.stderr}`)) {
     fail(`${providerId} pairing was not approved in time. Rerun when ready, or follow ${provider.docs}.`);
   }
