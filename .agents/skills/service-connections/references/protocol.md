@@ -53,7 +53,7 @@ collection. `input_required` additionally carries:
 - `agentRuns`: catalog `automation.run` steps the agent executes on the user's behalf —
   `command`, `why`, and `opensBrowser` when the command blocks on browser consent.
   `pnpm provider:login <cli>` steps install the vendor's official CLI when missing and
-  wait on its browser OAuth (Stripe pairing, Render confirmation, GitHub device flow)
+  wait on its browser OAuth (Stripe pairing, Netlify login, GitHub device flow)
 - `instructions`: the manual equivalent, safe actions with no credential values
 - `verification`: boolean probe results and safe summaries only
 - `sensitiveInputAllowed`: always `false`
@@ -86,7 +86,7 @@ local probe types:
 - `env_file_key`
 - `home_file_exists` — existence of a home-relative file only, never its contents;
   this is how CLI OAuth pairing is detected (`.config/stripe/config.toml`,
-  `.config/gh/hosts.yml`, `.config/render/config.json`) without reading the
+  `.config/gh/hosts.yml`, `.config/netlify/config.json`) without reading the
   credential the pairing produced
 
 Choose `machine` only when local, non-secret signals prove readiness. Choose

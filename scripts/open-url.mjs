@@ -15,6 +15,7 @@ import { readFileSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { catalogOrigins, classifyOpenUrl } from "./lib/url-allowlist.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const raw = process.argv[2];
@@ -24,36 +25,25 @@ if (!raw) {
   process.exit(1);
 }
 
-let url;
-try {
-  url = new URL(raw);
-} catch {
-  console.error(`FAIL  not a valid URL: ${raw}`);
-  process.exit(1);
-}
-if (url.protocol !== "https:") {
-  console.error(`FAIL  https only (got ${url.protocol}).`);
-  process.exit(1);
-}
-
 const catalog = JSON.parse(readFileSync(join(root, ".agents", "connections", "providers.json"), "utf8"));
-const allowedOrigins = new Set();
-for (const provider of Object.values(catalog.providers)) {
-  for (const candidate of [provider.docsUrl, provider.agentTool?.setupUrl, provider.projectProvisioning?.setupUrl]) {
-    if (typeof candidate === "string" && candidate.startsWith("https://")) {
-      allowedOrigins.add(new URL(candidate).origin);
-    }
-  }
-}
+const allowedOrigins = catalogOrigins(catalog);
 
-if (!allowedOrigins.has(url.origin)) {
-  console.error(
-    `FAIL  ${url.origin} is not a connection-catalog origin.\n` +
-      `      Allowed: ${[...allowedOrigins].sort().join(", ")}\n` +
-      "      Adding a provider surface is a catalog change in .agents/connections/providers.json, not a flag.",
-  );
+const verdict = classifyOpenUrl(raw, allowedOrigins);
+if (!verdict.ok) {
+  if (verdict.reason === "invalid-url") {
+    console.error(`FAIL  not a valid URL: ${raw}`);
+  } else if (verdict.reason === "not-https") {
+    console.error(`FAIL  https only (got ${verdict.protocol}).`);
+  } else {
+    console.error(
+      `FAIL  ${verdict.origin} is not a connection-catalog origin.\n` +
+        `      Allowed: ${[...allowedOrigins].sort().join(", ")}\n` +
+        "      Adding a provider surface is a catalog change in .agents/connections/providers.json, not a flag.",
+    );
+  }
   process.exit(1);
 }
+const url = verdict.url;
 
 const openers = {
   darwin: { command: "open", args: [url.href] },

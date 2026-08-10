@@ -1,7 +1,7 @@
 ---
 name: connection-guide
 description: |
-  Use this agent when a task requires connecting, authorizing, provisioning, verifying, resuming, or disconnecting an external service such as Stripe, Convex, Resend, PostHog, or Render. Use it when browser consent or another human-only action must pause automation. Do not use it for product checkout behavior or for storing credentials.
+  Use this agent when a task requires connecting, authorizing, provisioning, verifying, resuming, or disconnecting an external service such as Stripe, Convex, Resend, PostHog, or Netlify. Use it when browser consent or another human-only action must pause automation. Do not use it for product checkout behavior or for storing credentials.
   
   <example>
   Context: The project needs Stripe access, but the selected AI host has not authorized the Stripe MCP server.

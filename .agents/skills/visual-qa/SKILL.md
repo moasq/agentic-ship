@@ -5,6 +5,8 @@ description: Capture, inspect, repair, and accept deterministic visual evidence 
 
 # Visual QA
 
+> Downstream contract: paths like `src/` and `convex/` refer to the product workspace that adopts Agentic Ship, not this tool repo.
+
 Turn a visual direction into reviewable evidence. Automated checks prove coverage and
 basic browser integrity; the reviewer proves that the rendered product expresses the
 declared direction without generic generated-page residue.

@@ -9,6 +9,8 @@
     { "name": "product-lifecycle", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": [".agents/contracts/product-brief.schema.json", ".agents/contracts/feature-contract.schema.json", ".agents/contracts/input-required.schema.json"] },
     { "name": "service-connections", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["protocol.md", ".agents/connections/providers.json", ".agents/connections/hosts.json"] },
     { "name": "ui-system", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["font-pairings.md", "palette-recipes.md"] },
+    { "name": "visual-direction", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["anti-slop-rubric.md", "real-site-gallery.md", "sources.md"] },
+    { "name": "visual-qa", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["review-policy.md"] },
     { "name": "component-picker", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": [] },
     { "name": "asset-pipeline", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": [] },
     { "name": "frontend-security", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["analytics-posthog.md"] },
@@ -21,17 +23,8 @@
       "upstream": "original",
       "patched": false,
       "lastSync": "2026-08-06",
-      "references": ["better-auth-wiring.md", "deploy-render.md", "email-resend.md", "example-domain.md", "stripe-billing.md"],
+      "references": ["better-auth-wiring.md", "deploy-netlify.md", "email-resend.md", "example-domain.md", "stripe-billing.md"],
       "note": "Deliberately narrow: covers Convex INSIDE Agentic Ship only. Convex-the-product is taught by the official convex plugin's skills, which are not vendored here — they update themselves."
-    },
-    {
-      "name": "better-auth-best-practices",
-      "upstream": "https://github.com/better-auth/skills",
-      "official": true,
-      "vendored": false,
-      "installVia": "skills CLI — see https://better-auth.com/docs/ai-resources/skills",
-      "verified": "2026-08-06",
-      "note": "Official Better Auth skill pack. Not vendored; workspace-health records the safe fallback and the repository pins the patched runtime independently."
     }
   ],
   "mcp": [
@@ -102,15 +95,6 @@
       "url": "https://mcp.posthog.com/mcp",
       "transport": "http+oauth",
       "upstream": "https://github.com/PostHog/ai-plugin (.mcp.json)",
-      "official": true,
-      "verified": "2026-08-06"
-    },
-    {
-      "name": "render",
-      "package": "remote",
-      "url": "https://mcp.render.com/mcp",
-      "transport": "http+oauth",
-      "upstream": "https://github.com/render-oss/render-plugin-claude-code (.mcp.json)",
       "official": true,
       "verified": "2026-08-06"
     },
@@ -310,16 +294,6 @@
       "note": "The MCP reads product data BACK — insights, funnels, flags, experiments, replays. That is why PostHog was chosen over Amplitude (also official) and over Plausible/Umami/Mixpanel (no official plugin at all)."
     },
     {
-      "name": "render",
-      "marketplace": "claude-plugins-official",
-      "source": "github.com/render-oss/render-plugin-claude-code",
-      "official": true,
-      "verified": "2026-08-04",
-      "declaredIn": ".claude/settings.json",
-      "bundles": ["deploy-to-render + check-render-status commands", "render-assistant agent", "hooks", "hosted MCP https://mcp.render.com/mcp (OAuth)"],
-      "alternative": "railwayapp/railway-skills is equally official (one use-railway skill, mcp.railway.com, cross-tool providers). Render was chosen because render.yaml declares the WHOLE topology as committed, diffable code, while Railway services are created interactively — state the repo cannot see. Swapping is writing one file."
-    },
-    {
       "name": "shadcn / magicui / tailwind / zustand plugins",
       "status": "none exist",
       "verified": "2026-08-03",
@@ -374,14 +348,15 @@
       }
     },
     "deploy": {
-      "target": "render",
-      "blueprint": "render.yaml",
-      "verified": "2026-08-04",
-      "buildCommand": "corepack enable && pnpm install --frozen-lockfile && npx convex deploy --cmd 'pnpm build'",
+      "target": "netlify",
+      "blueprint": "netlify.toml",
+      "verified": "2026-08-10",
+      "buildCommand": "npx convex deploy --cmd 'pnpm build'",
       "buildReason": "convex deploy pushes the backend to the PROD deployment and only then builds the frontend with the prod URL injected. `pnpm build` alone ships a frontend against a stale backend — the most common Convex production failure.",
-      "secretSplit": "Render holds CONVEX_DEPLOY_KEY + public keys only. Every backend secret lives in the prod Convex deployment's env, which is what keeps live Stripe keys off dev machines (rule R7).",
+      "secretSplit": "Netlify holds CONVEX_DEPLOY_KEY + public keys only; secret values never go in the committed netlify.toml (set them with `netlify env:set <NAME> --secret`). Every backend secret lives in the prod Convex deployment's env, which is what keeps live Stripe keys off dev machines (rule R7).",
+      "topology": "netlify.toml is authoritative and overrides dashboard edits, so the deploy path is entirely the terminal: `netlify init` links the repo, `netlify env:set` configures it, `netlify deploy --prod` ships.",
       "rejected": {
-        "railway": "equally official, but services are created interactively — topology the repo cannot see. Swapping to it is writing one file.",
+        "render": "replaced: `render deploys create` needs a serviceID only the dashboard can mint, and `render blueprints` can validate a blueprint but never apply one, so the first deploy could not be reached from a terminal at all.",
         "vercel": "excluded by decision"
       },
       "deferred": "domain (Cloudflare or Namecheap). HSTS ships with a two-year max-age, so the certificate must be right on the first request at a custom domain."
@@ -450,14 +425,14 @@
   },
   "connections": {
     "catalogs": [".agents/connections/providers.json", ".agents/connections/hosts.json"],
-    "providers": ["convex", "stripe", "resend", "posthog", "render"],
+    "providers": ["convex", "stripe", "resend", "posthog", "netlify"],
     "hosts": ["claude", "codex", "cursor", "hermes", "openclaw"],
     "state": ".agent-state/connections/ (gitignored; whitelisted receipts only)",
     "verified": "2026-08-06"
   },
   "distribution": {
     "$comment": "Plugin manifests point at canonical skills and pinned MCP catalogs. Host-native role adapters remain generated files.",
-    "claude": { "manifests": [".claude-plugin/plugin.json", ".claude-plugin/marketplace.json"], "generated": ["agents/"], "install": "/plugin marketplace add moasq/agentic-ship → /plugin install agentic-ship@agentic-ship", "verified": "2026-08-06 isolated Claude Code 2.1.217 install: 14 skills, 5 agents, 10 MCP servers" },
+    "claude": { "manifests": [".claude-plugin/plugin.json", ".claude-plugin/marketplace.json"], "generated": ["agents/"], "install": "/plugin marketplace add moasq/agentic-ship → /plugin install agentic-ship@agentic-ship", "verified": "2026-08-06 isolated Claude Code 2.1.217 install: 16 skills, 5 agents, 10 MCP servers" },
     "codex": { "manifests": [".codex-plugin/plugin.json", ".agents/plugins/marketplace.json", ".codex-plugin/mcp.json"], "install": "/plugin marketplace add moasq/agentic-ship → /plugin install agentic-ship@agentic-ship", "verified": "2026-08-06 isolated Codex 0.147.0-alpha.1.2 marketplace install with ON_USE auth plus project config and direct MCP map" },
     "cursor": { "generated": [".cursor/agents/", ".cursor/mcp.json", ".cursor/hooks.json"], "verified": "2026-08-06 official schema plus executable hook tests" },
     "hermes": { "generated": [".hermes/profile/", ".hermes/roles.md"], "verified": "2026-08-06 isolated Hermes 0.20.0 profile install" },
@@ -465,7 +440,7 @@
     "scaffold": { "install": "npx github:moasq/create-agentic-ship my-app" }
   },
   "pins": {
-    "$comment": "The machine-checked set — scripts/health.mjs compares every entry against package.json. 'N.x' pins the major; a full 'x.y.z' means EXACT, range forms are a FAIL. better-auth's exact patched pin and its adapter-only type bridge are verified by src/lib/auth-client.test.ts and recorded in heal-ledger.md. The narrative for backend pins lives in backend.auth.pins; this block is what the script enforces.",
+    "$comment": "The recorded version pins for the downstream product stack. 'N.x' pins the major; a full 'x.y.z' means EXACT. The upstream-sync skill verifies these against upstream — no gate in this tool repo enforces them, because the packages they name live in the product workspace, not in this repo's dependency-free package.json. better-auth's exact patched pin and its adapter-only type bridge are verified downstream by src/lib/auth-client.test.ts and recorded in heal-ledger.md. The narrative for backend pins lives in backend.auth.pins.",
     "next": "16.x",
     "react": "19.x",
     "tailwindcss": "4.x",

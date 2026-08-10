@@ -1,6 +1,6 @@
 ---
 name: service-connections
-description: Use when connecting, authorizing, provisioning, resuming, verifying, canceling, or diagnosing an external service such as Convex, Stripe, GitHub, Resend, PostHog, or Render, especially when browser consent or another human-only step must pause an agent running in Claude Code, Codex, Cursor, Hermes, or OpenClaw.
+description: Use when connecting, authorizing, provisioning, resuming, verifying, canceling, or diagnosing an external service such as Convex, Stripe, GitHub, Resend, PostHog, or Netlify, especially when browser consent or another human-only step must pause an agent running in Claude Code, Codex, Cursor, Hermes, or OpenClaw.
 ---
 
 # Service connections
@@ -57,7 +57,7 @@ When the result type is `input_required`, ask once, then act by runner:
    `opensBrowser` opens the provider's consent page and blocks until the user approves
    — run it, tell the user a browser is waiting for them, and let the command's own
    exit signal the consent. `pnpm provider:login <cli>` is that shape for providers
-   whose vendors ship CLI OAuth (Stripe pairing codes, Render dashboard confirmation,
+   whose vendors ship CLI OAuth (Stripe pairing codes, Netlify browser login,
    GitHub device flow): it installs the official CLI when missing and then waits on
    the browser approval. That blocking wait is the pause; do not poll around it,
    invent a callback, click the consent yourself, or edit global host configuration.

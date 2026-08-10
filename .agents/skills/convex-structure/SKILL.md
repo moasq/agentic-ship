@@ -5,6 +5,8 @@ description: How Convex is structured inside Agentic Ship — file layout, funct
 
 # Convex Structure
 
+> Downstream contract: paths like `src/` and `convex/` refer to the product workspace that adopts Agentic Ship, not this tool repo.
+
 Official Convex skills (from the `convex` plugin) teach Convex. This skill teaches
 **Convex inside this repo** — the conventions that let an agent open a cold codebase and
 know exactly where everything goes without reading it all first.
@@ -172,22 +174,25 @@ one every visitor sees and the one that gets hardcoded. The account-cluster proc
 
 ## 7b. Showcase data
 
-`convex/seed.ts` fills an existing shelf with books, notes and one published link, for
-demos and screenshots: `pnpm seed --slug <workspace-slug>`.
+Showcase seeding is a **downstream product concern**: the product author writes
+`convex/seed.ts` in the product workspace to fill an existing workspace with realistic
+demo rows for screenshots and manual exploration. This tool repo ships no seed script —
+the pattern below is the contract any such seed must satisfy, run through
+`npx convex run <name>` on the dev deployment only.
 
-Three properties keep it out of a real tenant, and a seed you add for another domain
+Three properties keep it out of a real tenant, and any seed you add for a domain
 needs all three:
 
 - **`internalMutation`.** No browser path exists, so no customer can seed anything and
   no public surface grows because the file exists.
 - **`ALLOW_TEST_SEED` gated.** It refuses without the flag, and `pnpm preflight --prod`
   FAILS if that flag is ever set on production.
-- **It fills a workspace that already exists**, found by slug, writing every row against
-  that workspace's own `ownerId`. It creates no user, grants no membership and moves no
-  plan — so seeding can never be a way to reach a tenant or hand out access.
+- **It fills a workspace that already exists**, found by its own key, writing every row
+  against that workspace's own `ownerId`. It creates no user, grants no membership and
+  moves no plan — so seeding can never be a way to reach a tenant or hand out access.
 
 Counters are **recomputed** from the rows that exist afterwards rather than incremented,
-because the seed may run on a shelf that already has books, and a header disagreeing
+because the seed may run on a workspace that already holds rows, and a header disagreeing
 with its own list is a visible bug.
 
 ## 8. Secrets

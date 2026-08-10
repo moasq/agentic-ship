@@ -38,7 +38,7 @@ function fixture(t) {
         stripe: {},
         resend: {},
         posthog: {},
-        render: {},
+        netlify: {},
       },
     }),
   );
@@ -47,7 +47,7 @@ function fixture(t) {
   write(projectRoot, "convex/http.ts", 'const routes = ["/stripe/webhook", "/resend-webhook"];');
   write(projectRoot, "src/lib/analytics.ts", 'import "posthog-js";');
   write(projectRoot, "next.config.ts", 'const route = "/ingest/:path*";');
-  write(projectRoot, "render.yaml", "sync: false\nbuildCommand: npx convex deploy --cmd 'pnpm build'\n");
+  write(projectRoot, "netlify.toml", "[build]\ncommand = \"npx convex deploy --cmd 'pnpm build'\"\n");
 
   let current = new Date("2026-08-06T10:00:00.000Z");
   let sequence = 0;
@@ -76,7 +76,7 @@ test("catalog exposes every supported provider and host", (t) => {
   assert.equal(result.type, "connection_status");
   assert.deepEqual(
     result.providers.map((provider) => provider.id),
-    ["convex", "stripe", "github", "resend", "posthog", "render"],
+    ["convex", "stripe", "github", "resend", "posthog", "netlify"],
   );
   assert.deepEqual(result.supportedHosts, ["claude", "codex", "cursor", "hermes", "openclaw"]);
 });
@@ -317,12 +317,12 @@ test("catalog placeholders fail closed when a command uses an undeclared token",
 
 test("active actions expire and a new begin creates a fresh receipt", (t) => {
   const { service, advance } = fixture(t);
-  const first = service.begin("render", "codex");
+  const first = service.begin("netlify", "codex");
   advance(24 * 60 * 60 * 1000 + 1);
 
   const expired = service.resume(first.action.actionId);
   assert.equal(expired.type, "connection_expired");
-  const second = service.begin("render", "codex");
+  const second = service.begin("netlify", "codex");
   assert.notEqual(second.action.actionId, first.action.actionId);
 });
 

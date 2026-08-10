@@ -1,8 +1,8 @@
 # Font Pairings — details and licenses
 
 Reference for the ui-system skill. The rule stands: two families max plus one mono, and
-Inter / Geist / Space Grotesk / Poppins are banned as primary faces — they are the four
-default faces of AI-generated sites.
+Inter / Geist / Space Grotesk / Poppins are banned as primary faces — they are the most
+common default faces of AI-generated sites.
 
 ## Loading: always local, never `next/font/google`
 

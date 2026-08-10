@@ -5,6 +5,8 @@ description: Source and treat images, illustrations, icons, and 3D so a site fee
 
 # Asset Pipeline
 
+> Downstream contract: paths like `src/` and `convex/` refer to the product workspace that adopts Agentic Ship, not this tool repo.
+
 Ten random stock photos look like a template. Ten photos under one consistent treatment
 look like a brand. The treatment matters more than the photo.
 

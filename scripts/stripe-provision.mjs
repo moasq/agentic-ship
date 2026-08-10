@@ -87,8 +87,18 @@ const value = (name) => {
   return index >= 0 ? args[index + 1] : undefined;
 };
 
-const stripeConfigPath = join(homedir(), ".config", "stripe", "config.toml");
-const paired = existsSync(stripeConfigPath);
+// The Stripe CLI resolves its config the same way on every platform: $XDG_CONFIG_HOME
+// if set, otherwise <home>/.config — and on Windows os.homedir() is %USERPROFILE%, so
+// the default lands at %USERPROFILE%\.config\stripe\config.toml, which is exactly where
+// the Windows CLI writes it. Honouring XDG_CONFIG_HOME here means a user who relocated
+// their config is still found instead of being told, wrongly, that the CLI is unpaired.
+function stripeConfigPath() {
+  const xdg = process.env.XDG_CONFIG_HOME;
+  const base = xdg && xdg.trim() ? xdg : join(homedir(), ".config");
+  return join(base, "stripe", "config.toml");
+}
+const stripeConfigFile = stripeConfigPath();
+const paired = existsSync(stripeConfigFile);
 
 /**
  * The paired CLI's TEST key, out of its own config, for the named profile only.
@@ -100,7 +110,7 @@ const paired = existsSync(stripeConfigPath);
 function testModeKeyFromCli(profile) {
   if (!paired) return null;
   let inProfile = false;
-  for (const raw of readFileSync(stripeConfigPath, "utf8").split(/\r?\n/)) {
+  for (const raw of readFileSync(stripeConfigFile, "utf8").split(/\r?\n/)) {
     const line = raw.trim();
     if (line.startsWith("[")) {
       inProfile = line === `[${profile}]`;
@@ -145,7 +155,7 @@ if (flag("test-key")) {
   if (flag("prod")) fail("--test-key never targets production. A live deployment takes a live key, set by a person: `pnpm secret:set STRIPE_SECRET_KEY`.");
   const profile = process.env.STRIPE_PROFILE ?? "default";
   const key = testModeKeyFromCli(profile);
-  if (!key) fail(`No test_mode_api_key for profile "${profile}" in ${stripeConfigPath}. Run \`pnpm provider:login stripe\` to pair in test mode.`);
+  if (!key) fail(`No test_mode_api_key for profile "${profile}" in ${stripeConfigFile}. Run \`pnpm provider:login stripe\` to pair in test mode.`);
   if (!/^(sk|rk)_test_/.test(key)) fail("The paired key is not a TEST key. Refusing — this path never handles live credentials.");
   convexEnvSet("STRIPE_SECRET_KEY", key);
   console.log("STRIPE_SECRET_KEY set in Convex env from the paired CLI's TEST key (value never printed).");

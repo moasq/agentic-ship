@@ -5,6 +5,8 @@ description: Establish and enforce the project's visual system — design tokens
 
 # UI System
 
+> Downstream contract: paths like `src/` and `convex/` refer to the product workspace that adopts Agentic Ship, not this tool repo.
+
 This skill implements the tokens, type, density, shape and themes selected in the
 validated UI plan. Use `visual-direction` first for substantial interface work; a
 coherent token system cannot rescue an unexamined composition by itself.
@@ -24,9 +26,10 @@ rubric owns that review.
 
 ## 1. Tokens live in exactly one place
 
-Tailwind v4 is CSS-first. There is **no `tailwind.config.js`**. Everything lives in the
-`@theme` block in `src/app/globals.css`. If a config file appears, migrate its contents
-into `@theme` and delete it.
+Tailwind v4 is CSS-first. There is **no `tailwind.config.js`**. Everything lives in
+`src/app/globals.css`: palette values in the `:root` and `.dark` blocks, mapped to
+Tailwind utilities by the `@theme` block in the same file. If a config file appears,
+migrate its contents into that file and delete it.
 
 Replacing the shipped palette has two equivalent routes — pick by who is driving:
 
@@ -37,8 +40,8 @@ Replacing the shipped palette has two equivalent routes — pick by who is drivi
   single brand hue. No GUI in the loop, same paste target.
 
 Every shadcn and MagicUI component inherits the variables automatically — that is the
-entire trick. Either route ends the same way: the `@theme` block holds a palette
-chosen for THIS product. Shipping the default is defect #1 on the list above.
+entire trick. Either route ends the same way: `globals.css` holds a palette chosen
+for THIS product. Shipping the default is defect #1 on the list above.
 
 Rules:
 
@@ -90,8 +93,8 @@ element while applying the system:
    `component-picker` owns which one answers what.
 2. **References inform decisions, not copying.** The plan records take/avoid lessons;
    research screenshots never become product assets.
-3. **Ration the motion.** At most one or two animated pieces per viewport, on an
-   otherwise calm base.
+3. **Ration the motion.** At most two motion pieces per viewport, on an otherwise
+   calm base.
 4. **One signature element per page** — a bento grid, one gradient field, or one 3D
    moment. Not all three.
 
@@ -102,7 +105,7 @@ on real components and make sure the accent still works on the dark ground.
 
 ## 5. Checklist before declaring the system done
 
-- [ ] `@theme` block contains the project palette, not the shadcn default
+- [ ] `globals.css` holds the project palette, not the shadcn default
 - [ ] Primary face is not on the banned list
 - [ ] `--radius` chosen deliberately
 - [ ] Dark mode reviewed on a real page, not just tokens

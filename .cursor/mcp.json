@@ -36,10 +36,6 @@
       "type": "http",
       "url": "https://mcp.posthog.com/mcp"
     },
-    "render": {
-      "type": "http",
-      "url": "https://mcp.render.com/mcp"
-    },
     "playwright-test": {
       "command": "npx",
       "args": ["-y", "playwright@1.62.1", "run-test-mcp-server"]

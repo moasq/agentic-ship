@@ -45,6 +45,7 @@ const steps = [
   { name: "agent adapters", cmd: "pnpm check:agents", why: "canonical roles and generated host-native adapters" },
   { name: "MCP mirror", cmd: "pnpm check:mcp", why: "one pinned tool catalog across supported hosts" },
   { name: "UI tooling", cmd: "pnpm check:ui", why: "visual-plan tooling remains valid with no bundled UI" },
+  { name: "commands", cmd: "pnpm check:commands", why: "documented pnpm commands and skill/MCP lock entries match reality" },
   { name: "unit", cmd: "pnpm test", why: "deterministic tool contracts" },
 ];
 

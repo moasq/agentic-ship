@@ -8,7 +8,8 @@
  *
  * Exists so the connection process can run the whole auth setup on the user's
  * behalf without the secret ever entering a transcript, chat, or agent state —
- * the value goes straight from the generator to the Convex CLI argument vector.
+ * the value is piped to the Convex CLI over stdin (the same no-shell-history path
+ * as `pnpm secret:set`), so it never appears in argv or a process listing.
  * Pure Node, no shell, so it behaves identically on macOS, Linux and Windows.
  */
 import { randomBytes } from "node:crypto";
@@ -23,8 +24,13 @@ if (!/^https?:\/\//.test(siteUrl)) {
 const npx = process.platform === "win32" ? "npx.cmd" : "npx";
 
 function setEnv(name, value, shown) {
-  const result = spawnSync(npx, ["convex", "env", "set", name, value], {
-    stdio: ["ignore", "ignore", "inherit"],
+  // The value is piped over stdin, never passed as an argv element — a value in argv
+  // is visible to `ps` and every process listing. `convex env set NAME` (no value arg)
+  // reads it from stdin, the officially documented no-leak path (see set-secret.mjs).
+  const result = spawnSync(npx, ["convex", "env", "set", name], {
+    input: value,
+    stdio: ["pipe", "ignore", "inherit"],
+    encoding: "utf8",
   });
   if (result.error || result.status !== 0) {
     console.error(`FAIL  could not set ${name} — is the deployment configured? (npx convex dev --once)`);
