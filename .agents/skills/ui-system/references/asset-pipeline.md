@@ -23,6 +23,58 @@ an available image invent the page's direction after implementation has started.
 | Icons | Lucide | ships with shadcn, so consistency is free | one set, one stroke width |
 | 3D | Spline embed | the practical default for web 3D | below the fold, lazy-loaded, only if it earns its bytes. **The shipped CSP blocks all iframes** (`frame-ancestors 'none'`, no `frame-src`) — embedding one is a deliberate CSP change owned by the `frontend-security` skill, never a quiet edit |
 
+## Finding the image in the first place
+
+`pnpm asset` takes a URL; it does not find one. That half is a judgment loop, and
+skipping it is how a page ends up with a technically-licensed photo that fights its
+own palette.
+
+**Never invent a photo ID.** Unsplash and Pexels CDN paths look guessable
+(`photo-1504253163759-c23fccaebb55`) and are not — a fabricated one 404s, and a
+plausible-looking 404 in a build is worse than no image. Get real IDs by reading a
+search page:
+
+```text
+WebFetch https://unsplash.com/s/photos/<search terms>
+  → "list the full https://images.unsplash.com/photo- URLs on this page"
+```
+
+Then run this loop, which is short and worth doing every time:
+
+1. **Search for the treatment, not the subject.** "aerial earth" returns saturated
+   farmland and dark canyons; "clouds from above pale minimal" returns something that
+   can sit under text. Describe the tonal register you need — pale, low-contrast,
+   airy, high-key — because that is what decides whether the image works, and the
+   subject usually is not what makes it fail.
+2. **Preview before committing.** Fetch two to four candidates small
+   (`?w=900&q=70&fm=jpg`) and actually look at them. Cheap, and it is where most
+   candidates die.
+3. **Judge against the tokens, not in the abstract.** Hold the candidate against the
+   ground and text colours it will sit behind. A photo whose dominant hue already
+   lives in the palette reads as an extension of the design; one that does not reads
+   as stock, however good it is on its own.
+4. **Fetch the winner at final resolution through `pnpm asset`**, so it crosses the
+   allowlist and lands in `public/images/`.
+5. **Record it in `credits.md` immediately** (below), while the source URL is still
+   in hand.
+
+Two failure modes worth naming, because both have happened here:
+
+- **Choosing on subject alone.** An excellent photograph of the right subject in the
+  wrong tonal register is still the wrong photograph. Reject it and search again;
+  the second search is cheaper than the redesign.
+- **Recording a photographer you did not verify.** A bare CDN URL does not carry
+  attribution, and the canonical photo page is not always resolvable from it. Write
+  down what you confirmed and say plainly that the name is unresolved. Neither
+  licence requires attribution, so an honest gap costs nothing and an invented
+  credit is a fabricated record.
+
+Outside reference for ratio and pixel-size conventions per use case (avatar,
+headshot, hero, wallpaper): the community `unsplash-asset-images` skill
+(`mengto/skills`, MIT) is a reasonable cheatsheet. It is a hand-curated list rather
+than a search, and its download step is manual, so treat it as a sizing reference —
+not a replacement for this loop.
+
 ## Downloading
 
 ```bash

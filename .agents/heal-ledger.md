@@ -17,6 +17,41 @@ Format:
 
 ---
 
+## 2026-08-11 visual-capture-hung-on-a-lazy-image
+- cause: `captureUiEvidence` awaited `image.decode()` on every image whose
+  `complete` was false, with no bound. A below-the-fold `next/image` is lazy by
+  default and never loads while the page sits at scroll 0, so its `decode()`
+  never settles and the capture hung forever — 30 minutes at 0.0% CPU, with all
+  twelve screenshots already written. It read as slowness, not as a hang, which
+  cost two further runs: one was killed mid-teardown and turned a passing run
+  into a FAIL. A second, quieter half: even without the hang, that image was
+  never loaded, so its `fullPage` screenshot would have been silently blank —
+  accepted evidence showing an empty section.
+- fix: during capture, flip every `loading="lazy"` image to eager so the
+  evidence actually contains it, then race each `decode()` against a 3s timeout
+  so no single image can stall the run. Capture went from unbounded to ~45s.
+- prevention: the timeout is the structural guard — an unbounded wait on a
+  browser promise is the defect class, and no product-side discipline can
+  prevent a downstream author adding a below-the-fold image. Also worth knowing:
+  0% CPU over minutes distinguishes a hang from slow work, and is the first
+  thing to measure before killing anything.
+- status: open
+
+## 2026-08-11 recharts-overflowed-for-one-frame-at-320px
+- cause: recharts' `ResponsiveContainer` paints one frame at an intrinsic width
+  before it measures its parent. At a 320px viewport that frame was 340px wide
+  and pushed the document into horizontal scroll. Every static check passed,
+  because it is gone by ~150ms; only the evidence gate's audit, which samples
+  immediately after the marker appears, caught it.
+- fix: `overflow-hidden min-w-0` on the chart container. A chart should never
+  exceed its own box, so clipping costs nothing and removes a real flash of
+  sideways scroll on a phone.
+- prevention: none needed beyond the existing gate — the browser audit already
+  catches it, and it caught it here. Recorded so the next person who sees a
+  transient overflow they cannot reproduce by hand knows to sample at t=0 rather
+  than after a settle delay.
+- status: open
+
 ## 2026-08-10 tool-only-pivot-stripped-code-not-prose
 
 - cause: the tool-only pivot (commit bb295a0) deleted the bundled application but left

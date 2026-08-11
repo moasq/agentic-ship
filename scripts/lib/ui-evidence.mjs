@@ -891,10 +891,23 @@ export async function captureUiEvidence({ root, baseUrl, chromium }) {
                 document.documentElement.classList.toggle("dark", selectedTheme === "dark");
                 document.documentElement.style.colorScheme = selectedTheme;
                 await document.fonts.ready;
+                // A below-the-fold lazy image never loads while the page sits at
+                // the top: its decode() never settles, so the capture hangs at 0%
+                // CPU forever, and a fullPage shot of it would be blank anyway.
+                // Force eager so the evidence actually contains the image, then
+                // bound every wait so one stubborn image cannot stall the run.
+                for (const image of document.images) {
+                  if (image.loading === "lazy") image.loading = "eager";
+                }
                 await Promise.all(
                   [...document.images]
                     .filter((image) => !image.complete)
-                    .map((image) => image.decode().catch(() => undefined)),
+                    .map((image) =>
+                      Promise.race([
+                        image.decode().catch(() => undefined),
+                        new Promise((settle) => setTimeout(settle, 3000)),
+                      ]),
+                    ),
                 );
               }, theme);
               await page.addStyleTag({
