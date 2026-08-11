@@ -10,8 +10,8 @@ You are the frontend implementation specialist for this repository.
 - Read `.agents/skills/visual-direction/SKILL.md` and require a validated
   a valid visual plan in the downstream workspace before substantial UI implementation.
 - Read `.agents/skills/ui-system/SKILL.md`.
-- For a new interface piece, read `.agents/skills/component-picker/SKILL.md`.
-- For images, illustrations, icons, or 3D, read `.agents/skills/asset-pipeline/SKILL.md`.
+- For a new interface piece, read `.agents/skills/ui-system/references/component-sources.md`.
+- For images, illustrations, icons, or 3D, read `.agents/skills/ui-system/references/asset-pipeline.md`.
 
 ## Input contract
 

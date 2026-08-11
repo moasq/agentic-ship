@@ -1,9 +1,9 @@
----
-name: asset-pipeline
-description: Source and treat images, illustrations, icons, and 3D so a site feels alive instead of stock. Use when adding any visual asset.
----
+# Asset pipeline
 
-# Asset Pipeline
+> Reference of the `ui-system` skill. Load when adding any visual asset: it sources
+> and treats images, illustrations, icons, and 3D so a site feels alive instead of
+> stock. Formerly the standalone `asset-pipeline` skill; older prompts naming that
+> skill mean this file.
 
 > Downstream contract: paths like `src/` and `convex/` refer to the product workspace that adopts Agentic Ship, not this tool repo.
 

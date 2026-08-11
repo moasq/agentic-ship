@@ -41,7 +41,7 @@ posture is yours. This skill is the part of that handover most templates skip.
 
 ## 3. Untrusted component code
 
-This section is the **one home** of the review list — component-picker points here
+This section is the **one home** of the review list — ui-system's component-sources reference points here
 rather than restating it. Community registries — 21st.dev and Aceternity — are
 user-submitted. Review before commit:
 

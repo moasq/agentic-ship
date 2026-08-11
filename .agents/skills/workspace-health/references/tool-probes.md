@@ -10,9 +10,9 @@ this catalog is for what a handshake cannot see.
 
 | Tool | Read-only probe | Safe fallback or interpretation |
 | --- | --- | --- |
-| shadcn MCP | list configured registries | use the exact shadcn CLI pin recorded in `skills.lock.json` and follow `component-picker` |
+| shadcn MCP | list configured registries | use the exact shadcn CLI pin recorded in `skills.lock.json` and follow ui-system's `references/component-sources.md` |
 | Next.js DevTools MCP | read build or runtime errors from a running dev server | read `node_modules/next/dist/docs/` and the dev-server output |
-| MagicUI MCP | list available components | use the pinned `@magicui` registry through the component-picker workflow |
+| MagicUI MCP | list available components | use the pinned `@magicui` registry through the component-sources workflow (ui-system reference) |
 | Context7 | resolve the installed Zustand documentation | read the library's official versioned documentation |
 | Playwright test MCP | list the repository tests | run `pnpm test:e2e` and use the vendor Playwright role briefs as procedural fallbacks |
 | Convex MCP | read status or list tables | report an unconnected deployment as a stage; use the Convex dashboard after the user connects it |

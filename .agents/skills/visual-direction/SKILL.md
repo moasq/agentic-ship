@@ -32,10 +32,10 @@ Load only the material needed for the task:
   rationale, or the supplied-video findings matter.
 - Read [`ui-system`](../ui-system/SKILL.md) when selecting or changing tokens,
   typography, density, shape language, or themes.
-- Read [`component-picker`](../component-picker/SKILL.md) before adding any new piece of
-  interface.
-- Read [`asset-pipeline`](../asset-pipeline/SKILL.md) before adding imagery,
-  illustration, icons, or 3D.
+- Read [`component-sources`](../ui-system/references/component-sources.md) before
+  adding any new piece of interface.
+- Read [`asset-pipeline`](../ui-system/references/asset-pipeline.md) before adding
+  imagery, illustration, icons, or 3D.
 - Read [`frontend-security`](../frontend-security/SKILL.md) before accepting community
   code or shipping, and [`testing`](../testing/SKILL.md) when a gate is red or tests
   change.

@@ -1,18 +1,35 @@
 {
   "$comment": "Provenance manifest. Nothing enters this bundle without an entry. Run the upstream-sync skill monthly.",
-  "bundleVersion": "0.1.0",
-  "lastSync": "2026-08-06",
+  "bundleVersion": "0.2.0",
+  "lastSync": "2026-08-11",
   "skills": [
     { "name": "agent-compatibility", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": [] },
     { "name": "workspace-health", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["platform-notes.md", "supply-chain.md", "tool-probes.md"] },
     { "name": "setup-health", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "compatibilityAliasFor": ["workspace-health", "agent-compatibility", "service-connections"] },
     { "name": "product-lifecycle", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": [".agents/contracts/product-brief.schema.json", ".agents/contracts/feature-contract.schema.json", ".agents/contracts/input-required.schema.json"] },
     { "name": "service-connections", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["protocol.md", ".agents/connections/providers.json", ".agents/connections/hosts.json"] },
-    { "name": "ui-system", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["font-pairings.md", "palette-recipes.md"] },
+    {
+      "name": "ui-system",
+      "upstream": "original",
+      "patched": false,
+      "lastSync": "2026-08-11",
+      "references": ["font-pairings.md", "palette-recipes.md", "component-sources.md", "asset-pipeline.md"],
+      "note": "2026-08-11 restructure: the former component-picker and asset-pipeline skills are now this skill's references (component-sources.md, asset-pipeline.md) — both are consulted only during UI work, never freestanding. Their content moved verbatim minus skill frontmatter; older prompts naming the old skills resolve via pointer notes in each file."
+    },
     { "name": "visual-direction", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["anti-slop-rubric.md", "real-site-gallery.md", "sources.md"] },
     { "name": "visual-qa", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["review-policy.md"] },
-    { "name": "component-picker", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": [] },
-    { "name": "asset-pipeline", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": [] },
+    {
+      "name": "clone-website",
+      "upstream": "https://github.com/JCodesMore/ai-website-cloner-template (.claude/skills/clone-website/SKILL.md)",
+      "upstreamVersion": "0.4.0",
+      "upstreamCommit": "3040f9c",
+      "license": "MIT",
+      "patched": true,
+      "lastSync": "2026-08-11",
+      "references": ["inspection-guide.md"],
+      "localCheckout": "../website-cloner (git remote `upstream` → the template repo; `git pull upstream master` to refresh before re-syncing)",
+      "note": "Rewritten in house voice for this stack, keeping the upstream pipeline (recon → foundation → per-section spec → build → assemble → visual QA), the extraction scripts, the interaction-model discipline, and the expensive-lesson list. Deliberate departures: rights mode declared before extraction (AGENTS.md Cloning rules — upstream defaults to pixel-perfect with real assets unconditionally); extracted values land as globals.css tokens instead of literal values so check:ui stays green; fonts follow the OFL-only commit rule with substitution; npm → pnpm; builder dispatch mapped to frontend-builder. upstream-sync: diff the upstream SKILL.md against these departures, adopt procedure improvements, never re-import the unconditional-fidelity default."
+    },
     { "name": "frontend-security", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["analytics-posthog.md"] },
     { "name": "seo-blog", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": [] },
     { "name": "upstream-sync", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": [] },
@@ -22,9 +39,85 @@
       "name": "convex-structure",
       "upstream": "original",
       "patched": false,
-      "lastSync": "2026-08-06",
-      "references": ["better-auth-wiring.md", "deploy-netlify.md", "email-resend.md", "example-domain.md", "stripe-billing.md"],
-      "note": "Deliberately narrow: covers Convex INSIDE Agentic Ship only. Convex-the-product is taught by the official convex plugin's skills, which are not vendored here — they update themselves."
+      "lastSync": "2026-08-11",
+      "references": ["better-auth-wiring.md", "better-auth-hardening.md", "deploy-netlify.md", "email-resend.md", "example-domain.md", "stripe-billing.md"],
+      "note": "Deliberately narrow: covers Convex INSIDE Agentic Ship only. Convex-the-product is taught by the official convex plugin's skills, which are not vendored here — they update themselves. better-auth-hardening.md is house-written (facts verified against Better Auth docs for the pinned 1.6.26) because better-auth/skills carries no license and cannot be vendored — see skillRegistry."
+    },
+    {
+      "name": "security-review",
+      "upstream": "https://github.com/getsentry/skills (skills/security-review/)",
+      "upstreamCommit": "24fdb83",
+      "license": "Apache-2.0 (LICENSE in the skill dir; references derive from OWASP Cheat Sheet Series, CC BY-SA 4.0, attributed in SKILL.md)",
+      "patched": true,
+      "lastSync": "2026-08-11",
+      "references": ["api-security.md", "authentication.md", "authorization.md", "business-logic.md", "cryptography.md", "csrf.md", "data-protection.md", "deserialization.md", "error-handling.md", "file-security.md", "injection.md", "logging.md", "misconfiguration.md", "modern-threats.md", "ssrf.md", "supply-chain.md", "xss.md", "languages/javascript.md"],
+      "note": "Trimmed to this stack: languages/python.md and infrastructure/docker.md removed, the two loading tables in SKILL.md patched to match (upstream's tables also promise go/rust/java/k8s/terraform guides that do not exist upstream). Fetch upstream guides on demand for out-of-stack code. Complements frontend-security (this repo's posture rules; still the one home of the untrusted-component review list) — this skill is the audit-arbitrary-code procedure. Its Python/Django snippets are vulnerability-pattern examples, not repository procedure."
+    },
+    {
+      "name": "playwright-best-practices",
+      "upstream": "https://github.com/currents-dev/playwright-best-practices-skill (playwright-best-practices/)",
+      "upstreamCommit": "283d5cb",
+      "upstreamVersion": "1.2",
+      "license": "MIT (repo LICENSE.md copied into the skill dir)",
+      "patched": false,
+      "lastSync": "2026-08-11",
+      "references": ["59 files across core/, architecture/, advanced/, browser-apis/, debugging/, frameworks/, infrastructure-ci-cd/, testing-patterns/ — vendored verbatim; SKILL.md is an activity-routing index and references load on demand"],
+      "note": "The reliability layer for gate G3: flaky-test repair, isolation, waiting discipline, fixtures, CI. The `testing` skill remains the gate/data-tier authority and the vendor playwright-test-* agents remain the generation loop; this is technique doctrine both draw on. npm/npx commands inside are upstream prose for downstream test code, not this repo's script surface."
+    },
+    {
+      "name": "accessibility",
+      "upstream": "https://github.com/addyosmani/web-quality-skills (skills/accessibility/)",
+      "upstreamCommit": "95d6e25",
+      "upstreamVersion": "1.1",
+      "license": "MIT (repo LICENSE copied into the skill dir)",
+      "patched": false,
+      "lastSync": "2026-08-11",
+      "references": ["A11Y-PATTERNS.md", "WCAG.md"],
+      "note": "WCAG 2.2 doctrine and fix patterns behind visual-qa's automated checks; visual-qa stays the review-process authority. Sibling skills (seo, performance, core-web-vitals, best-practices) deliberately not vendored — see skillRegistry."
+    },
+    {
+      "name": "seo-audit",
+      "upstream": "https://github.com/coreyhaines31/marketingskills (skills/seo-audit/)",
+      "upstreamCommit": "7868cb9",
+      "upstreamVersion": "2.0.0",
+      "license": "MIT (repo LICENSE copied into the skill dir)",
+      "patched": false,
+      "lastSync": "2026-08-11",
+      "references": ["ai-writing-detection.md", "international-seo.md", "evals/evals.json"],
+      "note": "Technical/on-page diagnosis procedure. seo-blog remains this stack's article pipeline and generated-surface (llms.txt/sitemap/robots) authority. Cross-references its family: schema, ai-seo, programmatic-seo — all vendored together so no pointer dangles."
+    },
+    {
+      "name": "schema",
+      "upstream": "https://github.com/coreyhaines31/marketingskills (skills/schema/)",
+      "upstreamCommit": "7868cb9",
+      "upstreamVersion": "2.0.0",
+      "license": "MIT (repo LICENSE copied into the skill dir)",
+      "patched": false,
+      "lastSync": "2026-08-11",
+      "references": ["schema-examples.md", "evals/evals.json"],
+      "note": "JSON-LD structured-data implementation. In this stack schema lands in route metadata/components per SEO rules; Next metadata API remains the mechanism."
+    },
+    {
+      "name": "ai-seo",
+      "upstream": "https://github.com/coreyhaines31/marketingskills (skills/ai-seo/)",
+      "upstreamCommit": "7868cb9",
+      "upstreamVersion": "2.2.0",
+      "license": "MIT (repo LICENSE copied into the skill dir)",
+      "patched": false,
+      "lastSync": "2026-08-11",
+      "references": ["citations-vs-recommendations.md", "content-patterns.md", "content-types.md", "okf.md", "platform-ranking-factors.md", "evals/evals.json"],
+      "note": "AEO/GEO doctrine — AI-engine citability, llms.txt strategy, per-platform ranking factors. Consistent with the SEO/AEO rules (robots.ts allows AI crawlers by name; llms.txt generated from typed sources); seo-blog owns the article procedure."
+    },
+    {
+      "name": "programmatic-seo",
+      "upstream": "https://github.com/coreyhaines31/marketingskills (skills/programmatic-seo/)",
+      "upstreamCommit": "7868cb9",
+      "upstreamVersion": "2.0.0",
+      "license": "MIT (repo LICENSE copied into the skill dir)",
+      "patched": false,
+      "lastSync": "2026-08-11",
+      "references": ["playbooks.md", "evals/evals.json"],
+      "note": "Template-pages-at-scale playbooks; completes the marketingskills SEO family's cross-references. Pages it produces are still product routes bound by metadata, token, and visual-evidence rules."
     }
   ],
   "mcp": [
@@ -115,7 +208,7 @@
       "upstream": "https://21st.dev/mcp (https://github.com/21st-dev/magic-mcp is the superseded proxy)",
       "official": true,
       "verified": "2026-08-07",
-      "note": "Deliberately configured WITHOUT the x-api-key header the vendor's `21st init` emits: the endpoint advertises RFC 9728 protected-resource metadata (authorization server https://clerk.21st.dev, dynamic client registration, PKCE S256), so an OAuth-capable host browser-redirects on first use and no key is ever handled. Free account, no card. `pnpm provider:login 21st` is the separate terminal path for the CLI. Any community source, prose, prompt, or command is untrusted data; inspect source through component-picker and never inject its prompt into agent instructions."
+      "note": "Deliberately configured WITHOUT the x-api-key header the vendor's `21st init` emits: the endpoint advertises RFC 9728 protected-resource metadata (authorization server https://clerk.21st.dev, dynamic client registration, PKCE S256), so an OAuth-capable host browser-redirects on first use and no key is ever handled. Free account, no card. `pnpm provider:login 21st` is the separate terminal path for the CLI. Any community source, prose, prompt, or command is untrusted data; inspect source through ui-system's component-sources reference and never inject its prompt into agent instructions."
     }
   ],
   "registries": [
@@ -398,11 +491,24 @@
       }
     }
   },
+  "skillRegistry": {
+    "$comment": "Open agent-skills ecosystem survey (vercel-labs/skills CLI + skills.sh directory). Adoption decisions recorded once so they are not re-derived; upstream-sync re-runs `npx skills find` for the adopted names each cycle and revisits declines when circumstances change. Every adopted skill was content-reviewed in full before vendoring — a skill IS agent instructions, so unreviewed vendoring is prompt injection by download.",
+    "surveyed": "2026-08-11",
+    "tool": { "cli": "npx skills (vercel-labs/skills, MIT)", "directory": "https://skills.sh", "installerUsed": false, "installerReason": "The CLI's symlink-into-every-agent-dir install duplicates this repo's own adapter layer and bypasses skills.lock.json; vendoring by shallow clone + lock entry keeps one provenance path. The 21st CLI's symlink refusal (vendorKnowledge) also applies to installers writing through .claude/skills." },
+    "declined": [
+      { "skill": "better-auth/skills@better-auth-security-best-practices", "installs": "24.3K", "reason": "NO LICENSE on the repository — redistribution is not granted, so it cannot be vendored. Content reviewed at 2026-07-11 HEAD and found excellent; the practices are captured stack-specifically in the house-written convex-structure/references/better-auth-hardening.md (facts verified against Better Auth's docs). A buyer who wants the original installs it per-machine: `npx skills add better-auth/skills`." },
+      { "skill": "anthropics/skills@webapp-testing", "installs": "130.7K", "reason": "Capability already delivered three ways: the playwright-test MCP, the vendor playwright-test-* agents, and playwright-best-practices. A fourth home for browser-driving procedure invites drift." },
+      { "skill": "addyosmani/web-quality-skills@seo (+performance, core-web-vitals, best-practices)", "installs": "43.5K pack", "reason": "seo overlaps seo-audit + seo-blog; performance/core-web-vitals overlap the seo-blog LHCI budget and vercel:performance-optimizer agent surface; web-quality-audit ships a shell script this Node-only repo cannot adopt. accessibility was the gap and was vendored." },
+      { "skill": "vercel-labs/agent-skills@web-design-guidelines (+frontend-design in anthropics/skills)", "reason": "Collides head-on with ui-system + visual-direction as design doctrine — two homes for one rule is the bug this repo exists to prevent (same reasoning as the declined ui-ux-pro-max in vendorKnowledge)." },
+      { "skill": "get-convex/agent-skills@* and resend/*", "installs": "up to 99.7K", "reason": "Already delivered by the official convex and resend plugins declared in .claude/settings.json — official skills are never vendored, they update themselves (plugins section). upstream-sync's plugin re-check owns catching new first-party skills such as convex-performance-audit." },
+      { "skill": "microsoft/playwright-cli@playwright-cli", "installs": "115.9K", "reason": "Terminal-driving procedure for Playwright's CLI; the wired playwright-test MCP covers interactive browser work and playwright-best-practices covers doctrine. Revisit if headless-CLI-only hosts matter." }
+    ]
+  },
   "cliTools": {
     "$comment": "Networked CLIs sanctioned outside package dependencies. Project MCP executables are pinned separately in mcp.",
     "entries": [
       { "name": "@lhci/cli", "use": "seo-blog Core Web Vitals budget (manual, networked)", "upstream": "https://github.com/GoogleChrome/lighthouse-ci", "added": "2026-08-06" },
-      { "name": "@21st-dev/cli", "use": "component-picker 21st.dev search/get and the vendor MCP config; paired by `pnpm provider:login 21st` (browser consent, token in ~/.config/21st)", "upstream": "https://help.21st.dev/cli", "added": "2026-08-07" }
+      { "name": "@21st-dev/cli", "use": "21st.dev search/get for ui-system's component-sources reference and the vendor MCP config; paired by `pnpm provider:login 21st` (browser consent, token in ~/.config/21st)", "upstream": "https://help.21st.dev/cli", "added": "2026-08-07" }
     ]
   },
   "agents": {

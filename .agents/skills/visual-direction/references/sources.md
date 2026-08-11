@@ -168,10 +168,10 @@ These are instruction sources, not external research:
 - [`AGENTS.md`](../../../../AGENTS.md) — rule authority.
 - [`ui-system`](../../ui-system/SKILL.md) — token, type, density, radius, and theme
   procedure.
-- [`component-picker`](../../component-picker/SKILL.md) — reuse, discovery, provenance,
-  installation, and wrapping procedure.
-- [`asset-pipeline`](../../asset-pipeline/SKILL.md) — asset source, treatment,
-  performance, and alternative-text procedure.
+- [`component-sources`](../../ui-system/references/component-sources.md) — reuse,
+  discovery, provenance, installation, and wrapping procedure.
+- [`asset-pipeline`](../../ui-system/references/asset-pipeline.md) — asset source,
+  treatment, performance, and alternative-text procedure.
 - [`frontend-security`](../../frontend-security/SKILL.md) — untrusted-code and web-data
   boundary.
 - [`testing`](../../testing/SKILL.md) — gate order and evidence-led repair.

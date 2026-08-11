@@ -108,7 +108,7 @@ throws when there is no `ConvexProvider` in the tree, and `"skip"` does not save
 ### `src/components/blocks/waitlist-form.tsx`
 
 The block knows nothing about Convex. It receives data and an action contract. Install
-the shadcn `Input` primitive through `component-picker` before using this example.
+the shadcn `Input` primitive through ui-system's `references/component-sources.md` before using this example.
 
 ```tsx
 import { Button } from "@/components/ui/button";

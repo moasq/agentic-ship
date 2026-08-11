@@ -96,17 +96,29 @@ write literally.
 | `agent-compatibility` | changing roles, skills, MCP, hooks, plugins, or host-native adapters |
 | `product-lifecycle` | turning an outcome into durable contracts and coordinated specialist work |
 | `service-connections` | authorizing or provisioning a provider across a human browser pause |
-| `ui-system` | starting a project, changing the theme, or UI starts looking generated |
+| `ui-system` | starting a project, changing the theme, adding any interface piece or visual asset (its `references/component-sources.md` and `references/asset-pipeline.md` own those two), or UI starts looking generated |
 | `visual-direction` | before authored UI or a substantial visual revision; product intent, reference decisions, alternatives, and the selected plan |
-| `component-picker` | before adding any new piece of interface |
-| `asset-pipeline` | adding images, illustrations, icons, or 3D |
+| `clone-website` | rebuilding an existing site into the product stack — a migration the user owns, or someone else's site as a re-voiced visual base (Cloning rules) |
 | `visual-qa` | after a visual change, before accepting screenshots, or when UI still feels generated after static checks pass |
-| `frontend-security` | before shipping, after adding dependencies, after pasting code |
-| `seo-blog` | writing an article or auditing a page's search surface |
+| `accessibility` | a11y audits and fixes — WCAG 2.2 doctrine behind visual-qa's automated checks |
+| `frontend-security` | before shipping, after adding dependencies, after pasting code — this repo's posture rules |
+| `security-review` | auditing code for exploitable vulnerabilities — OWASP-based, confidence-gated findings |
+| `seo-blog` | writing an article or auditing a page's search surface in this stack |
+| `seo-audit` | diagnosing rankings, indexing, crawlability, or a traffic drop |
+| `schema` | JSON-LD structured data and rich results |
+| `ai-seo` | AEO/GEO — getting cited by AI answer engines, llms.txt strategy |
+| `programmatic-seo` | template pages at scale from data |
 | `convex-structure` | before writing backend code, adding a table, or wiring a component to data |
 | `testing` | writing tests, any red gate, or when a repair is needed — gates, data rules, healer guardrails |
+| `playwright-best-practices` | writing or fixing Playwright e2e — flakiness, isolation, fixtures, CI reliability |
 | `production-preflight` | before the first deploy and after any change touching money, email, or auth |
 | `upstream-sync` | monthly, or when a tool ships a major version |
+
+Vendored skills (`accessibility`, `security-review`, `playwright-best-practices`, and
+the four SEO skills) carry their upstream, commit, and license in `skills.lock.json`;
+`upstream-sync` owns their updates. House rules win on any conflict, and their shell
+or npm command examples are upstream prose, not this repo's procedure — authored
+commands still follow the platform rules above.
 
 Convex-the-product is taught by the official `convex` plugin's skills (schema-builder,
 auth-setup, function-creator, migration-helper, and the `convex-expert` subagent). Those
@@ -231,8 +243,9 @@ else. Metadata derives from it; never hardcode the product's name in a component
 - A component catalog supplies implementation, never direction. Before a new product
   route, section family, theme or substantial visual revision, validate the selected
   plan with `pnpm ui:plan check`; then use catalogs inside that plan.
-- Pick sources with the `component-picker` matrix: shadcn for structure, MagicUI for
-  motion, 21st.dev for marketing sections, Lucide for icons.
+- Pick sources with the matrix in `ui-system`'s `references/component-sources.md`:
+  shadcn for structure, MagicUI for motion, 21st.dev for marketing sections, Lucide
+  for icons.
 - Discovery runs through the wired MCP servers in `.mcp.json` — shadcn, magicui, and
   21st — before memory or the open web. An agent that hand-writes a section one of
   those catalogs already ships is the "plain generated page" failure mode.
@@ -268,6 +281,26 @@ else. Metadata derives from it; never hardcode the product's name in a component
 - `pnpm check:ui` enforces these authored boundaries plus context-bound vendor parts,
   unsafe pasted-code, token and effect-budget checks. A failing component contract is a
   failing definition of done.
+
+## Cloning rules
+
+- Rebuilding a live site runs through the `clone-website` skill: extraction-first,
+  spec files with measured values, then section builds. **Rights decide fidelity,
+  and the mode is declared before extraction.**
+- A site the user owns or holds rights to (migration, lost source) is not "a
+  reference" — full fidelity with its real copy and assets is the job.
+- Anyone else's site is a reference, and the research rule binds: layout, scale,
+  spacing, type hierarchy, palette structure and interaction models transfer; copy,
+  brand assets, logos, photography and trademarks are replaced, content is re-voiced,
+  and deliberate composition divergences are made and recorded. Never rebuild a real
+  organization's site to pass as that organization.
+- Cloned output obeys the same stack rules as authored UI: extracted values land as
+  tokens in `globals.css`, components consume tokens, fonts follow the license rules
+  (a commercial face is substituted with an OFL neighbour, never committed), and
+  `pnpm check:ui` plus visual evidence gate it like any other surface.
+- Extraction artifacts (screenshots, computed-style dumps, specs) live under
+  `docs/research/` and `docs/design-references/` in the product workspace and never
+  ship in UI.
 
 ## Styling rules
 

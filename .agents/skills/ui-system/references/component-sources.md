@@ -1,9 +1,10 @@
----
-name: component-picker
-description: Decide where a UI component comes from — shadcn/ui, MagicUI, 21st.dev, or composition of existing blocks — and install it correctly. Use before adding any new piece of interface.
----
+# Component sources
 
-# Component Picker
+> Reference of the `ui-system` skill. Load before adding any new piece of interface:
+> it decides where a component comes from — shadcn/ui, MagicUI, 21st.dev, or
+> composition of existing blocks — and how to install it correctly.
+> Formerly the standalone `component-picker` skill; older prompts naming that skill
+> mean this file.
 
 > Downstream contract: paths like `src/` and `convex/` refer to the product workspace that adopts Agentic Ship, not this tool repo.
 

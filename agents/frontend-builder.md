@@ -34,8 +34,8 @@ You are the frontend implementation specialist for this repository.
 - Read `${CLAUDE_PLUGIN_ROOT}/.agents/skills/visual-direction/SKILL.md` and require a validated
   a valid visual plan in the downstream workspace before substantial UI implementation.
 - Read `${CLAUDE_PLUGIN_ROOT}/.agents/skills/ui-system/SKILL.md`.
-- For a new interface piece, read `${CLAUDE_PLUGIN_ROOT}/.agents/skills/component-picker/SKILL.md`.
-- For images, illustrations, icons, or 3D, read `${CLAUDE_PLUGIN_ROOT}/.agents/skills/asset-pipeline/SKILL.md`.
+- For a new interface piece, read `${CLAUDE_PLUGIN_ROOT}/.agents/skills/ui-system/references/component-sources.md`.
+- For images, illustrations, icons, or 3D, read `${CLAUDE_PLUGIN_ROOT}/.agents/skills/ui-system/references/asset-pipeline.md`.
 
 ## Input contract
 
