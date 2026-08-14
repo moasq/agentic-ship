@@ -26,6 +26,14 @@ probes. Read `.agents/connections/hosts.json` for the selected host's authorizat
 instruction. Load `references/protocol.md` when extending the CLI, adding a provider,
 or interpreting its JSON contract.
 
+Before classifying, look at what the host already provides. Claude Code, Codex, and
+Cursor can carry their own installed plugins and connectors for the same vendors; a
+provider tool that already answers a read-only call is a connection to continue on,
+not to re-authorize, and `begin` reports it ready. The reverse also binds: when the
+host has no such plugin, work from this repo's project-scoped catalog and never
+install, reconfigure, or disconnect anything at the host's own plugin layer — that
+configuration belongs to the user.
+
 ## Operate the connection CLI
 
 Inspect state first:

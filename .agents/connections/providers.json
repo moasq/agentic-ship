@@ -292,6 +292,60 @@
         }
       ]
     },
+    "linear": {
+      "displayName": "Linear",
+      "docsUrl": "https://linear.app/docs/mcp",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "agentTool": {
+        "authFlow": "remote_oauth",
+        "mcpServer": "linear",
+        "setupUrl": "https://linear.app/",
+        "instructions": [
+          "Linear's agent-tool path is the host-managed MCP authorization: the hosted server at mcp.linear.app uses OAuth with dynamic client registration, so approving in the browser is the whole consent and no API key is ever handled.",
+          "A host that already carries Linear through its own installed plugin or connector is already authorized: continue on that connection; never install, reconfigure, or disconnect the host's plugin to make the project catalog win.",
+          "Authorize only the Linear workspace this product's tracking should live in.",
+          "Limited scopes grant read-only access; mirroring the work queue needs issue read and write.",
+          "After browser authorization returns, ask the agent to make one read-only Linear MCP call (list teams) before resuming."
+        ],
+        "configurationProbe": {
+          "id": "linear-mcp",
+          "label": "Linear MCP server is declared",
+          "type": "mcp_server",
+          "server": "linear",
+          "required": true
+        }
+      },
+      "projectProvisioning": {
+        "setupUrl": "https://linear.app/",
+        "instructions": [
+          "Pick or create the Linear team and project that mirror this product; both are visible in the Linear sidebar and need no API key.",
+          "The durable queue stays the source of truth: `pnpm agent:work` state drives Linear, never the reverse. The agent mirrors queue items to Linear issues through the MCP so a person can watch progress.",
+          "Issue titles and bodies carry contract-level summaries, acceptance criteria, status, and gate evidence only. Prompts, transcripts, credentials, webhook secrets, and personal account details never enter an issue.",
+          "Record only safe identifiers (team key, project and issue IDs) under `.agent-state/`; cancel the connection with `pnpm connect cancel` to stop mirroring at any time."
+        ],
+        "verification": {
+          "policy": "probe_and_attestation",
+          "probes": [
+            {
+              "id": "linear-mcp-declared",
+              "label": "Linear MCP server is declared for this project",
+              "type": "mcp_server",
+              "server": "linear",
+              "required": true
+            }
+          ]
+        }
+      },
+      "revocation": [
+        {
+          "text": "Disconnect the Linear MCP server in the host (Claude Code /mcp, Cursor Tools & MCP, or the Codex MCP logout for workspace-linear)."
+        },
+        {
+          "text": "Revoke the authorization in Linear under Settings → Security & access → Authorized applications. Issues already created stay in Linear and can be archived there."
+        }
+      ]
+    },
     "resend": {
       "displayName": "Resend",
       "docsUrl": "https://resend.com/docs",

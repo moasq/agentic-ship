@@ -171,6 +171,10 @@ the moment a surface can say "Sign in" it renders from `api.auth.getCurrentUser`
 three states rather than from static copy — the marketing header included, which is the
 one every visitor sees and the one that gets hardcoded. The account-cluster procedure
 (block slot → client island → provider gate) is in `references/better-auth-wiring.md`.
+Production hardening for the same seam — rate-limit storage and rules, trusted
+origins, cookie decisions, OAuth token encryption, audit hooks —
+is `references/better-auth-hardening.md`; read it before launch and after any auth
+config change.
 
 ## 7b. Showcase data
 

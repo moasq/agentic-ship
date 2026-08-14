@@ -17,6 +17,56 @@ Format:
 
 ---
 
+## 2026-08-14 nanoid-advisory-tripped-the-fail-closed-audit
+- cause: GHSA-2v37-7h3g-55p8 (nanoid < 3.3.18, custom generators loop forever on
+  size 0) was published after the last dependency change, and the transitive
+  nanoid@3.3.17 under postcss/vite sat inside its range. Nothing in this repo
+  regressed; the audit is fail-closed on the whole tree by design, so a fresh
+  upstream advisory reddens `pnpm verify:full` on a tree that was green yesterday.
+- fix: `pnpm up nanoid` — postcss's `^3.3.x` range already admitted the patched
+  3.3.18, so one lockfile bump cleared it. Audit back to zero across 106 packages.
+- prevention: none to add — this is the audit working as designed, and the repair
+  is the documented one-command path. Recorded so the next fresh-advisory red is
+  recognized as external drift, not a regression: check the advisory's patched
+  version first; a semver-compatible bump via `pnpm up <pkg>` is the whole fix
+  when the parent range admits it.
+- status: open
+
+## 2026-08-11 visual-capture-hung-on-a-lazy-image
+- cause: `captureUiEvidence` awaited `image.decode()` on every image whose
+  `complete` was false, with no bound. A below-the-fold `next/image` is lazy by
+  default and never loads while the page sits at scroll 0, so its `decode()`
+  never settles and the capture hung forever — 30 minutes at 0.0% CPU, with all
+  twelve screenshots already written. It read as slowness, not as a hang, which
+  cost two further runs: one was killed mid-teardown and turned a passing run
+  into a FAIL. A second, quieter half: even without the hang, that image was
+  never loaded, so its `fullPage` screenshot would have been silently blank —
+  accepted evidence showing an empty section.
+- fix: during capture, flip every `loading="lazy"` image to eager so the
+  evidence actually contains it, then race each `decode()` against a 3s timeout
+  so no single image can stall the run. Capture went from unbounded to ~45s.
+- prevention: the timeout is the structural guard — an unbounded wait on a
+  browser promise is the defect class, and no product-side discipline can
+  prevent a downstream author adding a below-the-fold image. Also worth knowing:
+  0% CPU over minutes distinguishes a hang from slow work, and is the first
+  thing to measure before killing anything.
+- status: open
+
+## 2026-08-11 recharts-overflowed-for-one-frame-at-320px
+- cause: recharts' `ResponsiveContainer` paints one frame at an intrinsic width
+  before it measures its parent. At a 320px viewport that frame was 340px wide
+  and pushed the document into horizontal scroll. Every static check passed,
+  because it is gone by ~150ms; only the evidence gate's audit, which samples
+  immediately after the marker appears, caught it.
+- fix: `overflow-hidden min-w-0` on the chart container. A chart should never
+  exceed its own box, so clipping costs nothing and removes a real flash of
+  sideways scroll on a phone.
+- prevention: none needed beyond the existing gate — the browser audit already
+  catches it, and it caught it here. Recorded so the next person who sees a
+  transient overflow they cannot reproduce by hand knows to sample at t=0 rather
+  than after a settle delay.
+- status: open
+
 ## 2026-08-10 tool-only-pivot-stripped-code-not-prose
 
 - cause: the tool-only pivot (commit bb295a0) deleted the bundled application but left

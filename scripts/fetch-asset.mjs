@@ -14,7 +14,7 @@
  *   - the response must actually be an image
  *   - files land in public/images/<name>.<ext> — no scattered assets
  *
- * Serve the result through next/image. Never hotlink: the asset-pipeline skill has the
+ * Serve the result through next/image. Never hotlink: the ui-system skill's asset-pipeline reference has the
  * licensing and treatment rules.
  */
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
@@ -96,4 +96,4 @@ mkdirSync(outDir, { recursive: true });
 const bytes = Buffer.from(await res.arrayBuffer());
 writeFileSync(outPath, bytes);
 console.log(`saved public/images/${name}.${ext} (${(bytes.length / 1024).toFixed(0)} KB, ${type.split(";")[0]})
-use it:  <Image src="/images/${name}.${ext}" ... />  — record source + license per the asset-pipeline skill`);
+use it:  <Image src="/images/${name}.${ext}" ... />  — record source + license per ui-system references/asset-pipeline.md`);

@@ -55,6 +55,7 @@ function markdownUnder(dir) {
 const sourceFiles = [
   join(root, "AGENTS.md"),
   join(root, "README.md"),
+  ...markdownUnder(join(root, "docs")),
   ...markdownUnder(join(root, ".agents", "skills")),
   ...readdirSync(join(root, ".agents", "agents"))
     .filter((f) => f.endsWith(".md"))

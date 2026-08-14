@@ -25,7 +25,7 @@ const matches = walk(componentsRoot)
   .sort((left, right) => left.localeCompare(right));
 
 if (matches.length === 0) {
-  console.log(`Component discovery: no local match${query ? ` for \`${query}\`` : ""}. Use the component-picker catalog path next.`);
+  console.log(`Component discovery: no local match${query ? ` for \`${query}\`` : ""}. Use the catalog path in ui-system references/component-sources.md next.`);
   process.exit(0);
 }
 

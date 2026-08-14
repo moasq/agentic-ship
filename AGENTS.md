@@ -38,6 +38,12 @@ vercel/next.js repo is declared there). Provenance for all of it lives in
 Node 20+ · pnpm · TypeScript parser · Playwright capture runtime. Downstream product
 stacks are selected by their own product contract.
 
+Delivery and tracking ride on two services: **GitHub** carries the repository, pull
+requests, and CI through the authenticated `gh` CLI (`pnpm provider:login github`), and
+**Linear** is the optional development-tracking mirror through its hosted MCP — both
+cataloged in `.agents/connections/providers.json`, both revocable, neither required for
+the core workflow.
+
 Version pins live in `skills.lock.json`. Do not hand-edit versions — run the
 `upstream-sync` skill.
 
@@ -96,17 +102,33 @@ write literally.
 | `agent-compatibility` | changing roles, skills, MCP, hooks, plugins, or host-native adapters |
 | `product-lifecycle` | turning an outcome into durable contracts and coordinated specialist work |
 | `service-connections` | authorizing or provisioning a provider across a human browser pause |
-| `ui-system` | starting a project, changing the theme, or UI starts looking generated |
+| `ui-system` | starting a project, changing the theme, adding any interface piece or visual asset (its `references/component-sources.md` and `references/asset-pipeline.md` own those two), or UI starts looking generated |
 | `visual-direction` | before authored UI or a substantial visual revision; product intent, reference decisions, alternatives, and the selected plan |
-| `component-picker` | before adding any new piece of interface |
-| `asset-pipeline` | adding images, illustrations, icons, or 3D |
+| `clone-website` | rebuilding an existing site into the product stack — a migration the user owns, or someone else's site as a re-voiced visual base (Cloning rules) |
 | `visual-qa` | after a visual change, before accepting screenshots, or when UI still feels generated after static checks pass |
-| `frontend-security` | before shipping, after adding dependencies, after pasting code |
-| `seo-blog` | writing an article or auditing a page's search surface |
+| `accessibility` | a11y audits and fixes — WCAG 2.2 doctrine behind visual-qa's automated checks |
+| `frontend-security` | before shipping, after adding dependencies, after pasting code — this repo's posture rules |
+| `security-review` | auditing code for exploitable vulnerabilities — OWASP-based, confidence-gated findings |
+| `seo-blog` | writing an article or auditing a page's search surface in this stack |
+| `seo-audit` | diagnosing rankings, indexing, crawlability, or a traffic drop |
+| `schema` | JSON-LD structured data and rich results |
+| `ai-seo` | AEO/GEO — getting cited by AI answer engines, llms.txt strategy |
+| `programmatic-seo` | template pages at scale from data |
+| `writing-guidelines` | any reader-facing prose — docs, README, wiki articles, PR bodies; the vendored docs handbook plus this stack's scope table |
+| `humanizer` | the final pass over finished prose — strip AI-writing tells without changing facts |
+| `documentation-and-adrs` | recording engineering decisions — ADRs, why-comments, README and changelog structure |
 | `convex-structure` | before writing backend code, adding a table, or wiring a component to data |
 | `testing` | writing tests, any red gate, or when a repair is needed — gates, data rules, healer guardrails |
+| `playwright-best-practices` | writing or fixing Playwright e2e — flakiness, isolation, fixtures, CI reliability |
 | `production-preflight` | before the first deploy and after any change touching money, email, or auth |
 | `upstream-sync` | monthly, or when a tool ships a major version |
+
+Vendored skills (`accessibility`, `security-review`, `playwright-best-practices`, the
+four SEO skills, and the writing trio — `writing-guidelines`, `humanizer`,
+`documentation-and-adrs`) carry their upstream, commit, and license in `skills.lock.json`;
+`upstream-sync` owns their updates. House rules win on any conflict, and their shell
+or npm command examples are upstream prose, not this repo's procedure — authored
+commands still follow the platform rules above.
 
 Convex-the-product is taught by the official `convex` plugin's skills (schema-builder,
 auth-setup, function-creator, migration-helper, and the `convex-expert` subagent). Those
@@ -152,6 +174,14 @@ matrix through `visual-qa` before completion.
 - Persist only safe identifiers and status metadata under `.agent-state/`. Never store
   prompts, transcripts, provider payloads, credentials, authorization codes, webhook
   secrets, payment data, or personal account details there.
+- **Progress is visible where people already look.** GitHub is the delivery seam —
+  repository, pull requests, CI — through the authenticated `gh` CLI. Linear is the
+  tracking mirror: when its MCP is authorized, queue transitions are mirrored into the
+  product's Linear project (procedure: `product-lifecycle`'s
+  `references/linear-tracking.md`). The queue stays the source of truth; Linear
+  reflects it, never drives it. Issue content is contract-level only — titles,
+  acceptance criteria, status, gate evidence; the `.agent-state/` safety rule above
+  governs everything written to Linear. An unconnected Linear changes nothing.
 - Human pauses are first-class. Return `input_required` with the safe action ID,
   provider-owned URL or host instruction, expiry, verification predicate, exact resume
   command, and cancel command. Stop only dependent work; continue independent items.
@@ -187,6 +217,14 @@ matrix through `visual-qa` before completion.
 - Native adapters are generated artifacts. Edit `.agents/agents/` or `.mcp.json`, then
   regenerate; never patch `agents/`, `.codex/agents/`, `.cursor/agents/`, or
   `.cursor/mcp.json` directly.
+- **Host plugins are continued, never overridden.** Claude Code, Codex, and Cursor
+  carry their own installable plugins and connectors for the same vendors (Linear,
+  GitHub, Stripe, Convex, ...). A host that already provides a working connection is
+  already authorized: continue on it, and the catalog probes report it ready. A host
+  that does not gets this repo's pinned, project-scoped catalog as the fallback
+  delivery (Codex project servers are prefixed `workspace-*` for exactly this
+  collision). No step may install, reconfigure, or disconnect a user's host-level
+  plugin to make the project's wiring win.
 
 ## Structure
 
@@ -231,8 +269,9 @@ else. Metadata derives from it; never hardcode the product's name in a component
 - A component catalog supplies implementation, never direction. Before a new product
   route, section family, theme or substantial visual revision, validate the selected
   plan with `pnpm ui:plan check`; then use catalogs inside that plan.
-- Pick sources with the `component-picker` matrix: shadcn for structure, MagicUI for
-  motion, 21st.dev for marketing sections, Lucide for icons.
+- Pick sources with the matrix in `ui-system`'s `references/component-sources.md`:
+  shadcn for structure, MagicUI for motion, 21st.dev for marketing sections, Lucide
+  for icons.
 - Discovery runs through the wired MCP servers in `.mcp.json` — shadcn, magicui, and
   21st — before memory or the open web. An agent that hand-writes a section one of
   those catalogs already ships is the "plain generated page" failure mode.
@@ -268,6 +307,26 @@ else. Metadata derives from it; never hardcode the product's name in a component
 - `pnpm check:ui` enforces these authored boundaries plus context-bound vendor parts,
   unsafe pasted-code, token and effect-budget checks. A failing component contract is a
   failing definition of done.
+
+## Cloning rules
+
+- Rebuilding a live site runs through the `clone-website` skill: extraction-first,
+  spec files with measured values, then section builds. **Rights decide fidelity,
+  and the mode is declared before extraction.**
+- A site the user owns or holds rights to (migration, lost source) is not "a
+  reference" — full fidelity with its real copy and assets is the job.
+- Anyone else's site is a reference, and the research rule binds: layout, scale,
+  spacing, type hierarchy, palette structure and interaction models transfer; copy,
+  brand assets, logos, photography and trademarks are replaced, content is re-voiced,
+  and deliberate composition divergences are made and recorded. Never rebuild a real
+  organization's site to pass as that organization.
+- Cloned output obeys the same stack rules as authored UI: extracted values land as
+  tokens in `globals.css`, components consume tokens, fonts follow the license rules
+  (a commercial face is substituted with an OFL neighbour, never committed), and
+  `pnpm check:ui` plus visual evidence gate it like any other surface.
+- Extraction artifacts (screenshots, computed-style dumps, specs) live under
+  `docs/research/` and `docs/design-references/` in the product workspace and never
+  ship in UI.
 
 ## Styling rules
 
@@ -546,6 +605,20 @@ flips**, gated by `pnpm preflight` and the `production-preflight` skill:
   theme changes in `globals.css`, mirror the two colors there.
 - Articles: question-shaped headings, the direct answer in the first paragraph, stable
   anchors, real dates. Detail: the `seo-blog` skill.
+
+## Documentation rules
+
+- `README.md` is the front door — what the toolkit is, the full stack, install, and
+  commands. `docs/` is the wiki: one article per subject, titled by the reader's
+  question, with the direct answer in the first paragraph. Tool docs live here;
+  product docs belong to the product workspace.
+- Reader-facing prose follows the `writing-guidelines` skill; finished prose gets a
+  `humanizer` pass; engineering decisions are recorded per `documentation-and-adrs`.
+  Where a vendored handbook convention and a house platform rule collide, the house
+  rule wins and the skill records the resolution.
+- Docs are prose that promise commands: every `pnpm <name>` in `docs/` must resolve to
+  a real script, and `pnpm check:commands` scans `docs/` exactly like AGENTS.md and
+  the skills.
 
 ## Before you say you are done
 

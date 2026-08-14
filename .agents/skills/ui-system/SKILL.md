@@ -1,6 +1,6 @@
 ---
 name: ui-system
-description: Establish and enforce the project's visual system — design tokens, typography, radius, spacing, dark mode. Use when starting a project, changing the theme, or when generated UI starts looking like every other AI-built site.
+description: Establish and enforce the project's visual system — design tokens, typography, radius, spacing, dark mode — and route component sourcing and asset work. Use when starting a project, changing the theme, adding a new interface piece or visual asset, or when generated UI starts looking like every other AI-built site.
 ---
 
 # UI System
@@ -10,6 +10,15 @@ description: Establish and enforce the project's visual system — design tokens
 This skill implements the tokens, type, density, shape and themes selected in the
 validated UI plan. Use `visual-direction` first for substantial interface work; a
 coherent token system cannot rescue an unexamined composition by itself.
+
+Two of its references are load-on-demand procedures of their own:
+
+- **Before adding any new piece of interface** — `references/component-sources.md`,
+  the source matrix (shadcn / MagicUI / Aceternity / 21st / compose) with discovery,
+  install and review procedure. Formerly the `component-picker` skill.
+- **Before adding any image, illustration, icon, or 3D** —
+  `references/asset-pipeline.md`, sourcing, treatment, download and performance
+  rules. Formerly the `asset-pipeline` skill.
 
 ## Why AI sites look identical
 
@@ -90,7 +99,7 @@ element while applying the system:
 1. **Never raw-prompt UI.** Layer curated sources: shadcn for structure, MagicUI for
    motion, Aceternity and 21st.dev for marketing sections. "Make it look modern"
    produces the average of the internet. Search them through their MCP servers —
-   `component-picker` owns which one answers what.
+   `references/component-sources.md` owns which one answers what.
 2. **References inform decisions, not copying.** The plan records take/avoid lessons;
    research screenshots never become product assets.
 3. **Ration the motion.** At most two motion pieces per viewport, on an otherwise

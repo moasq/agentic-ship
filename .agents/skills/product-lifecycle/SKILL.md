@@ -62,6 +62,16 @@ If a blocked provider branch came from `input_required`, its safe action ID rema
 available while blocked so the connection can be inspected or canceled; successful
 unblocking clears that obsolete reference.
 
+## Mirror progress where people look
+
+When the Linear connection is ready, mirror queue transitions into the product's Linear
+project so a person can watch progress without a terminal: the procedure, the
+state-mapping table, and the content rules live in `references/linear-tracking.md`. The
+queue stays the source of truth, and an unconnected Linear changes nothing. Delivery
+itself runs through GitHub: the repository, pull requests, and CI use the
+authenticated `gh` CLI from `pnpm provider:login github`, and CI is the backstop for
+the definition of done.
+
 ## Complete with proof
 
 Only the owning role marks its implementation ready for quality review. The quality engineer exercises the relevant gates and records concrete evidence. Complete a queue item only from `in_progress` and only with evidence:
