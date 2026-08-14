@@ -1,11 +1,11 @@
 # How do service connections work?
 
-Check first, ask second, then act. Every external service joins through the same
-three-step model: safe local probes discover what is already connected, one yes/no
-consent question gates anything that is not, and on yes the agent runs the vendor's own
-OAuth flow on your behalf. Credentials never enter chat, agent state, or the
-repository; every connection leaves a resumable receipt and a documented way to revoke
-it.
+Check first, ask second, then act. Every external service joins the same way. Safe
+local probes discover what is already connected. One yes/no consent question gates
+anything that is not. On yes, the agent runs the vendor's own OAuth flow on your
+behalf. Credentials never enter chat, agent state, or the repository. Every connection
+leaves a receipt (a small local record of what is pending or done) and a documented
+way to revoke it.
 
 ## The seven providers
 
@@ -25,9 +25,9 @@ instructions, automation steps, and revocation paths per provider, validated by
 schema, exercised by tests.
 
 Hosts bring their own integrations too. Claude Code, Codex, and Cursor all support
-installable plugins and connectors for these same vendors, and the kit defers to them:
-a connection the host already provides is continued as-is, and a host without one
-falls back to the project's pinned catalog. The kit never installs, reconfigures, or
+installable plugins and connectors for these same vendors, and the kit defers to them.
+A connection the host already provides is continued as-is. A host without one falls
+back to the project's pinned catalog. The kit never installs, reconfigures, or
 disconnects anything at the host's plugin layer; that configuration belongs to you.
 
 ## The split between agent and human
@@ -47,8 +47,9 @@ pnpm secret:set STRIPE_SECRET_KEY
 
 The key is piped straight into the Convex deployment environment. It is never printed,
 never stored in a file, and never pasted into chat. In test mode you do not even do
-that much: `pnpm stripe:provision --test-key` copies the CLI's sandbox key into the
-deployment env itself, refuses anything that is not a test key, and refuses production.
+that much. `pnpm stripe:provision --test-key` copies the CLI's own sandbox key into
+the deployment env for you. It refuses anything that is not a test key, and it
+refuses production.
 
 ## Pauses survive anything
 
@@ -71,7 +72,7 @@ by ID and nothing more.
 
 ## Everything is revocable
 
-`pnpm connect cancel <action-id>` retires the local receipt, and every catalog entry
+`pnpm connect cancel <action-id>` retires the local receipt. Every catalog entry also
 names how access itself is withdrawn: `npx convex logout`, `stripe logout`,
 `gh auth logout`, `netlify logout`, or disconnecting the MCP server in the host and
 revoking the grant in the provider's security settings. Canceling tracking, for

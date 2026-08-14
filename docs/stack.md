@@ -3,9 +3,10 @@
 Agentic Ship is a toolkit, not an app: it directs the coding agent you already use to
 build a real product on a fixed, verified stack. The stack has three bands. The engine
 band is this repository: Node scripts, contracts, and gates. The product band is what
-your agent builds with: Next.js on Convex with wired auth, billing, email, and
-analytics seams. The AI band is what builds it: any of nine coding hosts, eleven pinned
-MCP servers, five specialist roles, and three writing skills. This article walks each
+your agent builds with: Next.js on Convex, with a wired seam per vendor (the one
+small file where auth, billing, email, or analytics plugs in). The AI band is what
+builds it: any of nine coding hosts, eleven pinned MCP servers, five specialist
+roles, and five writing skills. This article walks each
 layer and says why it was picked; the pins themselves live in
 [skills.lock.json](../skills.lock.json).
 
@@ -57,10 +58,10 @@ but gives an agent little to read back.
 | Hosts | <picture><source media="(prefers-color-scheme: dark)" srcset="../.github/assets/hosts/claude-code-dark.svg"><img alt="" src="../.github/assets/hosts/claude-code-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset="../.github/assets/hosts/codex-dark.svg"><img alt="" src="../.github/assets/hosts/codex-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset="../.github/assets/hosts/cursor-dark.svg"><img alt="" src="../.github/assets/hosts/cursor-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset="../.github/assets/hosts/hermes-dark.svg"><img alt="" src="../.github/assets/hosts/hermes-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset="../.github/assets/hosts/openclaw-dark.svg"><img alt="" src="../.github/assets/hosts/openclaw-light.svg" height="14"></picture> Claude Code, Codex, Cursor, Windsurf, Cline, Copilot, Gemini CLI, Hermes, OpenClaw |
 | MCP catalog | shadcn, next-devtools, magicui, 21st, context7, convex, stripe, resend, posthog, linear, playwright-test |
 | Roles | product-orchestrator, frontend-builder, backend-builder, connection-guide, quality-engineer, plus the vendor-generated Playwright planner, generator, and healer |
-| Writing | `writing-guidelines`, `humanizer`, `documentation-and-adrs` |
+| Writing | `writing-guidelines`, `humanizer`, `documentation-and-adrs`, `crafting-effective-readmes`, `plain-language` |
 
-The rules are authored once and generated per host: Claude Code and Codex install the
-repo as a plugin, Cursor gets a byte-checked MCP mirror and native agents, Hermes and
+The rules are authored once and generated per host. Claude Code and Codex install the
+repo as a plugin. Cursor gets a byte-checked MCP mirror and native agents. Hermes and
 OpenClaw get non-secret profiles, and everything else reads
 [AGENTS.md](../AGENTS.md) directly. The MCP catalog is pinned in
 [.mcp.json](../.mcp.json): the four hosted servers (Stripe, Resend, PostHog, Linear)

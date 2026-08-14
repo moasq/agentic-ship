@@ -1,11 +1,13 @@
 # How are these docs written?
 
-Three vendored skills and one gate. The `writing-guidelines` skill carries the Vercel
-docs handbook and scopes it to this stack; the `humanizer` skill strips the tells of
-AI-generated prose from every finished draft; the `documentation-and-adrs` skill
-decides what gets recorded and where. `pnpm check:commands` then reads the result and
-fails the build if any article promises a command that does not exist. Documentation
-here is gated work product, not an afterthought.
+Five vendored skills and one gate. The `writing-guidelines` skill carries the Vercel
+docs handbook and scopes it to this stack. The `humanizer` skill strips the tells of
+AI-generated prose from every finished draft. The `documentation-and-adrs` skill
+decides what gets recorded and where. The `crafting-effective-readmes` skill shapes
+the README around its reader, and `/plain-language` audits everything for readability
+with verified rewrites. `pnpm check:commands` then reads the result and fails the
+build if any article promises a command that does not exist. Documentation here is
+gated work product, not an afterthought.
 
 ## The loop
 
@@ -25,22 +27,24 @@ here is gated work product, not an afterthought.
 
 ## Where the skills came from
 
-All three arrived through the same provenance door as every vendored skill: found with
-the skills.sh registry CLI, shallow-cloned, content-reviewed in full, license copied
-into the skill directory, and recorded in [skills.lock.json](../skills.lock.json) with
-upstream and commit.
+All five arrived through the same door as every vendored skill. Each was found with
+the skills.sh registry CLI, shallow-cloned, and content-reviewed in full. Its license
+was copied into the skill directory, and its provenance (which repository, which
+commit, which license) was recorded in [skills.lock.json](../skills.lock.json).
 
 | Skill | Upstream | License |
 | --- | --- | --- |
 | `writing-guidelines` | vercel-labs/writing-guidelines, the source behind Vercel's 44K-install wrapper skill | MIT |
 | `humanizer` | blader/humanizer, the English original of the registry's most-installed humanizer family | MIT |
 | `documentation-and-adrs` | addyosmani/agent-skills, same author as the vendored accessibility skill | MIT |
+| `crafting-effective-readmes` | softaworks/agent-toolkit, with the classic README references vendored and attributed | MIT |
+| `plain-language` | ggwicz/skills, a grep-verified readability audit over the plainlanguage.gov rule set | MIT |
 
-Two provenance details are worth knowing. Vercel's own installable skill fetches its
-rules from the network on every use and its repository carries no license, so this kit
-vendors the MIT source repository behind it instead, pinned and offline. And the two
-vendored sources disagree on one rule: the handbook wants curly quotes, the humanizer
-treats them as an AI tell. Straight quotes win here, because this stack writes plain
+Two details from that review are worth knowing. Vercel's own installable skill
+fetches its rules from the network on every use, and its repository carries no
+license. This kit vendors the MIT source repository behind it instead, pinned and
+offline. And the two vendored sources disagree on one rule: the handbook wants curly
+quotes, the humanizer treats them as an AI tell. Straight quotes win here, because this stack writes plain
 markdown for terminals and diffs; the resolution is recorded in the
 `writing-guidelines` skill so nobody re-litigates it.
 

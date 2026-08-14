@@ -1,10 +1,10 @@
 # How do I see what the agents are doing?
 
 Three surfaces, one source of truth. The durable work queue under `.agent-state/`
-coordinates the agents; Linear mirrors that queue into a project a person can watch;
-GitHub carries the actual deliveries as pull requests with CI as the backstop. You can
-ignore the terminal entirely and still know what is ready, what is in progress, what
-waits on you, and what shipped with which evidence.
+coordinates the agents. Linear mirrors that queue into a project a person can watch.
+GitHub carries the actual deliveries as pull requests, with CI as the backstop. You
+can ignore the terminal entirely and still know what is ready, what is in progress,
+what waits on you, and what shipped with which evidence.
 
 ## The queue is the truth
 
@@ -35,10 +35,10 @@ Authorization is Linear's own OAuth in the browser; no API key exists anywhere i
 flow. If your host already carries Linear through an installed plugin or connector,
 the agent continues on that connection instead and asks for nothing.
 
-After that, the mirror follows the queue's own events: an issue per work item, a
-status move when a role starts, a comment with the exact resume command when work
-waits on a person, and a closing comment carrying the gate evidence when an item
-completes.
+After that, the mirror follows the queue's own events. Each work item becomes an
+issue. Starting work moves the issue's status. Work that waits on a person gets a
+comment with the exact resume command. Completing an item closes the issue with a
+comment carrying the gate evidence.
 
 Three rules keep the mirror trustworthy:
 
@@ -64,11 +64,11 @@ Delivery runs through the authenticated `gh` CLI:
 pnpm provider:login github
 ```
 
-That is GitHub's device flow: the browser shows a one-time code, approving it is the
+That is GitHub's device flow. The browser shows a one-time code, approving it is the
 whole consent, and the token lives in the system keyring. From there the repository,
-branches, pull requests, and CI are ordinary `gh` and `git` operations, and CI runs
-the same `pnpm verify` the agents run locally, which makes it the backstop for any
-host that cannot enforce a stop hook.
+branches, pull requests, and CI are ordinary `gh` and `git` operations. CI runs the
+same `pnpm verify` the agents run locally, which makes it the backstop for any host
+that cannot enforce a stop hook.
 
 The hosted GitHub MCP server was evaluated and declined: it authenticates with a
 hand-held personal access token, which the credential rules reject when a
@@ -77,10 +77,11 @@ zero-touch OAuth path exists. The decision and its reasoning are recorded in
 
 ## What you see, end to end
 
-For a feature called "team billing", the visible trail is: a Linear issue created from
-the feature contract, moved to in progress when the backend role starts, a comment
-with a resume command while Stripe waits for your consent, a pull request on GitHub
-when the seams are wired, CI green on `pnpm verify`, and the Linear issue closed with
-the evidence line from `pnpm agent:work complete`. Every step is inspectable, none of
-it depends on a chat window staying open, and all of it is revocable through the
-connection model described in [How do service connections work?](connections.md).
+Take a feature called "team billing". A Linear issue is created from its feature
+contract, then moves to in progress when the backend role starts. While Stripe waits
+for your consent, the issue carries a comment with the resume command. A pull request
+lands on GitHub when the code is wired, CI goes green on `pnpm verify`, and the
+Linear issue closes with the evidence line from `pnpm agent:work complete`. Every
+step is inspectable. None of it depends on a chat window staying open, and all of it
+is revocable through the connection model described in
+[How do service connections work?](connections.md).

@@ -1,10 +1,10 @@
 # How is the toolkit put together?
 
-One rule, one home. Every rule is declared exactly once in
-[AGENTS.md](../AGENTS.md); skills elaborate declared rules into procedure; role briefs
-dispatch work to the right skill; scripts make the rules checkable; generated adapters
-deliver all of it to each AI host. When two layers disagree, the declaration wins, and
-the disagreement is a bug by definition. That single design decision explains almost
+One rule, one home. Every rule is declared exactly once in [AGENTS.md](../AGENTS.md).
+Skills turn declared rules into step-by-step procedure. Role briefs send work to the
+right skill. Scripts make the rules checkable, and generated adapters deliver all of
+it to each AI host. When two layers disagree, the declaration wins, and the
+disagreement is a bug by definition. That single design decision explains almost
 everything else in the repository.
 
 ## The layers
@@ -71,11 +71,11 @@ not-applicable rather than failing: not-yet-connected is a warning, never an err
 
 Third-party procedure enters through exactly one door: a shallow clone, a full content
 review, a copied license, and an entry in [skills.lock.json](../skills.lock.json)
-recording upstream, commit, and license. Skills whose vendors ship official plugins
-(Convex, Stripe, Resend, PostHog) are not vendored at all; the plugins update
-themselves, and the lockfile records that decision too, alongside every alternative
-that was evaluated and declined. The monthly `upstream-sync` skill diffs all of it
-against upstream.
+recording upstream, commit, and license. Some vendors (Convex, Stripe, Resend,
+PostHog) ship official plugins instead, so their skills are never vendored; the
+plugins update themselves. The lockfile records that decision too, along with every
+alternative that was evaluated and declined. The monthly `upstream-sync` skill diffs
+all of it against upstream.
 
 For how work flows through this machinery day to day, read
 [How do I see what the agents are doing?](tracking.md); for the service side, read
