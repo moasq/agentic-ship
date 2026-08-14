@@ -67,6 +67,71 @@ Then, and none of these are optional:
    `requireEmailVerification: true` together.
 5. `pnpm preflight --prod` is the gate. It audits the real prod deployment.
 
+## Custom domain — Hostinger
+
+The domain is the one step that is human-owned end to end: it costs money, and no
+registrar lets a machine buy or point one safely. The agent's part is everything after
+the DNS exists. Hostinger is the documented registrar because its DNS zone editor is
+plain and the same panel later holds the email records; any registrar with A and CNAME
+records works identically.
+
+**1. Buy the domain (human, at hostinger.com).**
+Search the name, buy the domain alone — no hosting plan, no email upsell, nothing else
+from the checkout. Check the renewal price, not just the first-year price. WHOIS
+privacy is included; leave it on.
+
+**2. Point DNS at Netlify (human, in hPanel → Domains → DNS Zone).**
+Delete the parking records Hostinger pre-fills (the A records pointing at its parking
+page), then add:
+
+| Type | Name | Value |
+| --- | --- | --- |
+| A | `@` | `75.2.60.5` |
+| CNAME | `www` | `<your-site>.netlify.app` |
+
+Netlify's recommended apex record is an ALIAS/flattened CNAME to
+`apex-loadbalancer.netlify.com`, but Hostinger does not offer ALIAS at the apex, so
+the documented A-record fallback is the right choice there. The alternative — moving
+the nameservers to Netlify DNS — also works, but keeping DNS at Hostinger means the
+deploy records and the later email records live in one panel.
+
+**3. Attach the domain in Netlify.**
+Site configuration → Domain management → Add a domain, enter the apex; Netlify adds
+`www` alongside it. This is the one Netlify step with no CLI equivalent — the CLI has
+no domains command — and it is acceptable here because the whole domain step is
+already human-paced.
+
+**4. Wait for the certificate before telling anyone the URL.**
+Propagation takes minutes to hours. Netlify then provisions the Let's Encrypt
+certificate itself. Do not announce, link, or test-market the domain until Domain
+management shows the certificate as issued: `next.config.ts` ships HSTS with a
+two-year `max-age`, so the very first response a browser sees at this domain must
+already be valid HTTPS.
+
+**5. Re-point the application at the real name (agent, terminal).**
+
+```bash
+pnpm setup:auth https://yourdomain.com
+```
+
+```bash
+netlify env:set NEXT_PUBLIC_SITE_URL https://yourdomain.com
+```
+
+Update the identity in `src/lib/site.ts` (title, URL — it feeds metadata, the OG
+card, and llms.txt), then `netlify deploy --prod`. The Stripe and Resend webhooks do
+not move: they live on `<prod-deployment>.convex.site`, which is unaffected by the
+frontend's domain.
+
+**6. Same panel, next unlock: email.**
+The sending domain for Resend is verified by adding the records Resend shows
+(one DKIM TXT, one SPF TXT, one MX on its `send` subdomain — the values are
+per-account, copy them from Resend's dashboard) into the same Hostinger DNS zone.
+That verification is the precondition for the `testMode: false` +
+`requireEmailVerification: true` flip described in `email-resend.md`.
+
+`pnpm preflight --prod` remains the last word after any of this changes.
+
 ## Health checks
 
 - `netlify.toml` build command contains `convex deploy` → else CRITICAL

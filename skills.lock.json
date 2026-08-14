@@ -519,7 +519,7 @@
         "render": "replaced: `render deploys create` needs a serviceID only the dashboard can mint, and `render blueprints` can validate a blueprint but never apply one, so the first deploy could not be reached from a terminal at all.",
         "vercel": "excluded by decision"
       },
-      "deferred": "domain (Cloudflare or Namecheap). HSTS ships with a two-year max-age, so the certificate must be right on the first request at a custom domain."
+      "domain": "Documented 2026-08-14 (was deferred as 'Cloudflare or Namecheap'): Hostinger is the registrar path in deploy-netlify.md — human buys, points A @ → 75.2.60.5 and CNAME www → <site>.netlify.app (Hostinger has no apex ALIAS, so Netlify's documented A-record fallback applies), agent re-points SITE_URL/NEXT_PUBLIC_SITE_URL/site.ts after. The HSTS caveat is now a declared Deploy rule: never announce before the certificate is issued, because max-age is two years. Same DNS zone later takes Resend's sending-domain records — the testMode-flip precondition."
     },
     "preLoginContract": {
       "buildsGreen": true,
