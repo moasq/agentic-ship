@@ -562,6 +562,13 @@ Detail: `.agents/skills/convex-structure/references/deploy-netlify.md`.
   exactly this reason — `render deploys create` requires a `serviceID` that only the
   dashboard can mint, and `render blueprints` can validate a blueprint but never apply
   one, so the first deploy could not be reached from a terminal at all.
+- **The custom domain is the one human-owned deploy step.** It costs money and no
+  registrar lets a machine buy or point one safely: the person buys it (Hostinger is
+  the documented registrar), points DNS at Netlify by hand, and the agent re-points
+  the app afterwards. Never announce the domain before Netlify shows the certificate
+  issued — HSTS ships with a two-year `max-age`, so the first response a browser sees
+  there must already be valid HTTPS. Procedure and records:
+  `.agents/skills/convex-structure/references/deploy-netlify.md`.
 
 ## Security rules
 
