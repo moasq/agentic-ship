@@ -147,6 +147,21 @@ builder is the better buy. This kit is for the other case — a coding agent is 
 open, and the product has to outlive the demo with owned code, a portable backend, and
 a definition of done you can run yourself.
 
+## Built with it
+
+Meridian, an uptime monitor, shipped end to end from this kit: Convex backend, Better
+Auth sessions, Stripe plans, Netlify deploy. The kit bundles no UI of its own — every
+pixel below was produced by a coding agent working under the kit's rules and gates.
+
+<p align="center">
+  <img src=".github/assets/showcase/meridian-home.png" alt="Meridian home page, built by an agent with Agentic Ship" width="100%">
+</p>
+<p align="center">
+  <img src=".github/assets/showcase/meridian-pricing.png" alt="Meridian pricing page" width="72%">
+  &nbsp;
+  <img src=".github/assets/showcase/meridian-mobile.png" alt="Meridian home on a phone viewport" width="20.6%">
+</p>
+
 ## Works with any agent
 
 Claude Code, Codex (plugins + native adapters), Cursor (generated agents, MCP mirror,
