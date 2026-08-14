@@ -50,75 +50,100 @@ git clone https://github.com/moasq/agentic-ship.git
 cd agentic-ship && pnpm install && pnpm verify
 ```
 
-## What's inside
+## Features
 
-A **tool-only** repository — no web app, database, deployment, or demo content. What it
-delivers is the layer that makes an agent build those correctly:
+A **tool-only** repository: no web app, database, deployment, or demo content is
+bundled. What ships is the layer that makes your agent build those correctly — declared
+rules, procedures, role briefs, and gates, with every integration below wired as a seam
+the product code consumes. No provider is required to start: a fresh copy verifies
+green with nothing connected, and each service joins later through its vendor's own
+OAuth, one resumable handoff at a time.
 
-- **One rule set** — [AGENTS.md](AGENTS.md) declares every rule; hosts that read it natively follow it directly.
-- **Skills** — procedures in [.agents/skills](.agents/skills): product lifecycle, connections, UI, visual QA, backend, security, testing, writing, launch.
-- **Role briefs** — five specialist agents in [.agents/agents](.agents/agents), plus the vendor-generated Playwright trio.
-- **A pinned MCP catalog** — [.mcp.json](.mcp.json): shadcn, MagicUI, and 21st.dev discovery plus Linear tracking, wired for every host.
-- **Gates and connection handoffs** — Node scripts behind every `pnpm` command; credentials never enter chat, state, or the repo.
-- **Generated host adapters** for Claude Code, Codex, Cursor, Hermes, and OpenClaw, synced from the one authored source.
-
-A fresh copy verifies green with nothing connected; providers connect one at a time
-through resumable handoffs.
-
-## The agentic development stack
-
-Every layer is chosen, pinned in [skills.lock.json](skills.lock.json), and verified by
-gates. The kit's job is making an agent use them correctly together. The full
-reasoning behind each pick lives in [docs/stack.md](docs/stack.md).
-
-| Layer | Choice |
-| --- | --- |
-| Runtime | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/nodedotjs-dark.svg"><img alt="" src=".github/assets/stack/nodedotjs-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/pnpm-dark.svg"><img alt="" src=".github/assets/stack/pnpm-light.svg" height="14"></picture> Node 20+ · pnpm — the only runtime any script assumes |
-| Framework | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/nextdotjs-dark.svg"><img alt="" src=".github/assets/stack/nextdotjs-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/react-dark.svg"><img alt="" src=".github/assets/stack/react-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/typescript-dark.svg"><img alt="" src=".github/assets/stack/typescript-light.svg" height="14"></picture> Next.js 16 · React 19 · TypeScript |
-| Styling | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/tailwindcss-dark.svg"><img alt="" src=".github/assets/stack/tailwindcss-light.svg" height="14"></picture> Tailwind v4, CSS-first — tokens in `globals.css`, no config file |
-| Components | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/shadcnui-dark.svg"><img alt="" src=".github/assets/stack/shadcnui-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/lucide-dark.svg"><img alt="" src=".github/assets/stack/lucide-light.svg" height="14"></picture> shadcn/ui structure · MagicUI motion · Aceternity primitives · 21st.dev sections · Lucide icons |
-| State | RSC props first, then URL state, then Zustand 5 |
-| Backend | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/convex-dark.svg"><img alt="" src=".github/assets/stack/convex-light.svg" height="14"></picture> Convex — schema, reactive functions, crons, file storage; functions are the API |
-| Auth | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/betterauth-dark.svg"><img alt="" src=".github/assets/stack/betterauth-light.svg" height="14"></picture> Better Auth (exact-pinned) through the Convex adapter |
-| Billing | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/stripe-dark.svg"><img alt="" src=".github/assets/stack/stripe-light.svg" height="14"></picture> Stripe through `@convex-dev/stripe` — hosted checkout, webhook-backed entitlement |
-| Email | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/resend-dark.svg"><img alt="" src=".github/assets/stack/resend-light.svg" height="14"></picture> Resend through `@convex-dev/resend` — test-mode by default |
-| Analytics | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/posthog-dark.svg"><img alt="" src=".github/assets/stack/posthog-light.svg" height="14"></picture> PostHog behind a first-party `/ingest` proxy; the CSP stays closed |
-| Fonts | Self-hosted OFL faces, fetched by `pnpm font`, committed |
-| Gates | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/vitest-dark.svg"><img alt="" src=".github/assets/stack/vitest-light.svg" height="14"></picture> Vitest contracts · Playwright capture · deterministic Node checks |
-| Deploy | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/netlify-dark.svg"><img alt="" src=".github/assets/stack/netlify-light.svg" height="14"></picture> Netlify — the whole path is the terminal, `netlify.toml` is authoritative |
-| Delivery | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/github-dark.svg"><img alt="" src=".github/assets/stack/github-light.svg" height="14"></picture> GitHub — `gh` CLI device-flow OAuth for repo, PRs, and CI |
-| Tracking | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/linear-dark.svg"><img alt="" src=".github/assets/stack/linear-light.svg" height="14"></picture> Linear — hosted MCP mirrors the work queue so people watch progress |
-| AI hosts | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/claude-code-dark.svg"><img alt="" src=".github/assets/hosts/claude-code-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/codex-dark.svg"><img alt="" src=".github/assets/hosts/codex-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/cursor-dark.svg"><img alt="" src=".github/assets/hosts/cursor-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/hermes-dark.svg"><img alt="" src=".github/assets/hosts/hermes-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/openclaw-dark.svg"><img alt="" src=".github/assets/hosts/openclaw-light.svg" height="14"></picture> Claude Code · Codex · Cursor · Windsurf · Cline · Copilot · Gemini CLI · Hermes · OpenClaw |
-| Tool catalog | 11 pinned MCP servers in [.mcp.json](.mcp.json), mirrored per host |
-| Writing | Vendored docs handbook, humanizer pass, README doctrine, plain-language audit, ADRs — docs are gated prose |
-
-Stack marks are vendored, not hotlinked — provenance in
-[.github/assets/stack/credits.md](.github/assets/stack/credits.md). Zustand and
-Playwright ship no mark in that set, so their rows stay text-only.
+| Integration | Provider | What ships |
+| --- | --- | --- |
+| Backend | Convex | schema, reactive queries, crons, file storage; functions are the API |
+| Auth | Better Auth | email + password wired; Google and GitHub sign-in switch on when both of a provider's keys land |
+| Billing | Stripe | hosted checkout, webhook-backed entitlement, test-mode provisioning from the CLI |
+| Email | Resend | transactional sends enqueued inside the calling transaction; test-mode by default |
+| Analytics | PostHog | typed events behind a first-party `/ingest` proxy; the CSP stays closed |
+| Deploy | Netlify | the whole path in the terminal: init, env, deploy; `netlify.toml` is authoritative |
+| Delivery | GitHub | repo, PRs, and CI through `gh` device-flow OAuth |
+| Tracking | Linear | optional hosted MCP mirrors the work queue into a project people can watch |
+| Components | shadcn/ui · MagicUI · Aceternity · 21st.dev · Lucide | shadcn, MagicUI, and Aceternity are keyless; 21st.dev is a free OAuth; discovery runs through pinned MCP servers |
+| Fonts | OFL faces | self-hosted, fetched and committed by `pnpm font`; no build-time Google Fonts egress |
+| SEO / AEO | — | metadata from one identity file, sitemap, llms.txt, OG image as code, MDX blog pipeline |
+| Design system | — | visual-direction plan (`pnpm ui:plan`), design tokens, motion budget, fail-closed visual evidence (`pnpm ui:review`) |
+| Testing | Vitest · Playwright | unit contracts, e2e smoke, browser capture, CI workflow; `pnpm check:ui` guards component boundaries |
+| Security | — | closed CSP, secret-handling rules, production preflight; `pnpm verify:full` adds the fail-closed dependency audit before a release |
+| Agents | 5 roles · 9 hosts | role briefs plus the Playwright trio; generated adapters for Claude Code, Codex, Cursor, Hermes, OpenClaw; AGENTS.md for the rest |
+| Writing | — | vendored docs handbook, humanizer pass, README doctrine, plain-language audit |
 
 - ✅ **Pinned** — every version, registry, and MCP server locked in [skills.lock.json](skills.lock.json)
 - ✅ **Gated** — `pnpm verify` is the definition of done on every completion, not a release ritual
 - ✅ **Consent-first** — services connect through the vendor's own OAuth, and every connection is revocable
 - ✅ **Offline-first** — a fresh copy verifies green with nothing connected
 
-## Commands
+Why each layer was picked: [docs/stack.md](docs/stack.md).
 
-| Command | Does |
-| --- | --- |
-| `pnpm verify` | the offline definition of done — health + contracts + lint + build |
-| `pnpm verify:full` | release gates: audit, unit tests, production browser suite |
-| `pnpm test` | unit gate (vitest, in-memory) |
-| `pnpm health` | is anything wrong — including what only the connected deployment knows |
-| `pnpm heal` | deterministic repairs (links, mirrors, lockfile), with proof |
-| `pnpm onboard --host <host>` | which provider this product still needs, or the next step |
-| `pnpm connect` | begin, inspect, resume, or cancel safe service-connection receipts |
-| `pnpm provider:login <cli>` | authorize a vendor through its own browser OAuth |
-| `pnpm agent:work` | durable, dependency-aware work queue shared across hosts |
-| `pnpm ui:plan <init\|check>` | create or validate the visual-direction contract |
-| `pnpm ui:review <capture\|accept\|check>` | capture, accept, or verify visual evidence |
-| `pnpm check:ui` | authored component boundaries, tokens, and visual evidence |
-| `pnpm sync:mcp` · `pnpm check:mcp` | write / verify the `.cursor/mcp.json` mirror |
-| `pnpm sync:agents` · `pnpm check:agents` | write / verify native host adapters |
+### Not wired yet, and what a swap costs
+
+Opinionated does not mean stuck. Every provider sits behind a seam you own, so the
+honest question is not "is it supported" but how much code a swap touches:
+
+| Want instead | Wired today | Swap cost |
+| --- | --- | --- |
+| Vercel, Cloudflare | Netlify | small — the deploy seam is `netlify.toml`, one build command, one doc; product code never names the host |
+| Plausible, Umami | PostHog | small — `src/lib/analytics.ts` is the only file that imports the SDK |
+| Postmark, SendGrid | Resend | medium — `convex/email.ts` is the only sender, but the Convex component and its webhook go with it |
+| Polar, Lemon Squeezy | Stripe | medium — checkout and portal are one seam; entitlement rides the `@convex-dev/stripe` component |
+| Clerk, Auth.js | Better Auth | medium — session truth is one query behind `requireUser`, but the Convex adapter is load-bearing |
+| Supabase, Postgres + Prisma | Convex | large — Convex is the spine; the auth, billing, and email components all ride it. Swapping it means rebuilding those seams |
+
+That last row is this kit's own lock-in, stated plainly. The difference from a hosted
+builder: all of it is MIT-licensed code in your repo, so the exit is a refactor you can
+run, not an export you buy.
+
+## How it compares
+
+Hosted builders are real products, and the running app they put in a browser tab within
+minutes is a real advantage. The table shows what that convenience costs, and what a
+toolkit in your own repo does that a rented builder cannot.
+
+Compared against the shipping versions as of August 2026: Lovable with Lovable Cloud
+and Build mode, Bolt V2 with Bolt Cloud, the rebuilt v0 platform (February 2026),
+Base44 under Wix, and Replit Agent 3. Where they improved, the table says so. Marks
+come from each vendor's public docs and product pages; if a cell is wrong or stale,
+open an issue — the table only works if it stays true.
+
+✅ yes · ⚠️ partial · ❌ no
+
+| | Agentic Ship | Lovable | Bolt.new | v0 | Base44 | Replit |
+| --- | --- | --- | --- | --- | --- | --- |
+| Open source | ✅ MIT | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Cost | ✅ $0 forever — MIT, drives the agent subscription you already have | ⚠️ free daily credits, then paid credit plans | ⚠️ free monthly tokens, then paid token plans | ⚠️ free monthly credits, then paid plans | ⚠️ free messages, then paid plans; export needs one | ⚠️ free starter credits, then paid credit plans |
+| Bring your own coding agent | ✅ any of nine hosts, swap anytime | ❌ built-in agent | ⚠️ pick the model (Claude, GPT, Gemini); the agent is theirs | ❌ built-in agent and model | ❌ built-in agent | ❌ built-in agent |
+| Code lives in your git repo | ✅ from the first commit, no platform copy | ✅ two-way GitHub sync | ⚠️ one-way export to GitHub | ✅ native GitHub: branches, PRs, existing repos | ❌ one-way push, on a paid tier | ⚠️ export to GitHub |
+| Take everything with you when you leave | ✅ nothing to leave; the repo is the product | ⚠️ code exports; Lovable Cloud Postgres and auth migrate by hand | ⚠️ code exports; Bolt Cloud DB, auth, and hosting are rebuilt elsewhere | ⚠️ standard Next.js exports clean; previews and deploys assume Vercel | ❌ front end exports on a paid tier; the backend stays behind their SDK | ⚠️ code exports; DB, auth, and hosting are Replit services you rebuild |
+| Self-host anywhere | ✅ any Node host | ⚠️ after export | ⚠️ after export | ⚠️ after export | ❌ their runtime only | ⚠️ after export |
+| Backend built from parts you can hire for | ✅ Convex · Better Auth · Stripe, named and pinned in your repo | ⚠️ Supabase, run by them | ⚠️ Postgres via Bolt Cloud, run by them | ⚠️ your own integrations | ❌ proprietary | ⚠️ Postgres and auth, run by them |
+| Definition of done you own | ✅ `pnpm verify` in your repo and CI: contracts, tests, visual evidence | ❌ checks run in their pipeline | ❌ checks run in their pipeline | ❌ checks run in their pipeline | ❌ checks run in their pipeline | ⚠️ Agent 3 self-tests in a real browser — thorough, but in their pipeline |
+| Security gates before going live | ✅ dependency audit, closed CSP, production preflight | ✅ auto scan on publish, deep scan on demand | ❌ | ❌ | ❌ | ❌ |
+| Enforced design direction per product | ✅ written plan, tokens, review gates | ⚠️ polished house style, no per-product contract | ❌ | ⚠️ strong defaults, one recognizable look | ❌ | ❌ |
+| Secrets stay between you and the vendor | ✅ vendor OAuth, hidden terminal input | ⚠️ encrypted, held on their platform | ⚠️ encrypted, held on their platform | ⚠️ encrypted, held on their platform | ⚠️ encrypted, held on their platform | ⚠️ encrypted, held on their platform |
+| Zero install, runs in a browser | ❌ needs a terminal | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Shareable hosted preview in minutes | ❌ you deploy it | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Built for non-developers | ❌ assumes a coding agent | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Native mobile output | ❌ web only | ❌ web only | ✅ Expo | ❌ web only | ✅ iOS builds | ⚠️ Expo via templates |
+
+Two fairness notes on cost. The free tiers are real, and fine for a weekend test — but
+building a product burns through them, and that is where the paid plans begin. And
+hosted credits include the model usage, so a builder is only a second subscription when
+an agent subscription already exists — which is exactly who this kit is for. The last
+four rows are a real recommendation: if
+you will never open a terminal, or you want a phone app from a single prompt, a hosted
+builder is the better buy. This kit is for the other case — a coding agent is already
+open, and the product has to outlive the demo with owned code, a portable backend, and
+a definition of done you can run yourself.
 
 ## Works with any agent
 
@@ -143,7 +168,7 @@ The wiki lives in [docs/](docs/) — one article per question:
 
 Reference material:
 
-- [AGENTS.md](AGENTS.md) — every rule, in one file
+- [AGENTS.md](AGENTS.md) — every rule and every `pnpm` command, in one file
 - [.agents/skills/](.agents/skills) — procedures: product lifecycle, connections, UI, backend, security, testing, launch
 - [.agents/agents/](.agents/agents) — five specialist role briefs, plus the vendor-generated Playwright trio
 - Visual direction — the planning procedure in
