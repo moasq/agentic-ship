@@ -50,40 +50,42 @@ git clone https://github.com/moasq/agentic-ship.git
 cd agentic-ship && pnpm install && pnpm verify
 ```
 
-## Features
+## The agentic development stack
 
-A **tool-only** repository: no web app, database, deployment, or demo content is
-bundled. What ships is the layer that makes your agent build those correctly — declared
-rules, procedures, role briefs, and gates, with every integration below wired as a seam
-the product code consumes. No provider is required to start: a fresh copy verifies
-green with nothing connected, and each service joins later through its vendor's own
-OAuth, one resumable handoff at a time.
+Every layer is chosen, pinned in [skills.lock.json](skills.lock.json), and verified by
+gates. The kit's job is making an agent use them correctly together. The full
+reasoning behind each pick lives in [docs/stack.md](docs/stack.md).
 
-| Integration | Provider | What ships |
-| --- | --- | --- |
-| Backend | Convex | schema, reactive queries, crons, file storage; functions are the API |
-| Auth | Better Auth | email + password wired; Google and GitHub sign-in switch on when both of a provider's keys land |
-| Billing | Stripe | hosted checkout, webhook-backed entitlement, test-mode provisioning from the CLI |
-| Email | Resend | transactional sends enqueued inside the calling transaction; test-mode by default |
-| Analytics | PostHog | typed events behind a first-party `/ingest` proxy; the CSP stays closed |
-| Deploy | Netlify | the whole path in the terminal: init, env, deploy; `netlify.toml` is authoritative |
-| Delivery | GitHub | repo, PRs, and CI through `gh` device-flow OAuth |
-| Tracking | Linear | optional hosted MCP mirrors the work queue into a project people can watch |
-| Components | shadcn/ui · MagicUI · Aceternity · 21st.dev · Lucide | shadcn, MagicUI, and Aceternity are keyless; 21st.dev is a free OAuth; discovery runs through pinned MCP servers |
-| Fonts | OFL faces | self-hosted, fetched and committed by `pnpm font`; no build-time Google Fonts egress |
-| SEO / AEO | — | metadata from one identity file, sitemap, llms.txt, OG image as code, MDX blog pipeline |
-| Design system | — | visual-direction plan (`pnpm ui:plan`), design tokens, motion budget, fail-closed visual evidence (`pnpm ui:review`) |
-| Testing | Vitest · Playwright | unit contracts, e2e smoke, browser capture, CI workflow; `pnpm check:ui` guards component boundaries |
-| Security | — | closed CSP, secret-handling rules, production preflight; `pnpm verify:full` adds the fail-closed dependency audit before a release |
-| Agents | 5 roles · 9 hosts | role briefs plus the Playwright trio; generated adapters for Claude Code, Codex, Cursor, Hermes, OpenClaw; AGENTS.md for the rest |
-| Writing | — | vendored docs handbook, humanizer pass, README doctrine, plain-language audit |
+| Layer | Choice |
+| --- | --- |
+| Runtime | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/nodedotjs-dark.svg"><img alt="" src=".github/assets/stack/nodedotjs-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/pnpm-dark.svg"><img alt="" src=".github/assets/stack/pnpm-light.svg" height="14"></picture> Node 20+ · pnpm — the only runtime any script assumes |
+| Framework | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/nextdotjs-dark.svg"><img alt="" src=".github/assets/stack/nextdotjs-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/react-dark.svg"><img alt="" src=".github/assets/stack/react-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/typescript-dark.svg"><img alt="" src=".github/assets/stack/typescript-light.svg" height="14"></picture> Next.js 16 · React 19 · TypeScript |
+| Styling | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/tailwindcss-dark.svg"><img alt="" src=".github/assets/stack/tailwindcss-light.svg" height="14"></picture> Tailwind v4, CSS-first — tokens in `globals.css`, no config file |
+| Components | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/shadcnui-dark.svg"><img alt="" src=".github/assets/stack/shadcnui-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/lucide-dark.svg"><img alt="" src=".github/assets/stack/lucide-light.svg" height="14"></picture> shadcn/ui structure · MagicUI motion · Aceternity primitives · 21st.dev sections · Lucide icons |
+| State | RSC props first, then URL state, then Zustand 5 |
+| Backend | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/convex-dark.svg"><img alt="" src=".github/assets/stack/convex-light.svg" height="14"></picture> Convex — schema, reactive functions, crons, file storage; functions are the API |
+| Auth | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/betterauth-dark.svg"><img alt="" src=".github/assets/stack/betterauth-light.svg" height="14"></picture> Better Auth (exact-pinned) through the Convex adapter |
+| Billing | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/stripe-dark.svg"><img alt="" src=".github/assets/stack/stripe-light.svg" height="14"></picture> Stripe through `@convex-dev/stripe` — hosted checkout, webhook-backed entitlement |
+| Email | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/resend-dark.svg"><img alt="" src=".github/assets/stack/resend-light.svg" height="14"></picture> Resend through `@convex-dev/resend` — test-mode by default |
+| Analytics | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/posthog-dark.svg"><img alt="" src=".github/assets/stack/posthog-light.svg" height="14"></picture> PostHog behind a first-party `/ingest` proxy; the CSP stays closed |
+| Fonts | Self-hosted OFL faces, fetched by `pnpm font`, committed |
+| Gates | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/vitest-dark.svg"><img alt="" src=".github/assets/stack/vitest-light.svg" height="14"></picture> Vitest contracts · Playwright capture · deterministic Node checks — `pnpm verify` on every completion, `pnpm verify:full` before a release |
+| UI gates | `pnpm ui:plan` direction contract · `pnpm ui:review` visual evidence · `pnpm check:ui` component boundaries |
+| Deploy | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/netlify-dark.svg"><img alt="" src=".github/assets/stack/netlify-light.svg" height="14"></picture> Netlify — the whole path is the terminal, `netlify.toml` is authoritative |
+| Delivery | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/github-dark.svg"><img alt="" src=".github/assets/stack/github-light.svg" height="14"></picture> GitHub — `gh` CLI device-flow OAuth for repo, PRs, and CI |
+| Tracking | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/linear-dark.svg"><img alt="" src=".github/assets/stack/linear-light.svg" height="14"></picture> Linear — hosted MCP mirrors the work queue so people watch progress |
+| AI hosts | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/claude-code-dark.svg"><img alt="" src=".github/assets/hosts/claude-code-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/codex-dark.svg"><img alt="" src=".github/assets/hosts/codex-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/cursor-dark.svg"><img alt="" src=".github/assets/hosts/cursor-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/hermes-dark.svg"><img alt="" src=".github/assets/hosts/hermes-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/openclaw-dark.svg"><img alt="" src=".github/assets/hosts/openclaw-light.svg" height="14"></picture> Claude Code · Codex · Cursor · Windsurf · Cline · Copilot · Gemini CLI · Hermes · OpenClaw |
+| Tool catalog | 11 pinned MCP servers in [.mcp.json](.mcp.json), mirrored per host |
+| Writing | Vendored docs handbook, humanizer pass, README doctrine, plain-language audit, ADRs — docs are gated prose |
+
+Stack marks are vendored, not hotlinked — provenance in
+[.github/assets/stack/credits.md](.github/assets/stack/credits.md). Zustand and
+Playwright ship no mark in that set, so their rows stay text-only.
 
 - ✅ **Pinned** — every version, registry, and MCP server locked in [skills.lock.json](skills.lock.json)
 - ✅ **Gated** — `pnpm verify` is the definition of done on every completion, not a release ritual
 - ✅ **Consent-first** — services connect through the vendor's own OAuth, and every connection is revocable
 - ✅ **Offline-first** — a fresh copy verifies green with nothing connected
-
-Why each layer was picked: [docs/stack.md](docs/stack.md).
 
 ### Not wired yet, and what a swap costs
 
