@@ -31,8 +31,8 @@ lockfile, environment) and proves the result with a health run.
 ## 2. Say what you want to build
 
 Product-sized work starts with a brief, not a prompt. The `product-lifecycle` skill
-turns your outcome into a product brief, feature contracts with one owner each, and a
-durable work queue:
+turns your outcome into three things: a product brief, feature contracts with one
+owner each, and a durable work queue:
 
 ```bash
 pnpm agent:work init --name my-product --goal "what shipping looks like"
@@ -55,8 +55,8 @@ pnpm connect begin convex --host claude
 
 Each connection checks local state first, asks one yes/no consent question, then runs
 the vendor's own OAuth flow. Secrets go through hidden-input prompts straight into the
-Convex deployment environment; they never touch chat, files, or shell history. The full
-model, including how to cancel and revoke, is in
+Convex deployment environment. They never touch chat, files, or shell history. The
+full model, including how to cancel and revoke, is in
 [How do service connections work?](connections.md).
 
 ## 4. Build under the gates
@@ -108,12 +108,13 @@ one command:
 pnpm preflight --prod
 ```
 
-It fails while production still holds test Stripe keys, while email is still in test
-mode without verification, while the seed backdoor flag exists, or while
+It fails while production still holds test Stripe keys. It fails while email is still
+in test mode without verification, while the seed backdoor flag exists, and while
 `src/lib/site.ts` still carries placeholders. Deploy is the terminal path on Netlify:
-`netlify init`, `netlify env:set` for the deploy key, `netlify deploy --prod`, with
-`netlify.toml` as the committed, authoritative topology. If production misbehaves,
-roll back to the last green deploy first and diagnose locally second.
+`netlify init`, `netlify env:set` for the deploy key, then `netlify deploy --prod`.
+The committed `netlify.toml` is the authoritative deployment description. If
+production misbehaves, roll back to the last green deploy first and diagnose locally
+second.
 
 ## Where to go deeper
 

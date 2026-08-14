@@ -141,6 +141,26 @@
       "note": "Vendored verbatim: the de-AI editing pass over finished prose, grounded in Wikipedia's Signs of AI writing. Runs in embedded mode as the last step of the writing-guidelines loop and stands alone for any text. Its straight-quote rule is the accepted resolution of the curly-quote conflict with the vendored Vercel handbook. Upstream also ships agents/ and a plugin manifest; only the skill is vendored."
     },
     {
+      "name": "crafting-effective-readmes",
+      "upstream": "https://github.com/softaworks/agent-toolkit (skills/crafting-effective-readmes/)",
+      "upstreamCommit": "3027f20",
+      "license": "MIT (repo LICENSE copied into the skill dir); references vendor upstream's attributed copies of Art of README (hackergrrl), Make a README (Danny Guo), and Standard Readme (Richard Litt)",
+      "patched": true,
+      "lastSync": "2026-08-14",
+      "references": ["art-of-readme.md", "make-a-readme.md", "standard-readme-spec.md", "standard-readme-example-minimal.md", "standard-readme-example-maximal.md", "templates/oss.md", "templates/personal.md", "templates/internal.md", "templates/xdg-config.md", "section-checklist.md", "style-guide.md", "using-references.md"],
+      "note": "Audience-matched README doctrine: ask who reads it, pick the template for the project type, quickest path to it-works. One house edit: style-guide.md's prose pointer now names this repo's writing-guidelines + humanizer instead of upstream's un-vendored writing-clearly-and-concisely sibling. Boundary: documentation-and-adrs owns what a README must contain as a record; this skill owns making it land for a human reader."
+    },
+    {
+      "name": "plain-language",
+      "upstream": "https://github.com/ggwicz/skills (plain-language/)",
+      "upstreamCommit": "d72c9d6",
+      "license": "MIT (repo LICENSE copied into the skill dir)",
+      "patched": true,
+      "lastSync": "2026-08-14",
+      "references": ["rules-quick-ref.md", "word-substitutions.md", "active-voice-guide.md", "before-and-after-examples.md", "severity-rubric.md", "adversarial-review-prompt.md", "final-plan-format.md"],
+      "note": "Explicit-invocation readability audit (/plain-language, disable-model-invocation) over the pl-01..pl-33 plainlanguage.gov-derived catalog: grep-verified findings, adversarial review round, one plan document. Two house edits, both recorded inline: working state moved from upstream's .agents/local/state/ into gitignored .agent-state/plain-language/, and plans land in docs/reviews/ so the curated wiki stays clean. Its rg/fd/find fallback mentions are upstream prose, not this repo's script surface. mgifford/accessibility-skills@plain-language had the stronger doctrine (WCAG 3.1.5, severity-scaled) but is AGPL-3.0 and cannot be vendored into this MIT repo — see skillRegistry.declined."
+    },
+    {
       "name": "documentation-and-adrs",
       "upstream": "https://github.com/addyosmani/agent-skills (skills/documentation-and-adrs/)",
       "upstreamCommit": "be42637",
@@ -545,7 +565,9 @@
     "adopted": [
       { "skill": "blader/humanizer@humanizer", "installs": "4.2K", "vendoredAs": "humanizer", "reason": "The English-language original of the most-installed humanizer family (the 43.8K leader op7418/humanizer-zh is its Chinese adaptation). MIT, single file, reviewed in full — no fetch-at-use, no scripts, no injection surface." },
       { "skill": "vercel-labs/agent-skills@writing-guidelines", "installs": "44K", "vendoredAs": "writing-guidelines (from the MIT source repo vercel-labs/writing-guidelines)", "reason": "The wrapper repo carries NO LICENSE and WebFetches its rules from raw.githubusercontent.com on every use — both disqualifying here. The handbook it fetches lives in vercel-labs/writing-guidelines, which is MIT, so that source is vendored and pinned instead; the house SKILL.md scopes out Vercel platform conventions." },
-      { "skill": "addyosmani/agent-skills@documentation-and-adrs", "installs": "22.2K", "vendoredAs": "documentation-and-adrs", "reason": "Docs/ADR doctrine was a gap: no house skill owned decision records. Same author as the vendored accessibility skill; MIT; reviewed in full." }
+      { "skill": "addyosmani/agent-skills@documentation-and-adrs", "installs": "22.2K", "vendoredAs": "documentation-and-adrs", "reason": "Docs/ADR doctrine was a gap: no house skill owned decision records. Same author as the vendored accessibility skill; MIT; reviewed in full." },
+      { "skill": "softaworks/agent-toolkit@crafting-effective-readmes", "installs": "4K", "vendoredAs": "crafting-effective-readmes", "reason": "The one README skill in the registry that is doctrine rather than a generator prompt: audience-matched templates, section checklist, and the attributed classic references (Art of README, Make a README, Standard Readme). MIT; reviewed in full; one pointer patched." },
+      { "skill": "ggwicz/skills@plain-language", "installs": "77", "vendoredAs": "plain-language", "reason": "Low install count, high engineering: explicit-invocation-only audit with grep-verified findings and an adversarial review round over the plainlanguage.gov-derived pl-01..pl-33 catalog. MIT; reviewed in full; state and plan paths patched to house locations." }
     ],
     "declined": [
       { "skill": "better-auth/skills@better-auth-security-best-practices", "installs": "24.3K", "reason": "NO LICENSE on the repository — redistribution is not granted, so it cannot be vendored. Content reviewed at 2026-07-11 HEAD and found excellent; the practices are captured stack-specifically in the house-written convex-structure/references/better-auth-hardening.md (facts verified against Better Auth's docs). A buyer who wants the original installs it per-machine: `npx skills add better-auth/skills`." },
@@ -553,7 +575,10 @@
       { "skill": "addyosmani/web-quality-skills@seo (+performance, core-web-vitals, best-practices)", "installs": "43.5K pack", "reason": "seo overlaps seo-audit + seo-blog; performance/core-web-vitals overlap the seo-blog LHCI budget and vercel:performance-optimizer agent surface; web-quality-audit ships a shell script this Node-only repo cannot adopt. accessibility was the gap and was vendored." },
       { "skill": "vercel-labs/agent-skills@web-design-guidelines (+frontend-design in anthropics/skills)", "reason": "Collides head-on with ui-system + visual-direction as design doctrine — two homes for one rule is the bug this repo exists to prevent (same reasoning as the declined ui-ux-pro-max in vendorKnowledge)." },
       { "skill": "get-convex/agent-skills@* and resend/*", "installs": "up to 99.7K", "reason": "Already delivered by the official convex and resend plugins declared in .claude/settings.json — official skills are never vendored, they update themselves (plugins section). upstream-sync's plugin re-check owns catching new first-party skills such as convex-performance-audit." },
-      { "skill": "microsoft/playwright-cli@playwright-cli", "installs": "115.9K", "reason": "Terminal-driving procedure for Playwright's CLI; the wired playwright-test MCP covers interactive browser work and playwright-best-practices covers doctrine. Revisit if headless-CLI-only hosts matter." }
+      { "skill": "microsoft/playwright-cli@playwright-cli", "installs": "115.9K", "reason": "Terminal-driving procedure for Playwright's CLI; the wired playwright-test MCP covers interactive browser work and playwright-best-practices covers doctrine. Revisit if headless-CLI-only hosts matter." },
+      { "skill": "mgifford/accessibility-skills@plain-language", "installs": "72", "reason": "The strongest plain-language doctrine surveyed (WCAG 3.1.5 reading level, severity scale, AT context) from a CivicActions accessibility authority — but the repository is AGPL-3.0, and copyleft content cannot be vendored into this MIT bundle. A buyer who wants it installs per machine: npx skills add mgifford/accessibility-skills. ggwicz/skills@plain-language (MIT) was vendored instead." },
+      { "skill": "github/awesome-copilot@create-readme", "installs": "17K", "reason": "A thin generator prompt: role-play framing plus four example READMEs WebFetched from raw.githubusercontent.com at use time — the same fetch-at-use pattern declined for vercel-labs/agent-skills@writing-guidelines. crafting-effective-readmes vendors its doctrine offline instead." },
+      { "skill": "brianlovin/agent-config@simplify", "installs": "13.3K", "reason": "Code simplification, not prose — surfaced by the readability search but out of scope for it, and code-simplifier procedure already reaches this stack through the official plugin ecosystem." }
     ]
   },
   "cliTools": {

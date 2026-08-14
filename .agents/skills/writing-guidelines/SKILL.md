@@ -59,6 +59,9 @@ House rules that always win over the handbook:
 ## Where writing lands in this repository
 
 - `README.md` is the front door: what the toolkit is, the stack, install, commands.
+  Its structure (audience, section order, templates) is the `crafting-effective-readmes`
+  skill's job; this skill governs how its sentences read. Readability across all prose
+  is auditable on demand with `/plain-language`.
 - `docs/` is the wiki: one article per subject, named after the reader's question,
   opening with a one-paragraph answer. Articles link each other by relative path.
 - Skills and role briefs are agent-facing: the same prose rules apply, but their

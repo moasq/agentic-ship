@@ -31,7 +31,6 @@ The wiki explains; these files govern:
 - [skills.lock.json](../skills.lock.json): provenance for everything vendored, pinned,
   or declined.
 
-Every article here is bound by the documentation rules in AGENTS.md: prose follows the
-`writing-guidelines` skill, finished text gets a `humanizer` pass, and
-`pnpm check:commands` fails the build if an article promises a command that does not
-exist.
+Every article here is bound by the documentation rules in AGENTS.md. Prose follows the
+`writing-guidelines` skill, and finished text gets a `humanizer` pass. If an article
+promises a command that does not exist, `pnpm check:commands` fails the build.

@@ -117,6 +117,8 @@ write literally.
 | `writing-guidelines` | any reader-facing prose — docs, README, wiki articles, PR bodies; the vendored docs handbook plus this stack's scope table |
 | `humanizer` | the final pass over finished prose — strip AI-writing tells without changing facts |
 | `documentation-and-adrs` | recording engineering decisions — ADRs, why-comments, README and changelog structure |
+| `crafting-effective-readmes` | writing or reshaping a README — audience-matched templates, section checklist, the classic README references |
+| `plain-language` | `/plain-language` readability audit of project prose — jargon, sentence length, active voice, with verified rewrites |
 | `convex-structure` | before writing backend code, adding a table, or wiring a component to data |
 | `testing` | writing tests, any red gate, or when a repair is needed — gates, data rules, healer guardrails |
 | `playwright-best-practices` | writing or fixing Playwright e2e — flakiness, isolation, fixtures, CI reliability |
@@ -124,8 +126,9 @@ write literally.
 | `upstream-sync` | monthly, or when a tool ships a major version |
 
 Vendored skills (`accessibility`, `security-review`, `playwright-best-practices`, the
-four SEO skills, and the writing trio — `writing-guidelines`, `humanizer`,
-`documentation-and-adrs`) carry their upstream, commit, and license in `skills.lock.json`;
+four SEO skills, and the writing five — `writing-guidelines`, `humanizer`,
+`documentation-and-adrs`, `crafting-effective-readmes`, `plain-language`) carry their
+upstream, commit, and license in `skills.lock.json`;
 `upstream-sync` owns their updates. House rules win on any conflict, and their shell
 or npm command examples are upstream prose, not this repo's procedure — authored
 commands still follow the platform rules above.
@@ -616,6 +619,11 @@ flips**, gated by `pnpm preflight` and the `production-preflight` skill:
   `humanizer` pass; engineering decisions are recorded per `documentation-and-adrs`.
   Where a vendored handbook convention and a house platform rule collide, the house
   rule wins and the skill records the resolution.
+- **Docs are written for a person in a hurry, not to impress.** README structure
+  follows `crafting-effective-readmes` (audience first, quickest path to "it works",
+  show don't tell). Readability is auditable: `/plain-language` sweeps project prose
+  for jargon, long sentences, and passive voice, and its dated plans land in
+  `docs/reviews/`. Plain beats clever; a term of art gets a plain gloss on first use.
 - Docs are prose that promise commands: every `pnpm <name>` in `docs/` must resolve to
   a real script, and `pnpm check:commands` scans `docs/` exactly like AGENTS.md and
   the skills.
