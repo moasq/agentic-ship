@@ -49,6 +49,9 @@
   "posthog": {
     "url": "https://mcp.posthog.com/mcp"
   },
+  "linear": {
+    "url": "https://mcp.linear.app/mcp"
+  },
   "playwright-test": {
     "command": "npx",
     "args": [

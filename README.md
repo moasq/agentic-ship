@@ -56,14 +56,42 @@ A **tool-only** repository — no web app, database, deployment, or demo content
 delivers is the layer that makes an agent build those correctly:
 
 - **One rule set** — [AGENTS.md](AGENTS.md) declares every rule; hosts that read it natively follow it directly.
-- **Skills** — procedures in [.agents/skills](.agents/skills): product lifecycle, connections, UI, visual QA, backend, security, testing, launch.
+- **Skills** — procedures in [.agents/skills](.agents/skills): product lifecycle, connections, UI, visual QA, backend, security, testing, writing, launch.
 - **Role briefs** — five specialist agents in [.agents/agents](.agents/agents), plus the vendor-generated Playwright trio.
-- **A pinned MCP catalog** — [.mcp.json](.mcp.json): shadcn, MagicUI, and 21st.dev discovery, wired for every host.
+- **A pinned MCP catalog** — [.mcp.json](.mcp.json): shadcn, MagicUI, and 21st.dev discovery plus Linear tracking, wired for every host.
 - **Gates and connection handoffs** — Node scripts behind every `pnpm` command; credentials never enter chat, state, or the repo.
 - **Generated host adapters** for Claude Code, Codex, Cursor, Hermes, and OpenClaw, synced from the one authored source.
 
 A fresh copy verifies green with nothing connected; providers connect one at a time
 through resumable handoffs.
+
+## The agentic development stack
+
+Every layer is chosen, pinned in [skills.lock.json](skills.lock.json), and verified by
+gates. The kit's job is making an agent use them correctly together. The full
+reasoning behind each pick lives in [docs/stack.md](docs/stack.md).
+
+| Layer | Choice |
+| --- | --- |
+| Framework | Next.js 16 · React 19 · TypeScript |
+| Styling | Tailwind v4, CSS-first — tokens in `globals.css`, no config file |
+| Components | shadcn/ui structure · MagicUI motion · Aceternity primitives · 21st.dev sections · Lucide icons |
+| State | RSC props first, then URL state, then Zustand 5 |
+| Backend | Convex — schema, reactive functions, crons, file storage; functions are the API |
+| Auth | Better Auth (exact-pinned) through the Convex adapter |
+| Billing | Stripe through `@convex-dev/stripe` — hosted checkout, webhook-backed entitlement |
+| Email | Resend through `@convex-dev/resend` — test-mode by default |
+| Analytics | PostHog behind a first-party `/ingest` proxy; the CSP stays closed |
+| Fonts | Self-hosted OFL faces, fetched by `pnpm font`, committed |
+| Deploy | Netlify — the whole path is the terminal, `netlify.toml` is authoritative |
+| Delivery | GitHub — `gh` CLI device-flow OAuth for repo, PRs, and CI |
+| Tracking | Linear — hosted MCP mirrors the work queue so people watch progress |
+| AI hosts | Claude Code · Codex · Cursor · Windsurf · Cline · Copilot · Gemini CLI · Hermes · OpenClaw |
+| Tool catalog | 11 pinned MCP servers in [.mcp.json](.mcp.json), mirrored per host |
+| Writing | Vendored docs handbook, humanizer pass, ADR doctrine — docs are gated prose |
+
+Delivery and tracking are connections like any other: consent-gated, receipt-backed,
+revocable, and optional. A buyer who connects nothing still verifies green.
 
 ## Commands
 
@@ -95,6 +123,17 @@ Host marks above are vendored, not hotlinked — provenance in
 [.github/assets/hosts/credits.md](.github/assets/hosts/credits.md).
 
 ## Documentation
+
+The wiki lives in [docs/](docs/) — one article per question:
+
+- [What is the Agentic Ship stack?](docs/stack.md) — every layer and why it was picked
+- [How do I go from empty folder to shipped product?](docs/getting-started.md)
+- [How is the toolkit put together?](docs/architecture.md) — one rule, one home
+- [How do service connections work?](docs/connections.md) — consent, receipts, revocation
+- [How do I see what the agents are doing?](docs/tracking.md) — the work queue, Linear, GitHub
+- [How are these docs written?](docs/writing.md) — the writing skills behind the prose
+
+Reference material:
 
 - [AGENTS.md](AGENTS.md) — every rule, in one file
 - [.agents/skills/](.agents/skills) — procedures: product lifecycle, connections, UI, backend, security, testing, launch

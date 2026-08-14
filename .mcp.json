@@ -36,6 +36,10 @@
       "type": "http",
       "url": "https://mcp.posthog.com/mcp"
     },
+    "linear": {
+      "type": "http",
+      "url": "https://mcp.linear.app/mcp"
+    },
     "playwright-test": {
       "command": "npx",
       "args": ["-y", "playwright@1.62.1", "run-test-mcp-server"]

@@ -17,6 +17,21 @@ Format:
 
 ---
 
+## 2026-08-14 nanoid-advisory-tripped-the-fail-closed-audit
+- cause: GHSA-2v37-7h3g-55p8 (nanoid < 3.3.18, custom generators loop forever on
+  size 0) was published after the last dependency change, and the transitive
+  nanoid@3.3.17 under postcss/vite sat inside its range. Nothing in this repo
+  regressed; the audit is fail-closed on the whole tree by design, so a fresh
+  upstream advisory reddens `pnpm verify:full` on a tree that was green yesterday.
+- fix: `pnpm up nanoid` — postcss's `^3.3.x` range already admitted the patched
+  3.3.18, so one lockfile bump cleared it. Audit back to zero across 106 packages.
+- prevention: none to add — this is the audit working as designed, and the repair
+  is the documented one-command path. Recorded so the next fresh-advisory red is
+  recognized as external drift, not a regression: check the advisory's patched
+  version first; a semver-compatible bump via `pnpm up <pkg>` is the whole fix
+  when the parent range admits it.
+- status: open
+
 ## 2026-08-11 visual-capture-hung-on-a-lazy-image
 - cause: `captureUiEvidence` awaited `image.decode()` on every image whose
   `complete` was false, with no bound. A below-the-fold `next/image` is lazy by

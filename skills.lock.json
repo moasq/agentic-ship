@@ -1,12 +1,12 @@
 {
   "$comment": "Provenance manifest. Nothing enters this bundle without an entry. Run the upstream-sync skill monthly.",
-  "bundleVersion": "0.2.0",
-  "lastSync": "2026-08-11",
+  "bundleVersion": "0.3.0",
+  "lastSync": "2026-08-14",
   "skills": [
     { "name": "agent-compatibility", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": [] },
     { "name": "workspace-health", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["platform-notes.md", "supply-chain.md", "tool-probes.md"] },
     { "name": "setup-health", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "compatibilityAliasFor": ["workspace-health", "agent-compatibility", "service-connections"] },
-    { "name": "product-lifecycle", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": [".agents/contracts/product-brief.schema.json", ".agents/contracts/feature-contract.schema.json", ".agents/contracts/input-required.schema.json"] },
+    { "name": "product-lifecycle", "upstream": "original", "patched": false, "lastSync": "2026-08-14", "references": ["linear-tracking.md", ".agents/contracts/product-brief.schema.json", ".agents/contracts/feature-contract.schema.json", ".agents/contracts/input-required.schema.json"], "note": "2026-08-14: gained the Linear tracking mirror procedure (references/linear-tracking.md) behind the AGENTS.md Agentic-workflow tracking rule." },
     { "name": "service-connections", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["protocol.md", ".agents/connections/providers.json", ".agents/connections/hosts.json"] },
     {
       "name": "ui-system",
@@ -118,6 +118,37 @@
       "lastSync": "2026-08-11",
       "references": ["playbooks.md", "evals/evals.json"],
       "note": "Template-pages-at-scale playbooks; completes the marketingskills SEO family's cross-references. Pages it produces are still product routes bound by metadata, token, and visual-evidence rules."
+    },
+    {
+      "name": "writing-guidelines",
+      "upstream": "https://github.com/vercel-labs/writing-guidelines (README.md → references/guidelines.md, command.md → references/review-checklist.md)",
+      "upstreamCommit": "83e2316",
+      "license": "MIT (repo LICENSE copied into the skill dir)",
+      "patched": true,
+      "lastSync": "2026-08-14",
+      "references": ["guidelines.md", "review-checklist.md"],
+      "note": "The Vercel docs handbook, vendored offline. Upstream's own skill wrapper (vercel-labs/agent-skills@writing-guidelines, 44K installs) carries no license and fetches these files from raw.githubusercontent.com on every use; this skill vendors the MIT source repo instead, pinned, so the loop works with no egress. SKILL.md is house-written: it binds the handbook to this stack (which rules transfer, which are Vercel platform conventions) and records the one deliberate conflict resolution with humanizer — straight quotes and three-dot ellipses win here. upstream-sync: diff both reference files against upstream; keep the scope table."
+    },
+    {
+      "name": "humanizer",
+      "upstream": "https://github.com/blader/humanizer (SKILL.md)",
+      "upstreamCommit": "523374d",
+      "upstreamVersion": "2.9.1",
+      "license": "MIT (repo LICENSE copied into the skill dir)",
+      "patched": false,
+      "lastSync": "2026-08-14",
+      "references": [],
+      "note": "Vendored verbatim: the de-AI editing pass over finished prose, grounded in Wikipedia's Signs of AI writing. Runs in embedded mode as the last step of the writing-guidelines loop and stands alone for any text. Its straight-quote rule is the accepted resolution of the curly-quote conflict with the vendored Vercel handbook. Upstream also ships agents/ and a plugin manifest; only the skill is vendored."
+    },
+    {
+      "name": "documentation-and-adrs",
+      "upstream": "https://github.com/addyosmani/agent-skills (skills/documentation-and-adrs/)",
+      "upstreamCommit": "be42637",
+      "license": "MIT (repo LICENSE copied into the skill dir)",
+      "patched": false,
+      "lastSync": "2026-08-14",
+      "references": [],
+      "note": "Engineering documentation doctrine: ADRs, why-comments, README and changelog structure. Boundaries: seo-blog owns the product article pipeline, writing-guidelines owns prose quality, this skill owns what gets recorded and where. Its npm command examples are upstream prose, not this repo's script surface. Second adoption from this author — accessibility comes from his web-quality-skills repo."
     }
   ],
   "mcp": [
@@ -190,6 +221,16 @@
       "upstream": "https://github.com/PostHog/ai-plugin (.mcp.json)",
       "official": true,
       "verified": "2026-08-06"
+    },
+    {
+      "name": "linear",
+      "package": "remote",
+      "url": "https://mcp.linear.app/mcp",
+      "transport": "http+oauth",
+      "upstream": "https://linear.app/docs/mcp (same endpoint as anthropics/claude-plugins-official external_plugins/linear)",
+      "official": true,
+      "verified": "2026-08-14",
+      "note": "OAuth 2.1 with dynamic client registration — browser consent, no key handled; limited scopes give read-only access. Development-tracking mirror: the pnpm agent:work queue stays the source of truth (AGENTS.md Agentic workflow; procedure in product-lifecycle references/linear-tracking.md). The deprecated /sse endpoint exists for legacy clients — never pin it."
     },
     {
       "name": "playwright-test",
@@ -391,6 +432,12 @@
       "status": "none exist",
       "verified": "2026-08-03",
       "note": "Their official integration is the MCP layer in .mcp.json plus Context7 docs. Do not bundle unofficial plugins for these."
+    },
+    {
+      "name": "linear / github (claude-plugins-official external plugins)",
+      "status": "not declared — delivered another way",
+      "verified": "2026-08-14",
+      "note": "external_plugins/linear is MCP-only (https://mcp.linear.app/mcp) and Claude-only; the identical endpoint pinned in .mcp.json reaches every host through the generated mirrors, so declaring the plugin would be a second copy of one wire. external_plugins/github wires https://api.githubcopilot.com/mcp/ behind a GITHUB_PERSONAL_ACCESS_TOKEN header — a hand-held PAT, which the credential rules reject. GitHub stays on the gh CLI's device-flow OAuth (pnpm provider:login github): browser consent, token in the system keyring, nothing typed or pasted. Coexistence is a declared rule (AGENTS.md Agentic workflow): a user who installs these plugins anyway is continued on them, never overridden — the project catalog is the fallback, not the authority over the host's own plugin layer."
     }
   ],
   "backend": {
@@ -493,8 +540,13 @@
   },
   "skillRegistry": {
     "$comment": "Open agent-skills ecosystem survey (vercel-labs/skills CLI + skills.sh directory). Adoption decisions recorded once so they are not re-derived; upstream-sync re-runs `npx skills find` for the adopted names each cycle and revisits declines when circumstances change. Every adopted skill was content-reviewed in full before vendoring — a skill IS agent instructions, so unreviewed vendoring is prompt injection by download.",
-    "surveyed": "2026-08-11",
+    "surveyed": "2026-08-14",
     "tool": { "cli": "npx skills (vercel-labs/skills, MIT)", "directory": "https://skills.sh", "installerUsed": false, "installerReason": "The CLI's symlink-into-every-agent-dir install duplicates this repo's own adapter layer and bypasses skills.lock.json; vendoring by shallow clone + lock entry keeps one provenance path. The 21st CLI's symlink refusal (vendorKnowledge) also applies to installers writing through .claude/skills." },
+    "adopted": [
+      { "skill": "blader/humanizer@humanizer", "installs": "4.2K", "vendoredAs": "humanizer", "reason": "The English-language original of the most-installed humanizer family (the 43.8K leader op7418/humanizer-zh is its Chinese adaptation). MIT, single file, reviewed in full — no fetch-at-use, no scripts, no injection surface." },
+      { "skill": "vercel-labs/agent-skills@writing-guidelines", "installs": "44K", "vendoredAs": "writing-guidelines (from the MIT source repo vercel-labs/writing-guidelines)", "reason": "The wrapper repo carries NO LICENSE and WebFetches its rules from raw.githubusercontent.com on every use — both disqualifying here. The handbook it fetches lives in vercel-labs/writing-guidelines, which is MIT, so that source is vendored and pinned instead; the house SKILL.md scopes out Vercel platform conventions." },
+      { "skill": "addyosmani/agent-skills@documentation-and-adrs", "installs": "22.2K", "vendoredAs": "documentation-and-adrs", "reason": "Docs/ADR doctrine was a gap: no house skill owned decision records. Same author as the vendored accessibility skill; MIT; reviewed in full." }
+    ],
     "declined": [
       { "skill": "better-auth/skills@better-auth-security-best-practices", "installs": "24.3K", "reason": "NO LICENSE on the repository — redistribution is not granted, so it cannot be vendored. Content reviewed at 2026-07-11 HEAD and found excellent; the practices are captured stack-specifically in the house-written convex-structure/references/better-auth-hardening.md (facts verified against Better Auth's docs). A buyer who wants the original installs it per-machine: `npx skills add better-auth/skills`." },
       { "skill": "anthropics/skills@webapp-testing", "installs": "130.7K", "reason": "Capability already delivered three ways: the playwright-test MCP, the vendor playwright-test-* agents, and playwright-best-practices. A fourth home for browser-driving procedure invites drift." },
@@ -531,10 +583,10 @@
   },
   "connections": {
     "catalogs": [".agents/connections/providers.json", ".agents/connections/hosts.json"],
-    "providers": ["convex", "stripe", "resend", "posthog", "netlify"],
+    "providers": ["convex", "stripe", "github", "linear", "resend", "posthog", "netlify"],
     "hosts": ["claude", "codex", "cursor", "hermes", "openclaw"],
     "state": ".agent-state/connections/ (gitignored; whitelisted receipts only)",
-    "verified": "2026-08-06"
+    "verified": "2026-08-14 (github was cataloged 2026-08-07 but missing from this list; linear added with the tracking-mirror rules)"
   },
   "distribution": {
     "$comment": "Plugin manifests point at canonical skills and pinned MCP catalogs. Host-native role adapters remain generated files.",
