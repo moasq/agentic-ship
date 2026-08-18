@@ -24,6 +24,11 @@ The catalog behind this table is
 instructions, automation steps, and revocation paths per provider, validated by
 schema, exercised by tests.
 
+Each entry also declares its capability and whether it is the default. Product briefs
+select one provider for billing, email, analytics, deployment, and tracking. A provider
+without an official command-line interface (CLI) or host Model Context Protocol (MCP)
+integration skips agent-tool authorization and starts at project provisioning.
+
 Hosts bring their own integrations too. Claude Code, Codex, and Cursor all support
 installable plugins and connectors for these same vendors, and the kit defers to them.
 A connection the host already provides is continued as-is. A host without one falls

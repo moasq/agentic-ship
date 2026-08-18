@@ -4,9 +4,9 @@
   "title": "Product brief",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "product", "capabilities", "constraints", "quality"],
+  "required": ["schemaVersion", "product", "capabilities", "constraints", "providerSelection", "quality"],
   "properties": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "const": 2 },
     "product": {
       "type": "object",
       "additionalProperties": false,
@@ -37,6 +37,7 @@
       "type": "array",
       "items": { "type": "string", "minLength": 1 }
     },
+    "providerSelection": { "$ref": "provider-selection.schema.json" },
     "providers": {
       "type": "array",
       "items": {
