@@ -59,5 +59,11 @@
       "playwright@1.62.1",
       "run-test-mcp-server"
     ]
+  },
+  "agentic-ship": {
+    "command": "node",
+    "args": [
+      "scripts/mcp-server.mjs"
+    ]
   }
 }
