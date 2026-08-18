@@ -1,9 +1,10 @@
 /**
- * Is billing COHERENT on a deployment — not merely "are some Stripe names present".
+ * Is billing COHERENT on a deployment — not merely "are some billing names present".
+ * Supports both Stripe and Polar downstream billing providers.
  *
  * Each key on its own looks fine; the damage lives in the combinations. A secret key
  * with no webhook secret takes the money and never grants the plan. A deployment
- * carrying prices and a webhook secret but no secret key reads as configured while
+ * carrying prices/products and a webhook secret but no secret key reads as configured while
  * `billingIsLive()` is false, which silently leaves `workspaces.changePlan` open to the
  * browser — any owner can put their own workspace on a paid plan for nothing.
  *
@@ -17,25 +18,26 @@ export const BILLING_ENV = {
   siteUrl: "SITE_URL",
 };
 
-/**
- * @param {Iterable<string>} envNames names present on the deployment
- * @returns {{ status: "PASS"|"WARN"|"FAIL"|"CRITICAL", detail: string }}
- */
-export function inspectBillingCoherence(envNames) {
-  const names = new Set(envNames);
-  const has = (name) => names.has(name);
+export const POLAR_BILLING_ENV = {
+  secret: "POLAR_ACCESS_TOKEN",
+  webhook: "POLAR_WEBHOOK_SECRET",
+  productPrefix: "POLAR_PRODUCT_",
+  siteUrl: "SITE_URL",
+};
+
+const SEVERITY_RANK = {
+  CRITICAL: 4,
+  FAIL: 3,
+  WARN: 2,
+  PASS: 1,
+};
+
+function inspectStripeCoherence(names, has) {
   const prices = [...names].filter((name) => name.startsWith(BILLING_ENV.pricePrefix));
   const anyStripe = [...names].some((name) => name.startsWith("STRIPE_"));
 
-  if (!anyStripe) {
-    return {
-      status: "WARN",
-      detail:
-        "no Stripe keys on this deployment — billing is off and plans switch directly, which is a normal pre-launch state. Run `pnpm onboard stripe --host <host>` when you want checkout.",
-    };
-  }
+  if (!anyStripe) return null;
 
-  // Ordered by what each state costs. Taking money without granting the plan first.
   if (has(BILLING_ENV.secret) && !has(BILLING_ENV.webhook)) {
     return {
       status: "CRITICAL",
@@ -44,9 +46,6 @@ export function inspectBillingCoherence(envNames) {
     };
   }
 
-  // Below here nothing can take money — checkout throws before it reaches Stripe — so
-  // these are FAIL rather than CRITICAL. Severity tracks what it costs, not how broken
-  // it looks.
   if (has(BILLING_ENV.secret) && prices.length === 0) {
     return {
       status: "FAIL",
@@ -63,14 +62,6 @@ export function inspectBillingCoherence(envNames) {
     };
   }
 
-  // No secret key means checkout is unreachable, so this deployment behaves EXACTLY like
-  // one with no Stripe at all: nothing is charged, nothing leaks, no customer is touched.
-  // It is unfinished setup, not a broken build — and `pnpm stripe:provision` deliberately
-  // ends here, printing the one human step. Grading its own documented waypoint red would
-  // turn the engine's onboarding into a failing gate between two commands.
-  //
-  // The thing worth saying out loud is the DISCREPANCY: a deployment carrying prices and
-  // a webhook endpoint looks live to a person reading its env, and is not.
   if (!has(BILLING_ENV.secret)) {
     const orphans = [has(BILLING_ENV.webhook) ? BILLING_ENV.webhook : null, ...prices].filter(Boolean);
     return {
@@ -84,6 +75,79 @@ export function inspectBillingCoherence(envNames) {
   }
 
   return { status: "PASS", detail: `secret, webhook and ${prices.length} price(s) all present` };
+}
+
+function inspectPolarCoherence(names, has) {
+  const products = [...names].filter((name) => name.startsWith(POLAR_BILLING_ENV.productPrefix));
+  const anyPolar = [...names].some((name) => name.startsWith("POLAR_"));
+
+  if (!anyPolar) return null;
+
+  if (has(POLAR_BILLING_ENV.secret) && !has(POLAR_BILLING_ENV.webhook)) {
+    return {
+      status: "CRITICAL",
+      detail:
+        "POLAR_ACCESS_TOKEN is set but POLAR_WEBHOOK_SECRET is not — checkout completes, the webhook is rejected unsigned, and entitlement never arrives. The customer pays and gets nothing.",
+    };
+  }
+
+  if (has(POLAR_BILLING_ENV.secret) && products.length === 0) {
+    return {
+      status: "FAIL",
+      detail:
+        "POLAR_ACCESS_TOKEN is set but no POLAR_PRODUCT_* is — every checkout throws before it reaches Polar.",
+    };
+  }
+
+  if (has(POLAR_BILLING_ENV.secret) && !has(POLAR_BILLING_ENV.siteUrl)) {
+    return {
+      status: "FAIL",
+      detail:
+        "POLAR_ACCESS_TOKEN is set but SITE_URL is not — createCheckout throws, because Polar needs a return URL that exists.",
+    };
+  }
+
+  if (!has(POLAR_BILLING_ENV.secret)) {
+    const orphans = [has(POLAR_BILLING_ENV.webhook) ? POLAR_BILLING_ENV.webhook : null, ...products].filter(Boolean);
+    return {
+      status: "WARN",
+      detail:
+        `${orphans.join(", ")} present but POLAR_ACCESS_TOKEN is missing — billing is OFF despite looking configured. ` +
+        "createCheckout refuses, the settings screen offers direct plan switching, and entitlement is not webhook-owned yet. " +
+        "Finish it with `pnpm secret:set POLAR_ACCESS_TOKEN` (hidden input, straight into Convex env). " +
+        `To stay pre-billing on purpose instead, drop the orphans: ${orphans.map((name) => `\`npx convex env remove ${name}\``).join(" ")}.`,
+    };
+  }
+
+  return { status: "PASS", detail: `Polar access token, webhook and ${products.length} product(s) all present` };
+}
+
+/**
+ * @param {Iterable<string>} envNames names present on the deployment
+ * @returns {{ status: "PASS"|"WARN"|"FAIL"|"CRITICAL", detail: string }}
+ */
+export function inspectBillingCoherence(envNames) {
+  const names = new Set(envNames);
+  const has = (name) => names.has(name);
+
+  const stripeResult = inspectStripeCoherence(names, has);
+  const polarResult = inspectPolarCoherence(names, has);
+
+  if (!stripeResult && !polarResult) {
+    return {
+      status: "WARN",
+      detail:
+        "no Stripe or Polar keys on this deployment — billing is off and plans switch directly, which is a normal pre-launch state. Run `pnpm onboard stripe --host <host>` or configure Polar when you want checkout.",
+    };
+  }
+
+  if (stripeResult && !polarResult) return stripeResult;
+  if (polarResult && !stripeResult) return polarResult;
+
+  // Both configured: report the most severe state
+  const results = [stripeResult, polarResult];
+  results.sort((a, b) => SEVERITY_RANK[b.status] - SEVERITY_RANK[a.status]);
+  return results[0];
 }
 
 /** Parse `convex env list` output into NAMES. Values are dropped here and never returned. */

@@ -15,8 +15,12 @@ const SECRET = "STRIPE_SECRET_KEY";
 const WEBHOOK = "STRIPE_WEBHOOK_SECRET";
 const SITE = "SITE_URL";
 
-describe("billing coherence", () => {
-  test("no Stripe at all is a normal pre-launch state, not a failure", () => {
+const POLAR_PRODUCT = "POLAR_PRODUCT_PRO";
+const POLAR_SECRET = "POLAR_ACCESS_TOKEN";
+const POLAR_WEBHOOK = "POLAR_WEBHOOK_SECRET";
+
+describe("billing coherence - Stripe", () => {
+  test("no Stripe or Polar at all is a normal pre-launch state, not a failure", () => {
     // AGENTS.md: not-yet-connected is a WARN, never an error.
     const result = inspectBillingCoherence([SITE, "BETTER_AUTH_SECRET"]);
     expect(result.status).toBe("WARN");
@@ -43,10 +47,6 @@ describe("billing coherence", () => {
   });
 
   test("prices and a webhook secret with no key warns rather than fails", () => {
-    // Unfinished setup, not a broken build: with no secret key checkout is unreachable,
-    // so the deployment behaves exactly like one with no Stripe at all. `stripe:provision`
-    // ends in this state by design, and red-gating it would break the engine's own
-    // onboarding between two commands. The discrepancy still has to be said out loud.
     const result = inspectBillingCoherence([WEBHOOK, PRICE, SITE]);
     expect(result.status).toBe("WARN");
     expect(result.detail).toMatch(/billing is OFF despite looking configured/);
@@ -54,15 +54,45 @@ describe("billing coherence", () => {
   });
 
   test("a reachable checkout that cannot pay out is the line between WARN and red", () => {
-    // The severity rule, stated as a pair: the ONLY difference between these two is
-    // whether a customer's card can be charged.
     expect(inspectBillingCoherence([WEBHOOK, PRICE, SITE]).status).toBe("WARN");
     expect(inspectBillingCoherence([SECRET, PRICE, SITE]).status).toBe("CRITICAL");
   });
 
   test("the money-losing state wins when several things are wrong at once", () => {
-    // Secret set, nothing else. Webhook outranks price: it is the costlier failure.
     expect(inspectBillingCoherence([SECRET]).status).toBe("CRITICAL");
+  });
+});
+
+describe("billing coherence - Polar", () => {
+  test("a complete Polar configuration passes", () => {
+    const result = inspectBillingCoherence([POLAR_SECRET, POLAR_WEBHOOK, POLAR_PRODUCT, SITE]);
+    expect(result.status).toBe("PASS");
+    expect(result.detail).toMatch(/Polar access token, webhook and 1 product\(s\) all present/);
+  });
+
+  test("Polar access token without a webhook secret is CRITICAL", () => {
+    const result = inspectBillingCoherence([POLAR_SECRET, POLAR_PRODUCT, SITE]);
+    expect(result.status).toBe("CRITICAL");
+    expect(result.detail).toMatch(/POLAR_ACCESS_TOKEN is set but POLAR_WEBHOOK_SECRET is not/);
+  });
+
+  test("Polar access token without products fails", () => {
+    const result = inspectBillingCoherence([POLAR_SECRET, POLAR_WEBHOOK, SITE]);
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toMatch(/no POLAR_PRODUCT_\* is/);
+  });
+
+  test("Polar access token without SITE_URL fails", () => {
+    const result = inspectBillingCoherence([POLAR_SECRET, POLAR_WEBHOOK, POLAR_PRODUCT]);
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toMatch(/POLAR_ACCESS_TOKEN is set but SITE_URL is not/);
+  });
+
+  test("Polar products and webhook with no access token warns", () => {
+    const result = inspectBillingCoherence([POLAR_WEBHOOK, POLAR_PRODUCT, SITE]);
+    expect(result.status).toBe("WARN");
+    expect(result.detail).toMatch(/POLAR_ACCESS_TOKEN is missing/);
+    expect(result.detail).toMatch(/pnpm secret:set POLAR_ACCESS_TOKEN/);
   });
 });
 

@@ -603,6 +603,84 @@
           "text": "Revoke the authorization in the Netlify dashboard under User settings → Applications, and delete the site if it should not exist."
         }
       ]
+    },
+    "polar": {
+      "displayName": "Polar",
+      "docsUrl": "https://polar.sh/docs",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "agentTool": {
+        "authFlow": "cli_browser_login",
+        "mcpServer": "polar",
+        "setupUrl": "https://polar.sh/settings",
+        "instructions": [
+          "Polar provides monetization with built-in customer portal, product management, and webhooks.",
+          "Create a personal access token under Settings → Developer → Access Tokens at polar.sh/settings.",
+          "Set POLAR_ACCESS_TOKEN and POLAR_WEBHOOK_SECRET in Convex deployment environment variables."
+        ],
+        "configurationProbe": {
+          "id": "polar-mcp",
+          "label": "Polar MCP server is declared",
+          "type": "mcp_server",
+          "server": "polar",
+          "required": false
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://polar.sh/settings",
+              "opensBrowser": true,
+              "why": "Open Polar settings in the browser to create access tokens and configure webhook endpoints."
+            }
+          ]
+        }
+      },
+      "projectProvisioning": {
+        "setupUrl": "https://polar.sh/dashboard",
+        "instructions": [
+          "Configure Polar products and webhook endpoints pointing to `/polar/webhook`.",
+          "Set POLAR_ACCESS_TOKEN, POLAR_WEBHOOK_SECRET, and POLAR_PRODUCT_* in the Convex environment via `pnpm secret:set`.",
+          "Derive entitlement only from verified webhook payloads and customer state."
+        ],
+        "verification": {
+          "policy": "probe_and_attestation",
+          "probes": [
+            {
+              "id": "polar-billing-seam",
+              "label": "Polar billing seam exists",
+              "type": "file_contains",
+              "file": "convex/billing.ts",
+              "text": "polar",
+              "required": false
+            },
+            {
+              "id": "polar-webhook-route",
+              "label": "Polar webhook route is registered",
+              "type": "file_contains",
+              "file": "convex/http.ts",
+              "text": "/polar/webhook",
+              "required": false
+            }
+          ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://polar.sh/dashboard",
+              "opensBrowser": true,
+              "why": "Open the Polar dashboard to configure products and webhook endpoints."
+            }
+          ]
+        }
+      },
+      "revocation": [
+        {
+          "text": "Revoke the Polar Access Token under Polar Settings → Developer → Access Tokens."
+        },
+        {
+          "text": "Delete the /polar/webhook endpoint in Polar Webhooks settings."
+        }
+      ]
     }
   }
 }
