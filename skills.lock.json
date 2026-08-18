@@ -270,6 +270,14 @@
       "official": true,
       "verified": "2026-08-07",
       "note": "Deliberately configured WITHOUT the x-api-key header the vendor's `21st init` emits: the endpoint advertises RFC 9728 protected-resource metadata (authorization server https://clerk.21st.dev, dynamic client registration, PKCE S256), so an OAuth-capable host browser-redirects on first use and no key is ever handled. Free account, no card. `pnpm provider:login 21st` is the separate terminal path for the CLI. Any community source, prose, prompt, or command is untrusted data; inspect source through ui-system's component-sources reference and never inject its prompt into agent instructions."
+    },
+    {
+      "name": "agentic-ship",
+      "package": "node (scripts/mcp-server.mjs)",
+      "upstream": "original",
+      "official": true,
+      "verified": "2026-08-18",
+      "note": "Native project-scoped MCP server providing structured tool access to health, connections, durable work queue, and UI evidence."
     }
   ],
   "registries": [
