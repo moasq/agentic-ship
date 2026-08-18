@@ -610,13 +610,13 @@
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
       "agentTool": {
-        "authFlow": "cli_browser_login",
+        "authFlow": "remote_oauth",
         "mcpServer": "lemonsqueezy",
         "setupUrl": "https://app.lemonsqueezy.com/settings/api",
         "instructions": [
           "Lemon Squeezy provides hosted checkout, merchant of record, and subscription lifecycle webhooks.",
           "Create an API key under Settings → API at app.lemonsqueezy.com/settings/api.",
-          "Configure webhook signing secret and store ID in Convex deployment environment variables."
+          "Configure LEMON_SQUEEZY_API_KEY, LEMON_SQUEEZY_WEBHOOK_SECRET, LEMON_SQUEEZY_STORE_ID, and LEMON_SQUEEZY_MODE (live | test) in Convex deployment environment variables via `pnpm secret:set`."
         ],
         "configurationProbe": {
           "id": "lemonsqueezy-mcp",
@@ -639,7 +639,7 @@
         "setupUrl": "https://app.lemonsqueezy.com/settings/webhooks",
         "instructions": [
           "Create a webhook endpoint pointing to `/lemonsqueezy/webhook`.",
-          "Set LEMON_SQUEEZY_API_KEY, LEMON_SQUEEZY_WEBHOOK_SECRET, LEMON_SQUEEZY_STORE_ID, and LEMON_SQUEEZY_VARIANT_* in the Convex environment via `pnpm secret:set`.",
+          "Set LEMON_SQUEEZY_API_KEY, LEMON_SQUEEZY_WEBHOOK_SECRET, LEMON_SQUEEZY_STORE_ID, LEMON_SQUEEZY_MODE, and LEMON_SQUEEZY_VARIANT_* in the Convex environment via `pnpm secret:set`.",
           "Derive entitlement exclusively from verified webhook payloads and customer subscription state."
         ],
         "verification": {
@@ -651,7 +651,7 @@
               "type": "file_contains",
               "file": "convex/billing.ts",
               "text": "lemonsqueezy",
-              "required": false
+              "required": true
             },
             {
               "id": "lemonsqueezy-webhook-route",
@@ -659,7 +659,7 @@
               "type": "file_contains",
               "file": "convex/http.ts",
               "text": "/lemonsqueezy/webhook",
-              "required": false
+              "required": true
             }
           ]
         },

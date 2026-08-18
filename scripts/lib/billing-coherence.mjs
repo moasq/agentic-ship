@@ -20,6 +20,7 @@ export const BILLING_ENV = {
   polar: {
     secret: "POLAR_ACCESS_TOKEN",
     webhook: "POLAR_WEBHOOK_SECRET",
+    server: "POLAR_SERVER",
     pricePrefix: "POLAR_PRODUCT_",
     siteUrl: "SITE_URL",
   },
@@ -27,6 +28,7 @@ export const BILLING_ENV = {
     secret: "LEMON_SQUEEZY_API_KEY",
     webhook: "LEMON_SQUEEZY_WEBHOOK_SECRET",
     storeId: "LEMON_SQUEEZY_STORE_ID",
+    mode: "LEMON_SQUEEZY_MODE",
     pricePrefix: "LEMON_SQUEEZY_VARIANT_",
     siteUrl: "SITE_URL",
   },
@@ -37,6 +39,13 @@ export const BILLING_ENV = {
   siteUrl: "SITE_URL",
 };
 
+const SEVERITY_RANK = {
+  CRITICAL: 4,
+  FAIL: 3,
+  WARN: 2,
+  PASS: 1,
+};
+
 /**
  * @param {Iterable<string>} envNames names present on the deployment
  * @returns {{ status: "PASS"|"WARN"|"FAIL"|"CRITICAL", detail: string }}
@@ -44,6 +53,23 @@ export const BILLING_ENV = {
 export function inspectBillingCoherence(envNames) {
   const names = new Set(envNames);
   const has = (name) => names.has(name);
+
+  const hasStripeSecret = has(BILLING_ENV.stripe.secret);
+  const hasPolarSecret = has(BILLING_ENV.polar.secret);
+  const hasLemonSecret = has(BILLING_ENV.lemonsqueezy.secret);
+
+  const activeSecrets = [
+    hasStripeSecret ? "Stripe" : null,
+    hasPolarSecret ? "Polar" : null,
+    hasLemonSecret ? "Lemon Squeezy" : null,
+  ].filter(Boolean);
+
+  if (activeSecrets.length > 1) {
+    return {
+      status: "FAIL",
+      detail: `Multiple billing provider secrets are configured (${activeSecrets.join(", ")}) — single deployments support only one active billing provider. Choose one primary provider.`,
+    };
+  }
 
   const hasStripeKeys = [...names].some((name) => name.startsWith("STRIPE_"));
   const hasPolarKeys = [...names].some((name) => name.startsWith("POLAR_"));
@@ -107,6 +133,12 @@ export function inspectBillingCoherence(envNames) {
         detail:
           "POLAR_ACCESS_TOKEN is set but POLAR_WEBHOOK_SECRET is not — checkout completes, the webhook is rejected unsigned, and entitlement never arrives. The customer pays and gets nothing.",
       });
+    } else if (has(BILLING_ENV.polar.secret) && !has(BILLING_ENV.polar.server)) {
+      results.push({
+        status: "FAIL",
+        detail:
+          "POLAR_ACCESS_TOKEN is set but POLAR_SERVER is not configured — set POLAR_SERVER=production (or sandbox for testing).",
+      });
     } else if (has(BILLING_ENV.polar.secret) && products.length === 0) {
       results.push({
         status: "FAIL",
@@ -149,6 +181,12 @@ export function inspectBillingCoherence(envNames) {
         detail:
           "LEMON_SQUEEZY_API_KEY is set but LEMON_SQUEEZY_STORE_ID is missing — checkout throws before reaching Lemon Squeezy.",
       });
+    } else if (has(BILLING_ENV.lemonsqueezy.secret) && !has(BILLING_ENV.lemonsqueezy.mode)) {
+      results.push({
+        status: "FAIL",
+        detail:
+          "LEMON_SQUEEZY_API_KEY is set but LEMON_SQUEEZY_MODE is not configured — set LEMON_SQUEEZY_MODE=live (or test for test environments).",
+      });
     } else if (has(BILLING_ENV.lemonsqueezy.secret) && variants.length === 0) {
       results.push({
         status: "FAIL",
@@ -175,15 +213,12 @@ export function inspectBillingCoherence(envNames) {
     } else {
       results.push({
         status: "PASS",
-        detail: `Lemon Squeezy: API key, webhook secret, store ID, and ${variants.length} variant(s) all present`,
+        detail: `Lemon Squeezy: API key, webhook secret, store ID and ${variants.length} variant(s) all present`,
       });
     }
   }
 
-  // Return the highest severity result: CRITICAL > FAIL > WARN > PASS
-  const severityOrder = { CRITICAL: 4, FAIL: 3, WARN: 2, PASS: 1 };
-  results.sort((a, b) => severityOrder[b.status] - severityOrder[a.status]);
-
+  results.sort((a, b) => SEVERITY_RANK[b.status] - SEVERITY_RANK[a.status]);
   return results[0];
 }
 
