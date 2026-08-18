@@ -65,7 +65,7 @@ reasoning behind each pick lives in [docs/stack.md](docs/stack.md).
 | State | RSC props first, then URL state, then Zustand 5 |
 | Backend | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/convex-dark.svg"><img alt="" src=".github/assets/stack/convex-light.svg" height="14"></picture> Convex — schema, reactive functions, crons, file storage; functions are the API |
 | Auth | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/betterauth-dark.svg"><img alt="" src=".github/assets/stack/betterauth-light.svg" height="14"></picture> Better Auth (exact-pinned) through the Convex adapter |
-| Billing | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/stripe-dark.svg"><img alt="" src=".github/assets/stack/stripe-light.svg" height="14"></picture> Stripe through `@convex-dev/stripe` — hosted checkout, webhook-backed entitlement |
+| Billing | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/stripe-dark.svg"><img alt="" src=".github/assets/stack/stripe-light.svg" height="14"></picture> Stripe by default, with Polar and Lemon Squeezy adapters; hosted checkout and webhook-backed entitlement |
 | Email | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/resend-dark.svg"><img alt="" src=".github/assets/stack/resend-light.svg" height="14"></picture> Resend through `@convex-dev/resend` — test-mode by default |
 | Analytics | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/posthog-dark.svg"><img alt="" src=".github/assets/stack/posthog-light.svg" height="14"></picture> PostHog behind a first-party `/ingest` proxy; the CSP stays closed |
 | Fonts | Self-hosted OFL faces, fetched by `pnpm font`, committed |
@@ -87,6 +87,26 @@ Playwright ship no mark in that set, so their rows stay text-only.
 - ✅ **Consent-first** — services connect through the vendor's own OAuth, and every connection is revocable
 - ✅ **Offline-first** — a fresh copy verifies green with nothing connected
 
+### Choose a billing provider
+
+Product briefs select one billing provider through `providerSelection.billing`. The deployment repeats that choice in `BILLING_PROVIDER`. Stripe remains the default when the environment variable is absent.
+
+| Provider | Selection | Server integration | Production gate |
+| --- | --- | --- | --- |
+| [Stripe](.agents/skills/convex-structure/references/stripe-billing.md) | `stripe` (default) | `@convex-dev/stripe` | Requires a live key, webhook secret, price mappings, and `SITE_URL` |
+| [Polar](.agents/skills/convex-structure/references/polar-billing.md) | `polar` | `@polar-sh/better-auth` | Requires an access token, webhook secret, product mappings, `SITE_URL`, and `POLAR_SERVER=production` |
+| [Lemon Squeezy](.agents/skills/convex-structure/references/lemon-squeezy-billing.md) | `lemonsqueezy` | `@lemonsqueezy/lemonsqueezy.js` | Requires an API key, webhook secret, store and product IDs, variant mappings, `SITE_URL`, and `LEMON_SQUEEZY_MODE=live` |
+
+The shared adapter contract keeps checkout identity server-owned and entitlement webhook-owned. It rejects unsupported selections, configuration from another billing provider, and deployments with multiple active provider secrets. Missing billing credentials remain a warning during development. `pnpm preflight --prod` fails on incomplete or test-mode production configuration.
+
+Start the selected provider's resumable setup from the project directory:
+
+```bash
+pnpm onboard stripe --host codex
+pnpm onboard polar --host codex
+pnpm onboard lemonsqueezy --host codex
+```
+
 ### Not wired yet, and what a swap costs
 
 Opinionated does not mean stuck. Every provider sits behind a seam you own, so the
@@ -97,7 +117,7 @@ honest question is not "is it supported" but how much code a swap touches:
 | Vercel, Cloudflare | Netlify | small — the deploy seam is `netlify.toml`, one build command, one doc; product code never names the host |
 | Plausible, Umami | PostHog | small — `src/lib/analytics.ts` is the only file that imports the SDK |
 | Postmark, SendGrid | Resend | medium — `convex/email.ts` is the only sender, but the Convex component and its webhook go with it |
-| Polar, Lemon Squeezy | Stripe | medium — checkout and portal are one seam; entitlement rides the `@convex-dev/stripe` component |
+| Paddle | Stripe, Polar, Lemon Squeezy | medium: add one provider-owned adapter, connection entry, lifecycle fixture, and production check |
 | Clerk, Auth.js | Better Auth | medium — session truth is one query behind `requireUser`, but the Convex adapter is load-bearing |
 | Supabase, Postgres + Prisma | Convex | large — Convex is the spine; the auth, billing, and email components all ride it. Swapping it means rebuilding those seams |
 
@@ -127,7 +147,7 @@ open an issue — the table only works if it stays true.
 | Code lives in your git repo | ✅ from the first commit, no platform copy | ✅ two-way GitHub sync | ⚠️ one-way export to GitHub | ✅ native GitHub: branches, PRs, existing repos | ❌ one-way push, on a paid tier | ⚠️ export to GitHub |
 | Take everything with you when you leave | ✅ nothing to leave; the repo is the product | ⚠️ code exports; Lovable Cloud Postgres and auth migrate by hand | ⚠️ code exports; Bolt Cloud DB, auth, and hosting are rebuilt elsewhere | ⚠️ standard Next.js exports clean; previews and deploys assume Vercel | ❌ front end exports on a paid tier; the backend stays behind their SDK | ⚠️ code exports; DB, auth, and hosting are Replit services you rebuild |
 | Self-host anywhere | ✅ any Node host | ⚠️ after export | ⚠️ after export | ⚠️ after export | ❌ their runtime only | ⚠️ after export |
-| Backend built from parts you can hire for | ✅ Convex · Better Auth · Stripe, named and pinned in your repo | ⚠️ Supabase, run by them | ⚠️ Postgres via Bolt Cloud, run by them | ⚠️ your own integrations | ❌ proprietary | ⚠️ Postgres and auth, run by them |
+| Backend built from parts you can hire for | ✅ Convex · Better Auth · Stripe, Polar, or Lemon Squeezy, named and pinned in your repo | ⚠️ Supabase, run by them | ⚠️ Postgres via Bolt Cloud, run by them | ⚠️ your own integrations | ❌ proprietary | ⚠️ Postgres and auth, run by them |
 | Definition of done you own | ✅ `pnpm verify` in your repo and CI: contracts, tests, visual evidence | ❌ checks run in their pipeline | ❌ checks run in their pipeline | ❌ checks run in their pipeline | ❌ checks run in their pipeline | ⚠️ Agent 3 self-tests in a real browser — thorough, but in their pipeline |
 | Security gates before going live | ✅ dependency audit, closed CSP, production preflight | ✅ auto scan on publish, deep scan on demand | ❌ | ❌ | ❌ | ❌ |
 | Enforced design direction per product | ✅ written plan, tokens, review gates | ⚠️ polished house style, no per-product contract | ❌ | ⚠️ strong defaults, one recognizable look | ❌ | ❌ |
@@ -188,6 +208,7 @@ Reference material:
 - [AGENTS.md](AGENTS.md) — every rule and every `pnpm` command, in one file
 - [.agents/skills/](.agents/skills) — procedures: product lifecycle, connections, UI, backend, security, testing, launch
 - [.agents/agents/](.agents/agents) — five specialist role briefs, plus the vendor-generated Playwright trio
+- Billing adapters: [Stripe](.agents/skills/convex-structure/references/stripe-billing.md), [Polar](.agents/skills/convex-structure/references/polar-billing.md), and [Lemon Squeezy](.agents/skills/convex-structure/references/lemon-squeezy-billing.md)
 - Visual direction — the planning procedure in
   [.agents/skills/visual-direction/SKILL.md](.agents/skills/visual-direction/SKILL.md), its
   [anti-slop rubric](.agents/skills/visual-direction/references/anti-slop-rubric.md),
