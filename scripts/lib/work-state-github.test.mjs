@@ -105,7 +105,7 @@ describe("GitHub work queue mirror", () => {
     expect(github.state.labels.has("role:quality-engineer")).toBe(true);
     expect(github.state.labels.has("status:done")).toBe(true);
     expect(github.state.calls.some((args) => args[0] === "project")).toBe(false);
-    expect(statSync(mirror.mirrorFile).mode & 0o777).toBe(0o600);
+    if (process.platform !== "win32") expect(statSync(mirror.mirrorFile).mode & 0o777).toBe(0o600);
   });
 
   test("recovers after comment success and close failure without duplicating either", () => {

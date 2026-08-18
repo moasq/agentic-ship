@@ -725,8 +725,8 @@ Format:
   markers, preserves unrelated GitHub content, uses the queue's actual human-action and
   block fields, makes comments retry-safe, closes initially completed work, and maps
   Project status through resolved owner, project, field, item, and option IDs. Safe
-  identifiers remain in a mode-0600 local map; recognized credentials and email
-  addresses are redacted before publication.
+  identifiers remain in a mode-0600 local map where POSIX file modes apply; recognized
+  credentials and email addresses are redacted before publication.
 - prevention: stateful boundary tests now cover label bootstrap, issues-only operation,
   remote and corrupt-state recovery, manual-edit reconciliation, comment-success plus
   close-failure retry, initial terminal and wait states, global redaction, Project field
