@@ -70,5 +70,5 @@ Same order as deploy-netlify's go-live checklist — the two documents deliberat
 6. Deploy, then the acceptance tests above
 
 Deep references, all under `convex-structure/references/`: `deploy-netlify.md` (env
-matrix, go-live checklist) · `email-resend.md` (the 3-step email flip) ·
-`stripe-billing.md` (rules R1–R8).
+matrix, go-live checklist), `email-resend.md` (the 3-step email flip),
+`stripe-billing.md`, and `polar-billing.md`.

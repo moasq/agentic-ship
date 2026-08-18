@@ -497,7 +497,8 @@ Every billing adapter must preserve these invariants:
 
 The selected provider reference under
 `.agents/skills/convex-structure/references/` defines its checkout, portal, webhook,
-lifecycle, and revocation details. Stripe's reference is `stripe-billing.md`.
+lifecycle, and revocation details. Stripe uses `stripe-billing.md`; Polar uses
+`polar-billing.md`.
 
 ### Stripe adapter
 

@@ -9,6 +9,7 @@ import { envNamesFrom, inspectBillingCoherence, inspectProductionBillingEnvironm
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const connectionDirectory = join(repositoryRoot, ".agents", "connections");
 const STRIPE_COMPLETE = ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRICE_PRO", "SITE_URL"];
+const POLAR_COMPLETE = ["POLAR_ACCESS_TOKEN", "POLAR_WEBHOOK_SECRET", "POLAR_SERVER", "POLAR_PRODUCT_PRO", "SITE_URL"];
 
 function alternativeBillingCatalog(t) {
   const root = mkdtempSync(join(tmpdir(), "billing-adapter-"));
@@ -82,6 +83,33 @@ describe("billing coherence", () => {
   });
 });
 
+describe("Polar billing adapter", () => {
+  test("accepts a complete sandbox configuration during development", () => {
+    expect(inspectBillingCoherence(POLAR_COMPLETE, { selectedProvider: "polar" }).status).toBe("PASS");
+  });
+
+  test("requires Polar to be selected explicitly", () => {
+    const result = inspectBillingCoherence(POLAR_COMPLETE);
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toMatch(/Stripe is selected/);
+  });
+
+  test("fails when the environment selector is missing", () => {
+    const names = POLAR_COMPLETE.filter((name) => name !== "POLAR_SERVER");
+    expect(inspectBillingCoherence(names, { selectedProvider: "polar" }).status).toBe("FAIL");
+  });
+
+  test("rejects simultaneous Stripe and Polar secrets", () => {
+    const result = inspectBillingCoherence([...STRIPE_COMPLETE, ...POLAR_COMPLETE], { selectedProvider: "polar" });
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toMatch(/Multiple billing provider secrets/);
+  });
+
+  test("does not change a complete Stripe selection", () => {
+    expect(inspectBillingCoherence(STRIPE_COMPLETE, { selectedProvider: "stripe" }).status).toBe("PASS");
+  });
+});
+
 describe("production billing", () => {
   test("preserves Stripe live-mode behavior when selection is omitted", () => {
     const env = [
@@ -112,7 +140,36 @@ describe("production billing", () => {
     expect(JSON.stringify(result)).not.toMatch(/do_not_print/);
   });
 
-  test("runs provider-owned production checks for alternatives", (t) => {
+  test.each(["sandbox", "garbage"])("rejects Polar server %s in production", (server) => {
+    const env = [
+      "BILLING_PROVIDER=polar",
+      "POLAR_ACCESS_TOKEN=polar_private",
+      "POLAR_WEBHOOK_SECRET=polar_webhook_private",
+      `POLAR_SERVER=${server}`,
+      "POLAR_PRODUCT_PRO=polar_product_private",
+      "SITE_URL=https://example.com",
+      "",
+    ].join("\n");
+    const result = inspectProductionBillingEnvironment(env);
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toBe("Polar requires POLAR_SERVER=production in production.");
+    expect(JSON.stringify(result)).not.toMatch(/polar_private/);
+  });
+
+  test("accepts Polar production mode", () => {
+    const env = [
+      "BILLING_PROVIDER=polar",
+      "POLAR_ACCESS_TOKEN=polar_private",
+      "POLAR_WEBHOOK_SECRET=polar_webhook_private",
+      "POLAR_SERVER=production",
+      "POLAR_PRODUCT_PRO=polar_product_private",
+      "SITE_URL=https://example.com",
+      "",
+    ].join("\n");
+    expect(inspectProductionBillingEnvironment(env).status).toBe("PASS");
+  });
+
+  test("runs provider-owned production checks for fixture alternatives", (t) => {
     const catalogDirectory = alternativeBillingCatalog(t);
     const base = [
       "BILLING_PROVIDER=fixturepay",

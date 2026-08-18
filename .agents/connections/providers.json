@@ -632,6 +632,84 @@
           "text": "Revoke the authorization in the Netlify dashboard under User settings → Applications, and delete the site if it should not exist."
         }
       ]
+    },
+    "polar": {
+      "displayName": "Polar",
+      "capability": "billing",
+      "defaultForCapability": false,
+      "docsUrl": "https://polar.sh/docs",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "billing": {
+        "ownedEnvPrefixes": ["POLAR_"],
+        "secretEnv": "POLAR_ACCESS_TOKEN",
+        "webhookEnv": "POLAR_WEBHOOK_SECRET",
+        "requiredEnv": ["SITE_URL", "POLAR_SERVER"],
+        "mappingEnvPrefix": "POLAR_PRODUCT_",
+        "productionChecks": [
+          {
+            "type": "equals",
+            "env": "POLAR_SERVER",
+            "value": "production",
+            "message": "Polar requires POLAR_SERVER=production in production."
+          }
+        ]
+      },
+      "projectProvisioning": {
+        "setupUrl": "https://polar.sh/dashboard",
+        "instructions": [
+          "Choose the Polar organization and environment first; production and sandbox tokens, products, and webhooks are separate.",
+          "Create an Organization Access Token under Settings → Developers → Organization Access Tokens. Register `/api/auth/polar/webhooks` as the downstream product webhook.",
+          "Set BILLING_PROVIDER=polar and POLAR_SERVER with `npx convex env set`. Set POLAR_ACCESS_TOKEN and POLAR_WEBHOOK_SECRET through `pnpm secret:set`, then add POLAR_PRODUCT_* mappings.",
+          "Use the official Polar Better Auth adapter and derive entitlement only from verified webhook events or customer state."
+        ],
+        "verification": {
+          "policy": "probe_and_attestation",
+          "probes": [
+            {
+              "id": "polar-server-adapter",
+              "label": "Polar Better Auth server adapter exists",
+              "type": "file_contains",
+              "file": "convex/auth.ts",
+              "text": "@polar-sh/better-auth",
+              "required": true
+            },
+            {
+              "id": "polar-client-adapter",
+              "label": "Polar Better Auth client adapter exists",
+              "type": "file_contains",
+              "file": "src/lib/auth-client.ts",
+              "text": "polarClient",
+              "required": true
+            },
+            {
+              "id": "polar-webhook-handler",
+              "label": "Polar verified webhook handler exists",
+              "type": "file_contains",
+              "file": "convex/auth.ts",
+              "text": "webhooks(",
+              "required": true
+            }
+          ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://polar.sh/dashboard",
+              "opensBrowser": true,
+              "why": "Open Polar so the user can choose the correct organization and production or sandbox environment before creating project resources."
+            }
+          ]
+        }
+      },
+      "revocation": [
+        {
+          "text": "Revoke the Organization Access Token in Polar Dashboard under Settings → Developers → Organization Access Tokens."
+        },
+        {
+          "text": "Delete the /api/auth/polar/webhooks endpoint in Polar webhook settings."
+        }
+      ]
     }
   }
 }
