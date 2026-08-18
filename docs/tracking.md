@@ -1,10 +1,9 @@
 # How do I see what the agents are doing?
 
-Three surfaces, one source of truth. The durable work queue under `.agent-state/`
-coordinates the agents. Linear mirrors that queue into a project a person can watch.
-GitHub carries the actual deliveries as pull requests, with CI as the backstop. You
-can ignore the terminal entirely and still know what is ready, what is in progress,
-what waits on you, and what shipped with which evidence.
+The durable work queue under `.agent-state/` coordinates the agents. GitHub Issues and
+Projects can mirror it through the existing `gh` connection. Linear is another optional
+tracking window through its hosted MCP. GitHub also carries pull requests and CI. The
+queue remains the single source of truth whichever window you choose.
 
 ## The queue is the truth
 
@@ -22,7 +21,31 @@ Cursor session can finish it, and neither needs the other's chat history, becaus
 handoff is repository state, not context. Only safe metadata lives there: titles,
 statuses, dependencies, action IDs. Never prompts, transcripts, or credentials.
 
-## Linear is the window
+## GitHub can be the tracking window
+
+After GitHub is authenticated, mirror each queue item to one issue:
+
+```bash
+pnpm agent:work mirror-github
+```
+
+To add those issues to a GitHub Project and map queue states onto its `Status` field,
+pass the Project number. Add its owner when the Project belongs to another organization:
+
+```bash
+pnpm agent:work mirror-github --project 1 --project-owner my-organization
+```
+
+The command creates its labels, reconciles manual changes back to queue truth, and
+posts safe action details or completion evidence. Repeating it recovers partial updates
+without duplicating issues or mirror-owned comments. A missing or revoked GitHub
+connection reports an unavailable mirror but never blocks local queue work.
+
+The full configuration, state mapping, privacy, retry, cancellation, and revocation
+rules live in the `product-lifecycle` skill's
+[GitHub tracking reference](../.agents/skills/product-lifecycle/references/github-tracking.md).
+
+## Linear is another tracking window
 
 Connect Linear once and the agent mirrors queue transitions into your Linear project
 through the hosted Linear MCP:
@@ -77,11 +100,11 @@ zero-touch OAuth path exists. The decision and its reasoning are recorded in
 
 ## What you see, end to end
 
-Take a feature called "team billing". A Linear issue is created from its feature
-contract, then moves to in progress when the backend role starts. While Stripe waits
-for your consent, the issue carries a comment with the resume command. A pull request
-lands on GitHub when the code is wired, CI goes green on `pnpm verify`, and the
-Linear issue closes with the evidence line from `pnpm agent:work complete`. Every
-step is inspectable. None of it depends on a chat window staying open, and all of it
-is revocable through the connection model described in
+Take a feature called "team billing". A GitHub or Linear issue mirrors its feature
+contract, then moves to in progress when the backend role starts. While a provider
+waits for consent, the issue carries the safe action ID and resume command. A pull
+request lands on GitHub when the code is wired, CI goes green on `pnpm verify`, and
+the mirrored issue closes with the recorded evidence. Every step is inspectable. None
+of it depends on a chat window staying open, and all connections are revocable through
+the model described in
 [How do service connections work?](connections.md).

@@ -64,13 +64,15 @@ unblocking clears that obsolete reference.
 
 ## Mirror progress where people look
 
-When the Linear connection is ready, mirror queue transitions into the product's Linear
-project so a person can watch progress without a terminal: the procedure, the
-state-mapping table, and the content rules live in `references/linear-tracking.md`. The
-queue stays the source of truth, and an unconnected Linear changes nothing. Delivery
-itself runs through GitHub: the repository, pull requests, and CI use the
-authenticated `gh` CLI from `pnpm provider:login github`, and CI is the backstop for
-the definition of done.
+Use `pnpm agent:work mirror-github` to mirror the queue into GitHub Issues through the
+authenticated `gh` CLI. Add `--project <number>` when the same items should appear in a
+GitHub Project. The procedure, mapping, reconciliation, and recovery rules live in
+`references/github-tracking.md`.
+
+Linear remains an optional alternative tracking window when its hosted MCP is ready;
+its procedure lives in `references/linear-tracking.md`. The queue stays authoritative,
+and an unavailable mirror changes nothing. GitHub also carries delivery through the
+repository, pull requests, and CI, with CI as the backstop for the definition of done.
 
 ## Complete with proof
 

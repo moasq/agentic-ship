@@ -179,14 +179,15 @@ matrix through `visual-qa` before completion.
 - Persist only safe identifiers and status metadata under `.agent-state/`. Never store
   prompts, transcripts, provider payloads, credentials, authorization codes, webhook
   secrets, payment data, or personal account details there.
-- **Progress is visible where people already look.** GitHub is the delivery seam —
-  repository, pull requests, CI — through the authenticated `gh` CLI. Linear is the
-  tracking mirror: when its MCP is authorized, queue transitions are mirrored into the
-  product's Linear project (procedure: `product-lifecycle`'s
-  `references/linear-tracking.md`). The queue stays the source of truth; Linear
-  reflects it, never drives it. Issue content is contract-level only — titles,
-  acceptance criteria, status, gate evidence; the `.agent-state/` safety rule above
-  governs everything written to Linear. An unconnected Linear changes nothing.
+- **Progress is visible where people already look.** GitHub carries delivery — the
+  repository, pull requests, and CI — through the authenticated `gh` CLI. It can also
+  mirror queue items into Issues and, optionally, a GitHub Project (procedure:
+  `product-lifecycle`'s `references/github-tracking.md`). Linear remains an optional
+  tracking mirror through its hosted MCP (procedure: `references/linear-tracking.md`).
+  The queue is the source of truth; neither mirror drives it. Issue content is limited
+  to safe contract metadata — titles, acceptance criteria, status, action IDs, and gate
+  evidence — under the `.agent-state/` safety rule above. An unavailable mirror never
+  blocks local queue work.
 - Human pauses are first-class. Return `input_required` with the safe action ID,
   provider-owned URL or host instruction, expiry, verification predicate, exact resume
   command, and cancel command. Stop only dependent work; continue independent items.

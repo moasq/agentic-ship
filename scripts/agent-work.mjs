@@ -5,9 +5,10 @@ import { createWorkStore, WORK_ROLES } from "./lib/work-state.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const store = createWorkStore(root);
-const argv = process.argv.slice(2);
+const rawArgv = process.argv.slice(2);
+const json = rawArgv.includes("--json");
+const argv = rawArgv.filter((argument) => argument !== "--json");
 const command = argv.shift();
-const json = argv.includes("--json");
 
 function take(name, { repeat = false } = {}) {
   const values = [];
@@ -48,6 +49,7 @@ function usage() {
   pnpm agent:work unblock <id> --evidence <resolution>
   pnpm agent:work complete <id> --evidence <gate/result> [--evidence <gate/result>]
   pnpm agent:work status [--json]
+  pnpm agent:work mirror-github [--project <number>] [--project-owner <login>] [--json]
 
 State contains safe coordination metadata only and lives under .agent-state/.`);
 }
@@ -69,6 +71,16 @@ try {
     result = store.next(take("--role"));
   } else if (command === "status") {
     result = store.load();
+  } else if (command === "mirror-github") {
+    const { createGitHubWorkMirror } = await import("./lib/work-state-github.mjs");
+    const mirror = createGitHubWorkMirror(root);
+    const projectNumber = take("--project");
+    const projectOwner = take("--project-owner");
+    if (projectNumber && !/^[1-9]\d*$/.test(projectNumber)) throw new Error("--project must be a positive integer");
+    if (projectOwner && !projectNumber) throw new Error("--project-owner requires --project");
+    if (projectOwner && !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(projectOwner)) throw new Error("--project-owner must be a GitHub login");
+    if (argv.length) throw new Error(`unknown mirror-github argument: ${argv[0]}`);
+    result = mirror.sync(store.load(), { projectNumber, projectOwner });
   } else if (["start", "wait", "resume", "block", "unblock", "complete"].includes(command)) {
     const id = argv.shift();
     const payload = {

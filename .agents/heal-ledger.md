@@ -712,3 +712,24 @@ Format:
   cannot silently drift from its test; a future host or origin change updates one place and
   the suite guards the confusion cases.
 - status: open
+
+## 2026-08-18 github-work-mirror-tested-only-the-happy-path
+
+- cause: the first GitHub queue mirror assumed its labels already existed, treated a
+  local cache as the idempotency authority, returned before handling an initially
+  completed item, read wait and block reasons from the wrong fields, and added Project
+  items without resolving their owner or updating the `Status` field. Its five tests
+  mocked every unrecognized GitHub command as success, so partial failures, lost state,
+  revoked access, manual edits, and the real Project contract stayed green.
+- fix: the mirror now provisions labels, reconciles remote issues through stable
+  markers, preserves unrelated GitHub content, uses the queue's actual human-action and
+  block fields, makes comments retry-safe, closes initially completed work, and maps
+  Project status through resolved owner, project, field, item, and option IDs. Safe
+  identifiers remain in a mode-0600 local map where POSIX file modes apply; recognized
+  credentials and email addresses are redacted before publication.
+- prevention: stateful boundary tests now cover label bootstrap, issues-only operation,
+  remote and corrupt-state recovery, manual-edit reconciliation, comment-success plus
+  close-failure retry, initial terminal and wait states, global redaction, Project field
+  mapping, revoked access, and live-lock refusal. The product-lifecycle declaration and
+  reference now own the procedure.
+- status: open
