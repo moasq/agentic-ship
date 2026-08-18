@@ -79,6 +79,28 @@ test("catalog exposes every supported provider and host", (t) => {
     ["convex", "stripe", "github", "linear", "resend", "posthog", "netlify", "polar"],
   );
   assert.deepEqual(result.supportedHosts, ["claude", "codex", "cursor", "hermes", "openclaw"]);
+  assert.equal(result.providers.find((provider) => provider.id === "polar").agentToolConfiguration, null);
+});
+
+test("project-only providers never invent an agent-tool authorization phase", (t) => {
+  const { service, projectRoot } = fixture(t);
+  const started = service.begin("polar", "codex");
+
+  assert.equal(started.type, "input_required");
+  assert.equal(started.action.phase, "project_provisioning");
+  assert.equal(started.inputRequired.kind, "project_provisioning");
+  assert.doesNotMatch(JSON.stringify(started), /Polar MCP|remote_oauth|read-only provider call/);
+
+  const missing = service.resume(started.action.actionId);
+  assert.equal(missing.type, "input_required");
+  assert.equal(missing.action.state, "failed_retryable");
+
+  write(projectRoot, "convex/billing.ts", 'const provider = "polar";');
+  write(projectRoot, "convex/http.ts", 'const route = "/polar/webhook";');
+  const ready = service.resume(started.action.actionId);
+  assert.equal(ready.type, "connection_ready");
+  assert.equal(ready.verification.agentTool.required, false);
+  assert.equal(ready.verification.agentTool.basis, "not_required");
 });
 
 test("begin checks first and reports a fully configured provider ready with no pause", (t) => {

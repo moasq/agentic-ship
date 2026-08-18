@@ -3,6 +3,7 @@
   "providers": {
     "convex": {
       "displayName": "Convex",
+      "capability": "backend",
       "docsUrl": "https://docs.convex.dev/cli",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -143,6 +144,7 @@
     },
     "stripe": {
       "displayName": "Stripe",
+      "capability": "billing",
       "docsUrl": "https://docs.stripe.com/stripe-cli",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -232,6 +234,7 @@
     },
     "github": {
       "displayName": "GitHub",
+      "capability": "repository",
       "docsUrl": "https://cli.github.com/manual/",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -294,6 +297,7 @@
     },
     "linear": {
       "displayName": "Linear",
+      "capability": "tracking",
       "docsUrl": "https://linear.app/docs/mcp",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -348,6 +352,7 @@
     },
     "resend": {
       "displayName": "Resend",
+      "capability": "email",
       "docsUrl": "https://resend.com/docs",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -432,6 +437,7 @@
     },
     "posthog": {
       "displayName": "PostHog",
+      "capability": "analytics",
       "docsUrl": "https://posthog.com/docs",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -517,6 +523,7 @@
     },
     "netlify": {
       "displayName": "Netlify",
+      "capability": "deployment",
       "docsUrl": "https://docs.netlify.com/cli/get-started/",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -606,41 +613,17 @@
     },
     "polar": {
       "displayName": "Polar",
+      "capability": "billing",
       "docsUrl": "https://polar.sh/docs",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
-      "agentTool": {
-        "authFlow": "remote_oauth",
-        "mcpServer": "polar",
-        "setupUrl": "https://polar.sh/dashboard/settings",
-        "instructions": [
-          "Polar provides subscription monetization with built-in customer portal, product catalog, and webhooks.",
-          "Create an Organization Access Token under Settings → Developers → Organization Access Tokens in the Polar dashboard (or sandbox.polar.sh/dashboard/settings for sandbox testing).",
-          "Set POLAR_ACCESS_TOKEN, POLAR_WEBHOOK_SECRET, and POLAR_SERVER (production | sandbox) in Convex deployment environment variables via `pnpm secret:set`."
-        ],
-        "configurationProbe": {
-          "id": "polar-mcp",
-          "label": "Polar MCP server is declared",
-          "type": "mcp_server",
-          "server": "polar",
-          "required": false
-        },
-        "automation": {
-          "run": [
-            {
-              "command": "pnpm open:url https://polar.sh/dashboard/settings",
-              "opensBrowser": true,
-              "why": "Open Polar dashboard organization settings to generate an Organization Access Token and configure webhook endpoints."
-            }
-          ]
-        }
-      },
       "projectProvisioning": {
-        "setupUrl": "https://polar.sh/dashboard/settings/webhooks",
+        "setupUrl": "https://polar.sh/dashboard",
         "instructions": [
-          "Configure Polar subscription products and webhook endpoints pointing to `/polar/webhook`.",
-          "Set POLAR_ACCESS_TOKEN, POLAR_WEBHOOK_SECRET, POLAR_SERVER, and POLAR_PRODUCT_* in the Convex environment via `pnpm secret:set`.",
-          "Derive entitlement exclusively from verified webhook events (`subscription.active`, `subscription.revoked`) and customer state."
+          "Choose the Polar organization and environment first; production and sandbox tokens, products, and webhooks are separate.",
+          "Create an Organization Access Token under Settings → Developers → Organization Access Tokens and register the downstream product webhook described in the Polar billing reference.",
+          "Set BILLING_PROVIDER=polar, POLAR_ACCESS_TOKEN, POLAR_WEBHOOK_SECRET, POLAR_SERVER, and POLAR_PRODUCT_* in the Convex deployment environment via `pnpm secret:set`.",
+          "Use the official Polar Better Auth adapter and derive entitlement only from verified webhook events or customer state."
         ],
         "verification": {
           "policy": "probe_and_attestation",
@@ -666,9 +649,9 @@
         "automation": {
           "run": [
             {
-              "command": "pnpm open:url https://polar.sh/dashboard/settings/webhooks",
+              "command": "pnpm open:url https://polar.sh/dashboard",
               "opensBrowser": true,
-              "why": "Open Polar webhook settings to configure endpoint URLs."
+              "why": "Open Polar so the user can choose the correct organization and production or sandbox environment before creating project resources."
             }
           ]
         }

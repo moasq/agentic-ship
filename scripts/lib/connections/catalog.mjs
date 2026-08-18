@@ -6,6 +6,7 @@ const PLACEHOLDER = /\{([a-z][a-z0-9-]*)\}/g;
 const PROBE_TYPES = new Set(["any_file_exists", "env_file_key", "file_contains", "file_exists", "home_file_exists", "mcp_server"]);
 const AUTH_FLOWS = new Set(["cli_browser_login", "remote_oauth"]);
 const VERIFICATION_POLICIES = new Set(["machine", "probe_and_attestation"]);
+const CAPABILITIES = new Set(["analytics", "backend", "billing", "deployment", "email", "repository", "tracking"]);
 
 function readJson(path) {
   try {
@@ -113,16 +114,22 @@ export function loadConnectionCatalog({ projectRoot, catalogDirectory } = {}) {
   for (const [id, provider] of Object.entries(providerDocument.providers)) {
     assert(IDENTIFIER.test(id), `provider id ${id} must be kebab-case`);
     assert(typeof provider.displayName === "string" && provider.displayName.length > 0, `${id} needs displayName`);
+    assert(CAPABILITIES.has(provider.capability), `${id} needs a supported capability`);
     assert(Number.isInteger(provider.actionTtlMinutes) && provider.actionTtlMinutes > 0, `${id} needs a positive actionTtlMinutes`);
     assert(Number.isInteger(provider.maxVerificationAttempts) && provider.maxVerificationAttempts > 0, `${id} needs positive maxVerificationAttempts`);
-    assert(AUTH_FLOWS.has(provider.agentTool?.authFlow), `${id} has an unsupported agent-tool auth flow`);
-    assert(IDENTIFIER.test(provider.agentTool?.mcpServer ?? ""), `${id} needs an MCP server id`);
-    assert(
-      Array.isArray(provider.agentTool?.instructions) && provider.agentTool.instructions.length > 0 && provider.agentTool.instructions.every((step) => typeof step === "string"),
-      `${id} needs agent-tool instructions`,
-    );
-    validateProbe(provider.agentTool.configurationProbe, `${id}.agentTool`);
-    validateAutomation(provider.agentTool.automation, `${id}.agentTool`);
+    if (provider.agentTool !== undefined) {
+      assert(provider.agentTool && typeof provider.agentTool === "object", `${id}.agentTool must be an object when declared`);
+      assert(AUTH_FLOWS.has(provider.agentTool.authFlow), `${id} has an unsupported agent-tool auth flow`);
+      assert(IDENTIFIER.test(provider.agentTool.mcpServer ?? ""), `${id} needs an MCP server id`);
+      assert(
+        Array.isArray(provider.agentTool.instructions) &&
+          provider.agentTool.instructions.length > 0 &&
+          provider.agentTool.instructions.every((step) => typeof step === "string"),
+        `${id} needs agent-tool instructions`,
+      );
+      validateProbe(provider.agentTool.configurationProbe, `${id}.agentTool`);
+      validateAutomation(provider.agentTool.automation, `${id}.agentTool`);
+    }
     validateAutomation(provider.projectProvisioning?.automation, `${id}.projectProvisioning`);
     validateSteps(provider.revocation, `${id}.revocation`);
 
