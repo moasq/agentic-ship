@@ -48,6 +48,7 @@ function usage() {
   pnpm agent:work unblock <id> --evidence <resolution>
   pnpm agent:work complete <id> --evidence <gate/result> [--evidence <gate/result>]
   pnpm agent:work status [--json]
+  pnpm agent:work mirror-github [--project <number>] [--json]
 
 State contains safe coordination metadata only and lives under .agent-state/.`);
 }
@@ -69,6 +70,11 @@ try {
     result = store.next(take("--role"));
   } else if (command === "status") {
     result = store.load();
+  } else if (command === "mirror-github" || command === "sync-github") {
+    const { createGitHubWorkMirror } = await import("./lib/work-state-github.mjs");
+    const mirror = createGitHubWorkMirror(root);
+    const projectNumber = take("--project");
+    result = mirror.sync(store.load(), { projectNumber });
   } else if (["start", "wait", "resume", "block", "unblock", "complete"].includes(command)) {
     const id = argv.shift();
     const payload = {
