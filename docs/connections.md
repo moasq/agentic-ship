@@ -14,6 +14,7 @@ way to revoke it.
 | Convex | Backend and deployment env | `npx convex login` browser flow |
 | Stripe | Billing (default) | CLI pairing code via `pnpm provider:login stripe` |
 | Polar | Billing (alternative) | Access token via `pnpm secret:set POLAR_ACCESS_TOKEN` |
+| Lemon Squeezy | Billing (alternative) | API key via `pnpm secret:set LEMON_SQUEEZY_API_KEY` |
 | GitHub | Repository, PRs, CI | `gh` device flow via `pnpm provider:login github` |
 | Linear | Development tracking | Hosted MCP OAuth in the AI host |
 | Resend | Email | Hosted MCP OAuth, keys via hidden input |

@@ -76,10 +76,11 @@ test("catalog exposes every supported provider and host", (t) => {
   assert.equal(result.type, "connection_status");
   assert.deepEqual(
     result.providers.map((provider) => provider.id),
-    ["convex", "stripe", "github", "linear", "resend", "posthog", "netlify", "polar"],
+    ["convex", "stripe", "github", "linear", "resend", "posthog", "netlify", "polar", "lemonsqueezy"],
   );
   assert.deepEqual(result.supportedHosts, ["claude", "codex", "cursor", "hermes", "openclaw"]);
   assert.equal(result.providers.find((provider) => provider.id === "polar").agentToolConfiguration, null);
+  assert.equal(result.providers.find((provider) => provider.id === "lemonsqueezy").agentToolConfiguration, null);
 });
 
 test("project-only providers never invent an agent-tool authorization phase", (t) => {
@@ -97,6 +98,27 @@ test("project-only providers never invent an agent-tool authorization phase", (t
 
   write(projectRoot, "convex/auth.ts", 'import "@polar-sh/better-auth";\nconst handler = webhooks({});');
   write(projectRoot, "src/lib/auth-client.ts", "const client = polarClient();");
+  const ready = service.resume(started.action.actionId);
+  assert.equal(ready.type, "connection_ready");
+  assert.equal(ready.verification.agentTool.required, false);
+  assert.equal(ready.verification.agentTool.basis, "not_required");
+});
+
+test("Lemon Squeezy begins with project provisioning and verifies its real seams", (t) => {
+  const { service, projectRoot } = fixture(t);
+  const started = service.begin("lemonsqueezy", "codex");
+
+  assert.equal(started.type, "input_required");
+  assert.equal(started.action.phase, "project_provisioning");
+  assert.equal(started.inputRequired.kind, "project_provisioning");
+  assert.doesNotMatch(JSON.stringify(started), /Lemon Squeezy MCP|remote_oauth|read-only provider call/);
+
+  const missing = service.resume(started.action.actionId);
+  assert.equal(missing.type, "input_required");
+  assert.equal(missing.action.state, "failed_retryable");
+
+  write(projectRoot, "convex/billing.ts", 'import "@lemonsqueezy/lemonsqueezy.js";');
+  write(projectRoot, "convex/http.ts", 'const route = "/lemonsqueezy/webhook";');
   const ready = service.resume(started.action.actionId);
   assert.equal(ready.type, "connection_ready");
   assert.equal(ready.verification.agentTool.required, false);
@@ -490,6 +512,6 @@ test("CLI status emits machine-readable JSON in an isolated state directory", (t
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.equal(output.type, "connection_status");
-  assert.equal(output.providers.length, 8);
+  assert.equal(output.providers.length, 9);
   assert.deepEqual(readdirSync(temporaryRoot), []);
 });

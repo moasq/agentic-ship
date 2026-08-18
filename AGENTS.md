@@ -498,7 +498,7 @@ Every billing adapter must preserve these invariants:
 The selected provider reference under
 `.agents/skills/convex-structure/references/` defines its checkout, portal, webhook,
 lifecycle, and revocation details. Stripe uses `stripe-billing.md`; Polar uses
-`polar-billing.md`.
+`polar-billing.md`; Lemon Squeezy uses `lemon-squeezy-billing.md`.
 
 ### Stripe adapter
 

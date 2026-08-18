@@ -208,8 +208,9 @@ design.
 
 Before writing billing code, read the reference for the provider selected in the product
 brief. Stripe uses `references/stripe-billing.md`; Polar uses
-`references/polar-billing.md`. A provider reference may add setup details, but it cannot
-weaken the billing invariants declared in `AGENTS.md`.
+`references/polar-billing.md`; Lemon Squeezy uses
+`references/lemon-squeezy-billing.md`. A provider reference may add setup details, but
+it cannot weaken the billing invariants declared in `AGENTS.md`.
 
 ## 9. Adding a feature — the fixed sequence
 

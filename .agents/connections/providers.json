@@ -710,6 +710,81 @@
           "text": "Delete the /api/auth/polar/webhooks endpoint in Polar webhook settings."
         }
       ]
+    },
+    "lemonsqueezy": {
+      "displayName": "Lemon Squeezy",
+      "capability": "billing",
+      "defaultForCapability": false,
+      "docsUrl": "https://docs.lemonsqueezy.com/guides/developer-guide/webhooks",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "billing": {
+        "ownedEnvPrefixes": ["LEMON_SQUEEZY_"],
+        "secretEnv": "LEMON_SQUEEZY_API_KEY",
+        "webhookEnv": "LEMON_SQUEEZY_WEBHOOK_SECRET",
+        "requiredEnv": ["SITE_URL", "LEMON_SQUEEZY_STORE_ID", "LEMON_SQUEEZY_PRODUCT_ID", "LEMON_SQUEEZY_MODE"],
+        "mappingEnvPrefix": "LEMON_SQUEEZY_VARIANT_",
+        "productionChecks": [
+          {
+            "type": "equals",
+            "env": "LEMON_SQUEEZY_MODE",
+            "value": "live",
+            "message": "Lemon Squeezy requires LEMON_SQUEEZY_MODE=live in production."
+          }
+        ]
+      },
+      "projectProvisioning": {
+        "setupUrl": "https://app.lemonsqueezy.com/settings/webhooks",
+        "instructions": [
+          "Choose the intended Lemon Squeezy store and test or live mode before creating products, variants, and the webhook. Keep preview and production deployment values separate.",
+          "Create an API key under Settings → API and register `/lemonsqueezy/webhook` under Settings → Webhooks. Subscribe to the subscription and subscription-payment events used by the downstream product.",
+          "Set BILLING_PROVIDER=lemonsqueezy, LEMON_SQUEEZY_MODE, LEMON_SQUEEZY_STORE_ID, and LEMON_SQUEEZY_PRODUCT_ID with `npx convex env set`. Set the API key and webhook secret through `pnpm secret:set`, then add LEMON_SQUEEZY_VARIANT_* mappings.",
+          "Validate X-Signature against the unmodified request body before parsing it. Entitlement changes only from verified webhook state."
+        ],
+        "verification": {
+          "policy": "probe_and_attestation",
+          "probes": [
+            {
+              "id": "lemonsqueezy-server-sdk",
+              "label": "Lemon Squeezy server SDK exists",
+              "type": "file_contains",
+              "file": "convex/billing.ts",
+              "text": "@lemonsqueezy/lemonsqueezy.js",
+              "required": true
+            },
+            {
+              "id": "lemonsqueezy-webhook-route",
+              "label": "Lemon Squeezy webhook route is registered",
+              "type": "file_contains",
+              "file": "convex/http.ts",
+              "text": "/lemonsqueezy/webhook",
+              "required": true
+            }
+          ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://app.lemonsqueezy.com/settings/api",
+              "opensBrowser": true,
+              "why": "Open Lemon Squeezy API settings so the user can create or select the project API key."
+            },
+            {
+              "command": "pnpm open:url https://app.lemonsqueezy.com/settings/webhooks",
+              "opensBrowser": true,
+              "why": "Open Lemon Squeezy webhook settings so the user can register the project endpoint and event set."
+            }
+          ]
+        }
+      },
+      "revocation": [
+        {
+          "text": "Revoke the API key under Lemon Squeezy Settings → API."
+        },
+        {
+          "text": "Delete the /lemonsqueezy/webhook endpoint under Lemon Squeezy Settings → Webhooks."
+        }
+      ]
     }
   }
 }

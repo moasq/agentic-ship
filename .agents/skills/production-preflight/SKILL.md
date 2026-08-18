@@ -71,4 +71,4 @@ Same order as deploy-netlify's go-live checklist — the two documents deliberat
 
 Deep references, all under `convex-structure/references/`: `deploy-netlify.md` (env
 matrix, go-live checklist), `email-resend.md` (the 3-step email flip),
-`stripe-billing.md`, and `polar-billing.md`.
+`stripe-billing.md`, `polar-billing.md`, and `lemon-squeezy-billing.md`.

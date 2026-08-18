@@ -10,6 +10,15 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const connectionDirectory = join(repositoryRoot, ".agents", "connections");
 const STRIPE_COMPLETE = ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRICE_PRO", "SITE_URL"];
 const POLAR_COMPLETE = ["POLAR_ACCESS_TOKEN", "POLAR_WEBHOOK_SECRET", "POLAR_SERVER", "POLAR_PRODUCT_PRO", "SITE_URL"];
+const LEMON_COMPLETE = [
+  "LEMON_SQUEEZY_API_KEY",
+  "LEMON_SQUEEZY_WEBHOOK_SECRET",
+  "LEMON_SQUEEZY_STORE_ID",
+  "LEMON_SQUEEZY_PRODUCT_ID",
+  "LEMON_SQUEEZY_MODE",
+  "LEMON_SQUEEZY_VARIANT_PRO",
+  "SITE_URL",
+];
 
 function alternativeBillingCatalog(t) {
   const root = mkdtempSync(join(tmpdir(), "billing-adapter-"));
@@ -80,6 +89,49 @@ describe("billing coherence", () => {
     const result = inspectBillingCoherence(STRIPE_COMPLETE, { selectedProvider: "unknown" });
     expect(result.status).toBe("FAIL");
     expect(result.detail).toMatch(/Expected one of: stripe/);
+  });
+
+});
+
+describe("Lemon Squeezy billing adapter", () => {
+  test("accepts a complete selected test configuration during development", () => {
+    expect(inspectBillingCoherence(LEMON_COMPLETE, { selectedProvider: "lemonsqueezy" }).status).toBe("PASS");
+  });
+
+  test("requires Lemon Squeezy to be selected explicitly", () => {
+    const result = inspectBillingCoherence(LEMON_COMPLETE);
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toMatch(/Stripe is selected/);
+  });
+
+  test.each(["LEMON_SQUEEZY_STORE_ID", "LEMON_SQUEEZY_PRODUCT_ID", "LEMON_SQUEEZY_MODE"])(
+    "fails when %s is missing",
+    (missing) => {
+      const names = LEMON_COMPLETE.filter((name) => name !== missing);
+      const result = inspectBillingCoherence(names, { selectedProvider: "lemonsqueezy" });
+      expect(result.status).toBe("FAIL");
+      expect(result.detail).toContain(missing);
+    },
+  );
+
+  test("fails critically when the webhook secret is missing", () => {
+    const names = LEMON_COMPLETE.filter((name) => name !== "LEMON_SQUEEZY_WEBHOOK_SECRET");
+    const result = inspectBillingCoherence(names, { selectedProvider: "lemonsqueezy" });
+    expect(result.status).toBe("CRITICAL");
+    expect(result.detail).toMatch(/take payment without granting entitlement/);
+  });
+
+  test("rejects simultaneous Stripe, Polar, or Lemon Squeezy secrets", () => {
+    const result = inspectBillingCoherence([...POLAR_COMPLETE, ...LEMON_COMPLETE], {
+      selectedProvider: "lemonsqueezy",
+    });
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toMatch(/Multiple billing provider secrets/);
+  });
+
+  test("does not change complete Stripe or Polar selections", () => {
+    expect(inspectBillingCoherence(STRIPE_COMPLETE, { selectedProvider: "stripe" }).status).toBe("PASS");
+    expect(inspectBillingCoherence(POLAR_COMPLETE, { selectedProvider: "polar" }).status).toBe("PASS");
   });
 });
 
@@ -163,6 +215,39 @@ describe("production billing", () => {
       "POLAR_WEBHOOK_SECRET=polar_webhook_private",
       "POLAR_SERVER=production",
       "POLAR_PRODUCT_PRO=polar_product_private",
+      "SITE_URL=https://example.com",
+      "",
+    ].join("\n");
+    expect(inspectProductionBillingEnvironment(env).status).toBe("PASS");
+  });
+
+  test.each(["test", "garbage"])("rejects Lemon Squeezy mode %s in production", (mode) => {
+    const env = [
+      "BILLING_PROVIDER=lemonsqueezy",
+      "LEMON_SQUEEZY_API_KEY=lemon_private",
+      "LEMON_SQUEEZY_WEBHOOK_SECRET=lemon_webhook_private",
+      "LEMON_SQUEEZY_STORE_ID=store_private",
+      "LEMON_SQUEEZY_PRODUCT_ID=product_private",
+      `LEMON_SQUEEZY_MODE=${mode}`,
+      "LEMON_SQUEEZY_VARIANT_PRO=variant_private",
+      "SITE_URL=https://example.com",
+      "",
+    ].join("\n");
+    const result = inspectProductionBillingEnvironment(env);
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toBe("Lemon Squeezy requires LEMON_SQUEEZY_MODE=live in production.");
+    expect(JSON.stringify(result)).not.toMatch(/lemon_private|webhook_private|store_private|product_private|variant_private/);
+  });
+
+  test("accepts a complete Lemon Squeezy live configuration", () => {
+    const env = [
+      "BILLING_PROVIDER=lemonsqueezy",
+      "LEMON_SQUEEZY_API_KEY=lemon_private",
+      "LEMON_SQUEEZY_WEBHOOK_SECRET=lemon_webhook_private",
+      "LEMON_SQUEEZY_STORE_ID=store_private",
+      "LEMON_SQUEEZY_PRODUCT_ID=product_private",
+      "LEMON_SQUEEZY_MODE=live",
+      "LEMON_SQUEEZY_VARIANT_PRO=variant_private",
       "SITE_URL=https://example.com",
       "",
     ].join("\n");
