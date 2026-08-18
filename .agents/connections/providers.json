@@ -603,6 +603,84 @@
           "text": "Revoke the authorization in the Netlify dashboard under User settings → Applications, and delete the site if it should not exist."
         }
       ]
+    },
+    "lemonsqueezy": {
+      "displayName": "Lemon Squeezy",
+      "docsUrl": "https://docs.lemonsqueezy.com/",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "agentTool": {
+        "authFlow": "cli_browser_login",
+        "mcpServer": "lemonsqueezy",
+        "setupUrl": "https://app.lemonsqueezy.com/settings/api",
+        "instructions": [
+          "Lemon Squeezy provides hosted checkout, merchant of record, and subscription lifecycle webhooks.",
+          "Create an API key under Settings → API at app.lemonsqueezy.com/settings/api.",
+          "Configure webhook signing secret and store ID in Convex deployment environment variables."
+        ],
+        "configurationProbe": {
+          "id": "lemonsqueezy-mcp",
+          "label": "Lemon Squeezy MCP server is declared",
+          "type": "mcp_server",
+          "server": "lemonsqueezy",
+          "required": false
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://app.lemonsqueezy.com/settings/api",
+              "opensBrowser": true,
+              "why": "Open Lemon Squeezy API settings to create API keys and configure webhooks."
+            }
+          ]
+        }
+      },
+      "projectProvisioning": {
+        "setupUrl": "https://app.lemonsqueezy.com/settings/webhooks",
+        "instructions": [
+          "Create a webhook endpoint pointing to `/lemonsqueezy/webhook`.",
+          "Set LEMON_SQUEEZY_API_KEY, LEMON_SQUEEZY_WEBHOOK_SECRET, LEMON_SQUEEZY_STORE_ID, and LEMON_SQUEEZY_VARIANT_* in the Convex environment via `pnpm secret:set`.",
+          "Derive entitlement exclusively from verified webhook payloads and customer subscription state."
+        ],
+        "verification": {
+          "policy": "probe_and_attestation",
+          "probes": [
+            {
+              "id": "lemonsqueezy-billing-seam",
+              "label": "Lemon Squeezy billing seam exists",
+              "type": "file_contains",
+              "file": "convex/billing.ts",
+              "text": "lemonsqueezy",
+              "required": false
+            },
+            {
+              "id": "lemonsqueezy-webhook-route",
+              "label": "Lemon Squeezy webhook route is registered",
+              "type": "file_contains",
+              "file": "convex/http.ts",
+              "text": "/lemonsqueezy/webhook",
+              "required": false
+            }
+          ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://app.lemonsqueezy.com/settings/webhooks",
+              "opensBrowser": true,
+              "why": "Open Lemon Squeezy webhook settings to register webhook endpoints."
+            }
+          ]
+        }
+      },
+      "revocation": [
+        {
+          "text": "Revoke the Lemon Squeezy API Key under Settings → API."
+        },
+        {
+          "text": "Delete the /lemonsqueezy/webhook endpoint in Lemon Squeezy Webhooks settings."
+        }
+      ]
     }
   }
 }

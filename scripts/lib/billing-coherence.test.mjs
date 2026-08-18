@@ -64,6 +64,43 @@ describe("billing coherence", () => {
     // Secret set, nothing else. Webhook outranks price: it is the costlier failure.
     expect(inspectBillingCoherence([SECRET]).status).toBe("CRITICAL");
   });
+
+  describe("Lemon Squeezy billing provider coherence", () => {
+    const LS_KEY = "LEMON_SQUEEZY_API_KEY";
+    const LS_WEBHOOK = "LEMON_SQUEEZY_WEBHOOK_SECRET";
+    const LS_STORE = "LEMON_SQUEEZY_STORE_ID";
+    const LS_VARIANT = "LEMON_SQUEEZY_VARIANT_PRO";
+
+    test("complete Lemon Squeezy configuration passes", () => {
+      expect(
+        inspectBillingCoherence([LS_KEY, LS_WEBHOOK, LS_STORE, LS_VARIANT, SITE]).status,
+      ).toBe("PASS");
+    });
+
+    test("Lemon Squeezy API key without webhook secret is CRITICAL", () => {
+      const result = inspectBillingCoherence([LS_KEY, LS_STORE, LS_VARIANT, SITE]);
+      expect(result.status).toBe("CRITICAL");
+      expect(result.detail).toMatch(/LEMON_SQUEEZY_API_KEY is set but LEMON_SQUEEZY_WEBHOOK_SECRET is not/);
+    });
+
+    test("Lemon Squeezy API key without store ID fails", () => {
+      const result = inspectBillingCoherence([LS_KEY, LS_WEBHOOK, LS_VARIANT, SITE]);
+      expect(result.status).toBe("FAIL");
+      expect(result.detail).toMatch(/LEMON_SQUEEZY_STORE_ID is missing/);
+    });
+
+    test("Lemon Squeezy API key without variants fails", () => {
+      const result = inspectBillingCoherence([LS_KEY, LS_WEBHOOK, LS_STORE, SITE]);
+      expect(result.status).toBe("FAIL");
+      expect(result.detail).toMatch(/no LEMON_SQUEEZY_VARIANT_\* is/);
+    });
+
+    test("Lemon Squeezy orphan webhook/store/variant without key warns", () => {
+      const result = inspectBillingCoherence([LS_WEBHOOK, LS_STORE, LS_VARIANT, SITE]);
+      expect(result.status).toBe("WARN");
+      expect(result.detail).toMatch(/Lemon Squeezy billing is OFF despite looking configured/);
+    });
+  });
 });
 
 describe("env parsing", () => {
