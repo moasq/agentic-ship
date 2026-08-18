@@ -10,6 +10,7 @@
     "check:mcp": "node scripts/sync-mcp.mjs --check",
     "sync:agents": "node scripts/sync-agent-config.mjs",
     "check:agents": "node scripts/sync-agent-config.mjs --check",
+    "sync:aw": "node scripts/sync-agentic-workflows.mjs",
     "ui:plan": "node scripts/ui-plan.mjs",
     "ui:review": "node scripts/ui-review.mjs",
     "check:ui": "node scripts/check-ui.mjs",
