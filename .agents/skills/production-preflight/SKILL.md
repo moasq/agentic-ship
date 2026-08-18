@@ -1,6 +1,6 @@
 ---
 name: production-preflight
-description: The go-live gate — verify production is REAL before launch: live Stripe keys in the prod deployment, email out of testMode with verification on, no test-seed backdoor, real URLs and webhooks. Run before the first deploy and after any config change that touches money, email, or auth.
+description: The go-live gate. Verify the selected billing provider is live, email leaves testMode with verification on, URLs are real, and no test-seed backdoor exists. Run before the first deploy and after any money, email, or auth change.
 ---
 
 # Production preflight
@@ -30,9 +30,9 @@ Exit 1 on any FAIL. Run `--prod` before every launch; the plain form on every de
 | `requireEmailVerification: true` in `convex/auth.ts` | unverified addresses sign up |
 | the two above flip **together** | either alone is broken — `pnpm health` enforces the pair in dev too |
 | `src/lib/site.ts` has no scaffold placeholders | "My App" as your `<title>`, OG card and llms.txt |
-| prod `STRIPE_SECRET_KEY` is `sk_live_`/`rk_live_` | **production takes test payments** |
-| prod `STRIPE_WEBHOOK_SECRET` set | payments succeed but entitlements never flip |
-| a `STRIPE_PRICE_*` exists in prod | checkout cannot resolve any plan |
+| selected billing adapter passes its production checks | production uses test payments or the wrong provider environment |
+| selected billing webhook secret is set | payments succeed but entitlements never flip |
+| selected billing plan mappings exist | checkout cannot resolve any plan |
 | prod `RESEND_API_KEY` + `EMAIL_FROM` on a verified domain (not `resend.dev`) | email dies silently after launch |
 | prod `SITE_URL` is https and not localhost | auth callbacks and email links point at your laptop |
 | prod `BETTER_AUTH_SECRET` set | sessions cannot be issued |
@@ -43,13 +43,12 @@ Exit 1 on any FAIL. Run `--prod` before every launch; the plain form on every de
 
 ## The judgment half (yours, or the agent's — not scriptable)
 
-1. **Webhooks point at prod.** Stripe: a dashboard endpoint at
-   `https://<prod-deployment>.convex.site/stripe/webhook` with the documented events —
-   the `stripe listen` secret is dev-only and does not carry over. Resend: same for
-   `/resend-webhook`. Verify by sending a test event from each dashboard.
-2. **Acceptance test on prod:** one real checkout in live mode with a real card,
-   refunded immediately — the entitlement must flip reload-free. Stripe test clocks
-   cover renewals; only a live transaction proves the live pipeline.
+1. **Webhooks point at prod.** Register the selected billing adapter's production
+   endpoint and events. Development listener secrets do not carry over. Register
+   Resend at `/resend-webhook`. Send a test event from each provider dashboard.
+2. **Acceptance test on prod:** complete one live checkout with a real payment method,
+   then refund it. Entitlement must update without a reload. Sandbox simulations cover
+   renewals, but only a live transaction proves the production pipeline.
 3. **Email round trip on prod:** sign up with a real address, receive the
    verification, complete it.
 4. **Rollback story:** know the last green deploy in Netlify before you need it.
@@ -63,7 +62,7 @@ Same order as deploy-netlify's go-live checklist — the two documents deliberat
 
 1. Verify the sending domain in Resend → set prod `EMAIL_FROM`. Preparation only —
    nothing sends yet while `testMode` holds.
-2. Live Stripe keys + prod webhook + live `STRIPE_PRICE_*` — into **prod Convex env**
+2. Select the billing provider, then set its production credentials, webhook, and plan mappings in **prod Convex env**
 3. Only then: `testMode: false` + `requireEmailVerification: true`, one commit —
    real mail invites real users, so money goes real before mail does
 4. `SITE_URL` / `NEXT_PUBLIC_SITE_URL` to the real host
@@ -71,5 +70,5 @@ Same order as deploy-netlify's go-live checklist — the two documents deliberat
 6. Deploy, then the acceptance tests above
 
 Deep references, all under `convex-structure/references/`: `deploy-netlify.md` (env
-matrix, go-live checklist) · `email-resend.md` (the 3-step email flip) ·
-`stripe-billing.md` (rules R1–R8).
+matrix, go-live checklist), `email-resend.md` (the 3-step email flip),
+`stripe-billing.md`, `polar-billing.md`, and `lemon-squeezy-billing.md`.

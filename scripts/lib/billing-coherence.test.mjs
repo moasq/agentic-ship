@@ -1,132 +1,282 @@
 // @vitest-environment node
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
-import { envNamesFrom, inspectBillingCoherence } from "./billing-coherence.mjs";
+import { envNamesFrom, inspectBillingCoherence, inspectProductionBillingEnvironment } from "./billing-coherence.mjs";
 
-/**
- * The billing states a deployment can be in, and what each one costs.
- *
- * These combinations are why the check exists: every name below is individually valid
- * and the deployment is broken anyway. The severities are asserted rather than assumed,
- * because the ordering IS the rule — a state that can take money without granting a plan
- * has to outrank one where checkout simply throws.
- */
-const PRICE = "STRIPE_PRICE_PRO";
-const SECRET = "STRIPE_SECRET_KEY";
-const WEBHOOK = "STRIPE_WEBHOOK_SECRET";
-const SITE = "SITE_URL";
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const connectionDirectory = join(repositoryRoot, ".agents", "connections");
+const STRIPE_COMPLETE = ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRICE_PRO", "SITE_URL"];
+const POLAR_COMPLETE = ["POLAR_ACCESS_TOKEN", "POLAR_WEBHOOK_SECRET", "POLAR_SERVER", "POLAR_PRODUCT_PRO", "SITE_URL"];
+const LEMON_COMPLETE = [
+  "LEMON_SQUEEZY_API_KEY",
+  "LEMON_SQUEEZY_WEBHOOK_SECRET",
+  "LEMON_SQUEEZY_STORE_ID",
+  "LEMON_SQUEEZY_PRODUCT_ID",
+  "LEMON_SQUEEZY_MODE",
+  "LEMON_SQUEEZY_VARIANT_PRO",
+  "SITE_URL",
+];
+
+function alternativeBillingCatalog(t) {
+  const root = mkdtempSync(join(tmpdir(), "billing-adapter-"));
+  const directory = join(root, "connections");
+  mkdirSync(directory, { recursive: true });
+  t.onTestFinished(() => rmSync(root, { recursive: true, force: true }));
+
+  const providers = JSON.parse(readFileSync(join(connectionDirectory, "providers.json"), "utf8"));
+  providers.providers.fixturepay = structuredClone(providers.providers.stripe);
+  Object.assign(providers.providers.fixturepay, {
+    displayName: "Fixture Pay",
+    defaultForCapability: false,
+    billing: {
+      ownedEnvPrefixes: ["FIXTURE_PAY_"],
+      secretEnv: "FIXTURE_PAY_SECRET",
+      webhookEnv: "FIXTURE_PAY_WEBHOOK",
+      requiredEnv: ["SITE_URL", "FIXTURE_PAY_MODE"],
+      mappingEnvPrefix: "FIXTURE_PAY_PLAN_",
+      productionChecks: [
+        {
+          type: "equals",
+          env: "FIXTURE_PAY_MODE",
+          value: "live",
+          message: "Fixture Pay requires live mode in production.",
+        },
+      ],
+    },
+  });
+  writeFileSync(join(directory, "providers.json"), JSON.stringify(providers), "utf8");
+  writeFileSync(join(directory, "hosts.json"), readFileSync(join(connectionDirectory, "hosts.json")), "utf8");
+  return directory;
+}
 
 describe("billing coherence", () => {
-  test("no Stripe at all is a normal pre-launch state, not a failure", () => {
-    // AGENTS.md: not-yet-connected is a WARN, never an error.
-    const result = inspectBillingCoherence([SITE, "BETTER_AUTH_SECRET"]);
-    expect(result.status).toBe("WARN");
-    expect(result.detail).toMatch(/billing is off/i);
+  test("keeps Stripe as the default and treats no keys as pre-launch", () => {
+    expect(inspectBillingCoherence(["SITE_URL"])).toEqual({
+      status: "WARN",
+      detail: "No billing keys are configured. Billing is off, which is valid before launch.",
+      provider: "stripe",
+    });
   });
 
-  test("a complete configuration passes", () => {
-    expect(inspectBillingCoherence([SECRET, WEBHOOK, PRICE, SITE]).status).toBe("PASS");
+  test("accepts a complete selected provider", () => {
+    expect(inspectBillingCoherence(STRIPE_COMPLETE).status).toBe("PASS");
   });
 
-  test("secret key without a webhook secret is CRITICAL — the customer pays and gets nothing", () => {
-    // The only state here where money moves and no entitlement follows.
-    const result = inspectBillingCoherence([SECRET, PRICE, SITE]);
+  test("reports the money-losing partial configuration as critical", () => {
+    const result = inspectBillingCoherence(["STRIPE_SECRET_KEY", "STRIPE_PRICE_PRO", "SITE_URL"]);
     expect(result.status).toBe("CRITICAL");
-    expect(result.detail).toMatch(/pays and gets nothing/i);
+    expect(result.detail).toMatch(/take payment without granting entitlement/);
   });
 
-  test("secret key without a price fails, but is not CRITICAL — checkout throws first", () => {
-    expect(inspectBillingCoherence([SECRET, WEBHOOK, SITE]).status).toBe("FAIL");
+  test("dispatches an alternative adapter without editing coherence code", (t) => {
+    const catalogDirectory = alternativeBillingCatalog(t);
+    const names = ["FIXTURE_PAY_SECRET", "FIXTURE_PAY_WEBHOOK", "FIXTURE_PAY_MODE", "FIXTURE_PAY_PLAN_PRO", "SITE_URL"];
+    expect(inspectBillingCoherence(names, { selectedProvider: "fixturepay", catalogDirectory }).status).toBe("PASS");
   });
 
-  test("secret key without SITE_URL fails — Stripe needs a return URL", () => {
-    expect(inspectBillingCoherence([SECRET, WEBHOOK, PRICE]).status).toBe("FAIL");
+  test("rejects foreign provider names and multiple active secrets", (t) => {
+    const catalogDirectory = alternativeBillingCatalog(t);
+    const names = [...STRIPE_COMPLETE, "FIXTURE_PAY_SECRET", "FIXTURE_PAY_WEBHOOK", "FIXTURE_PAY_PLAN_PRO"];
+    const result = inspectBillingCoherence(names, { selectedProvider: "stripe", catalogDirectory });
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toMatch(/Multiple billing provider secrets/);
   });
 
-  test("prices and a webhook secret with no key warns rather than fails", () => {
-    // Unfinished setup, not a broken build: with no secret key checkout is unreachable,
-    // so the deployment behaves exactly like one with no Stripe at all. `stripe:provision`
-    // ends in this state by design, and red-gating it would break the engine's own
-    // onboarding between two commands. The discrepancy still has to be said out loud.
-    const result = inspectBillingCoherence([WEBHOOK, PRICE, SITE]);
-    expect(result.status).toBe("WARN");
-    expect(result.detail).toMatch(/billing is OFF despite looking configured/);
-    expect(result.detail).toMatch(/pnpm secret:set STRIPE_SECRET_KEY/);
+  test("rejects an unsupported provider with an actionable list", () => {
+    const result = inspectBillingCoherence(STRIPE_COMPLETE, { selectedProvider: "unknown" });
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toMatch(/Expected one of: stripe/);
   });
 
-  test("a reachable checkout that cannot pay out is the line between WARN and red", () => {
-    // The severity rule, stated as a pair: the ONLY difference between these two is
-    // whether a customer's card can be charged.
-    expect(inspectBillingCoherence([WEBHOOK, PRICE, SITE]).status).toBe("WARN");
-    expect(inspectBillingCoherence([SECRET, PRICE, SITE]).status).toBe("CRITICAL");
+});
+
+describe("Lemon Squeezy billing adapter", () => {
+  test("accepts a complete selected test configuration during development", () => {
+    expect(inspectBillingCoherence(LEMON_COMPLETE, { selectedProvider: "lemonsqueezy" }).status).toBe("PASS");
   });
 
-  test("the money-losing state wins when several things are wrong at once", () => {
-    // Secret set, nothing else. Webhook outranks price: it is the costlier failure.
-    expect(inspectBillingCoherence([SECRET]).status).toBe("CRITICAL");
+  test("requires Lemon Squeezy to be selected explicitly", () => {
+    const result = inspectBillingCoherence(LEMON_COMPLETE);
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toMatch(/Stripe is selected/);
   });
 
-  describe("Lemon Squeezy billing provider coherence", () => {
-    const LS_KEY = "LEMON_SQUEEZY_API_KEY";
-    const LS_WEBHOOK = "LEMON_SQUEEZY_WEBHOOK_SECRET";
-    const LS_STORE = "LEMON_SQUEEZY_STORE_ID";
-    const LS_VARIANT = "LEMON_SQUEEZY_VARIANT_PRO";
-
-    const LS_MODE = "LEMON_SQUEEZY_MODE";
-
-    test("a complete Lemon Squeezy configuration passes", () => {
-      const result = inspectBillingCoherence([LS_KEY, LS_WEBHOOK, LS_STORE, LS_MODE, LS_VARIANT, SITE]);
-      expect(result.status).toBe("PASS");
-      expect(result.detail).toMatch(/Lemon Squeezy: API key, webhook secret, store ID and 1 variant\(s\) all present/);
-    });
-
-    test("Lemon Squeezy API key without webhook secret is CRITICAL", () => {
-      const result = inspectBillingCoherence([LS_KEY, LS_STORE, LS_MODE, LS_VARIANT, SITE]);
-      expect(result.status).toBe("CRITICAL");
-      expect(result.detail).toMatch(/LEMON_SQUEEZY_API_KEY is set but LEMON_SQUEEZY_WEBHOOK_SECRET is not/);
-    });
-
-    test("Lemon Squeezy API key without store ID fails", () => {
-      const result = inspectBillingCoherence([LS_KEY, LS_WEBHOOK, LS_MODE, LS_VARIANT, SITE]);
+  test.each(["LEMON_SQUEEZY_STORE_ID", "LEMON_SQUEEZY_PRODUCT_ID", "LEMON_SQUEEZY_MODE"])(
+    "fails when %s is missing",
+    (missing) => {
+      const names = LEMON_COMPLETE.filter((name) => name !== missing);
+      const result = inspectBillingCoherence(names, { selectedProvider: "lemonsqueezy" });
       expect(result.status).toBe("FAIL");
-      expect(result.detail).toMatch(/LEMON_SQUEEZY_STORE_ID is missing/);
-    });
+      expect(result.detail).toContain(missing);
+    },
+  );
 
-    test("Lemon Squeezy API key without mode fails", () => {
-      const result = inspectBillingCoherence([LS_KEY, LS_WEBHOOK, LS_STORE, LS_VARIANT, SITE]);
-      expect(result.status).toBe("FAIL");
-      expect(result.detail).toMatch(/LEMON_SQUEEZY_MODE is not configured/);
-    });
+  test("fails critically when the webhook secret is missing", () => {
+    const names = LEMON_COMPLETE.filter((name) => name !== "LEMON_SQUEEZY_WEBHOOK_SECRET");
+    const result = inspectBillingCoherence(names, { selectedProvider: "lemonsqueezy" });
+    expect(result.status).toBe("CRITICAL");
+    expect(result.detail).toMatch(/take payment without granting entitlement/);
+  });
 
-    test("Lemon Squeezy API key without variants fails", () => {
-      const result = inspectBillingCoherence([LS_KEY, LS_WEBHOOK, LS_STORE, LS_MODE, SITE]);
-      expect(result.status).toBe("FAIL");
-      expect(result.detail).toMatch(/no LEMON_SQUEEZY_VARIANT_\* is/);
+  test("rejects simultaneous Stripe, Polar, or Lemon Squeezy secrets", () => {
+    const result = inspectBillingCoherence([...POLAR_COMPLETE, ...LEMON_COMPLETE], {
+      selectedProvider: "lemonsqueezy",
     });
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toMatch(/Multiple billing provider secrets/);
+  });
 
-    test("Multiple active billing provider secrets fail with collision error", () => {
-      const result = inspectBillingCoherence([SECRET, WEBHOOK, PRICE, LS_KEY, LS_WEBHOOK, LS_STORE, LS_MODE, LS_VARIANT, SITE]);
-      expect(result.status).toBe("FAIL");
-      expect(result.detail).toMatch(/Multiple billing provider secrets are configured/);
-    });
-
-    test("Lemon Squeezy orphan webhook/store/variant without key warns", () => {
-      const result = inspectBillingCoherence([LS_WEBHOOK, LS_STORE, LS_VARIANT, SITE]);
-      expect(result.status).toBe("WARN");
-      expect(result.detail).toMatch(/Lemon Squeezy billing is OFF despite looking configured/);
-    });
+  test("does not change complete Stripe or Polar selections", () => {
+    expect(inspectBillingCoherence(STRIPE_COMPLETE, { selectedProvider: "stripe" }).status).toBe("PASS");
+    expect(inspectBillingCoherence(POLAR_COMPLETE, { selectedProvider: "polar" }).status).toBe("PASS");
   });
 });
 
-describe("env parsing", () => {
-  test("keeps names and drops every value", () => {
-    const names = envNamesFrom("STRIPE_SECRET_KEY=sk_test_dont_leak_me\nSITE_URL=http://x\n\n");
-    expect(names).toEqual(["STRIPE_SECRET_KEY", "SITE_URL"]);
-    expect(names.join()).not.toMatch(/sk_test/);
+describe("Polar billing adapter", () => {
+  test("accepts a complete sandbox configuration during development", () => {
+    expect(inspectBillingCoherence(POLAR_COMPLETE, { selectedProvider: "polar" }).status).toBe("PASS");
   });
 
-  test("survives an empty or noisy stream", () => {
-    expect(envNamesFrom("")).toEqual([]);
-    expect(envNamesFrom(undefined)).toEqual([]);
-    expect(envNamesFrom("not an assignment line\n")).toEqual([]);
+  test("requires Polar to be selected explicitly", () => {
+    const result = inspectBillingCoherence(POLAR_COMPLETE);
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toMatch(/Stripe is selected/);
+  });
+
+  test("fails when the environment selector is missing", () => {
+    const names = POLAR_COMPLETE.filter((name) => name !== "POLAR_SERVER");
+    expect(inspectBillingCoherence(names, { selectedProvider: "polar" }).status).toBe("FAIL");
+  });
+
+  test("rejects simultaneous Stripe and Polar secrets", () => {
+    const result = inspectBillingCoherence([...STRIPE_COMPLETE, ...POLAR_COMPLETE], { selectedProvider: "polar" });
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toMatch(/Multiple billing provider secrets/);
+  });
+
+  test("does not change a complete Stripe selection", () => {
+    expect(inspectBillingCoherence(STRIPE_COMPLETE, { selectedProvider: "stripe" }).status).toBe("PASS");
+  });
+});
+
+describe("production billing", () => {
+  test("preserves Stripe live-mode behavior when selection is omitted", () => {
+    const env = [
+      "STRIPE_SECRET_KEY=sk_live_private",
+      "STRIPE_WEBHOOK_SECRET=whsec_private",
+      "STRIPE_PRICE_PRO=price_private",
+      "SITE_URL=https://example.com",
+      "",
+    ].join("\n");
+    expect(inspectProductionBillingEnvironment(env)).toEqual({
+      status: "PASS",
+      detail: "Stripe production billing is live.",
+      provider: "stripe",
+    });
+  });
+
+  test("rejects Stripe test keys without exposing their value", () => {
+    const env = [
+      "STRIPE_SECRET_KEY=sk_test_do_not_print",
+      "STRIPE_WEBHOOK_SECRET=whsec_do_not_print",
+      "STRIPE_PRICE_PRO=price_do_not_print",
+      "SITE_URL=https://example.com",
+      "",
+    ].join("\n");
+    const result = inspectProductionBillingEnvironment(env);
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toMatch(/live secret key/);
+    expect(JSON.stringify(result)).not.toMatch(/do_not_print/);
+  });
+
+  test.each(["sandbox", "garbage"])("rejects Polar server %s in production", (server) => {
+    const env = [
+      "BILLING_PROVIDER=polar",
+      "POLAR_ACCESS_TOKEN=polar_private",
+      "POLAR_WEBHOOK_SECRET=polar_webhook_private",
+      `POLAR_SERVER=${server}`,
+      "POLAR_PRODUCT_PRO=polar_product_private",
+      "SITE_URL=https://example.com",
+      "",
+    ].join("\n");
+    const result = inspectProductionBillingEnvironment(env);
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toBe("Polar requires POLAR_SERVER=production in production.");
+    expect(JSON.stringify(result)).not.toMatch(/polar_private/);
+  });
+
+  test("accepts Polar production mode", () => {
+    const env = [
+      "BILLING_PROVIDER=polar",
+      "POLAR_ACCESS_TOKEN=polar_private",
+      "POLAR_WEBHOOK_SECRET=polar_webhook_private",
+      "POLAR_SERVER=production",
+      "POLAR_PRODUCT_PRO=polar_product_private",
+      "SITE_URL=https://example.com",
+      "",
+    ].join("\n");
+    expect(inspectProductionBillingEnvironment(env).status).toBe("PASS");
+  });
+
+  test.each(["test", "garbage"])("rejects Lemon Squeezy mode %s in production", (mode) => {
+    const env = [
+      "BILLING_PROVIDER=lemonsqueezy",
+      "LEMON_SQUEEZY_API_KEY=lemon_private",
+      "LEMON_SQUEEZY_WEBHOOK_SECRET=lemon_webhook_private",
+      "LEMON_SQUEEZY_STORE_ID=store_private",
+      "LEMON_SQUEEZY_PRODUCT_ID=product_private",
+      `LEMON_SQUEEZY_MODE=${mode}`,
+      "LEMON_SQUEEZY_VARIANT_PRO=variant_private",
+      "SITE_URL=https://example.com",
+      "",
+    ].join("\n");
+    const result = inspectProductionBillingEnvironment(env);
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toBe("Lemon Squeezy requires LEMON_SQUEEZY_MODE=live in production.");
+    expect(JSON.stringify(result)).not.toMatch(/lemon_private|webhook_private|store_private|product_private|variant_private/);
+  });
+
+  test("accepts a complete Lemon Squeezy live configuration", () => {
+    const env = [
+      "BILLING_PROVIDER=lemonsqueezy",
+      "LEMON_SQUEEZY_API_KEY=lemon_private",
+      "LEMON_SQUEEZY_WEBHOOK_SECRET=lemon_webhook_private",
+      "LEMON_SQUEEZY_STORE_ID=store_private",
+      "LEMON_SQUEEZY_PRODUCT_ID=product_private",
+      "LEMON_SQUEEZY_MODE=live",
+      "LEMON_SQUEEZY_VARIANT_PRO=variant_private",
+      "SITE_URL=https://example.com",
+      "",
+    ].join("\n");
+    expect(inspectProductionBillingEnvironment(env).status).toBe("PASS");
+  });
+
+  test("runs provider-owned production checks for fixture alternatives", (t) => {
+    const catalogDirectory = alternativeBillingCatalog(t);
+    const base = [
+      "BILLING_PROVIDER=fixturepay",
+      "FIXTURE_PAY_SECRET=private",
+      "FIXTURE_PAY_WEBHOOK=private",
+      "FIXTURE_PAY_PLAN_PRO=private",
+      "SITE_URL=https://example.com",
+    ];
+    expect(inspectProductionBillingEnvironment([...base, "FIXTURE_PAY_MODE=test"].join("\n"), { catalogDirectory }).status).toBe("FAIL");
+    expect(inspectProductionBillingEnvironment([...base, "FIXTURE_PAY_MODE=live"].join("\n"), { catalogDirectory }).status).toBe("PASS");
+  });
+
+  test("rejects empty required values", () => {
+    const env = "STRIPE_SECRET_KEY=\nSTRIPE_WEBHOOK_SECRET=\nSTRIPE_PRICE_PRO=\nSITE_URL=\n";
+    expect(inspectProductionBillingEnvironment(env).status).toBe("FAIL");
+  });
+});
+
+describe("environment parsing", () => {
+  test("keeps names and discards values", () => {
+    const names = envNamesFrom("STRIPE_SECRET_KEY=sk_test_dont_leak_me\nSITE_URL=http://x\n");
+    expect(names).toEqual(["STRIPE_SECRET_KEY", "SITE_URL"]);
+    expect(names.join()).not.toMatch(/dont_leak_me/);
   });
 });

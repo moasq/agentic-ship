@@ -1,111 +1,67 @@
-# Lemon Squeezy Downstream Billing Provider Reference
+# Add Lemon Squeezy billing to a product
 
-Lemon Squeezy serves as an alternative merchant of record (MoR) and subscription billing provider for Agentic-Ship applications.
+Use Lemon Squeezy as the selected billing provider when the product brief sets `providerSelection.billing` to `lemonsqueezy`. Stripe and Polar remain available, but one deployment cannot initialize more than one billing provider.
 
----
+## Create checkout on the server
 
-## 🔐 Credentials and Environment Variables
+Install `@lemonsqueezy/lemonsqueezy.js` in the downstream product. Keep the store, product, and variant mappings in Convex deployment environment variables. The browser sends a plan key from the server-owned plan allowlist; it never sends an amount, store ID, product ID, or variant ID.
 
-All billing secrets and API keys must reside exclusively in Convex deployment environment variables (`pnpm secret:set`). Never commit secrets to repository files, frontend bundles, or `.env.local`.
+Create the checkout with the Lemon Squeezy API from a Convex action. Put the authenticated user or organization identifier in `checkout_data.custom` so Lemon Squeezy returns it under webhook `meta.custom_data`. The identifier comes from the authenticated context, not a client argument.
 
-| Variable | Description | Location |
-|---|---|---|
-| `LEMON_SQUEEZY_API_KEY` | Secret API Key for Lemon Squeezy API v1 | Convex Deployment Env |
-| `LEMON_SQUEEZY_WEBHOOK_SECRET` | Signing secret used to compute and verify `X-Signature` HMAC | Convex Deployment Env |
-| `LEMON_SQUEEZY_STORE_ID` | Numerical Store Identifier | Convex Deployment Env |
-| `LEMON_SQUEEZY_MODE` | Explicit deployment mode: `live` or `test` | Convex Deployment Env |
-| `LEMON_SQUEEZY_VARIANT_<PLAN>` | Variant IDs mapped to subscription tiers (e.g. `LEMON_SQUEEZY_VARIANT_PRO`) | Convex Deployment Env |
-| `SITE_URL` | Canonical application URL for checkout return and portal redirects | Convex Deployment Env |
+Use Lemon Squeezy's hosted checkout URL. The return URL confirms navigation only and never grants entitlement.
 
----
+## Open the customer portal
 
-## 🪝 Webhook Signature Verification (`X-Signature`)
+Store the signed `urls.customer_portal` value from a verified subscription webhook. Return it only after checking the current authenticated owner. The link is provider-hosted and short-lived, so fetch or refresh it when the customer opens billing settings instead of treating it as a permanent application URL.
 
-Lemon Squeezy signs incoming webhook requests using HMAC-SHA256 with the configured `LEMON_SQUEEZY_WEBHOOK_SECRET`.
+## Verify the exact webhook body
 
-### Verification Requirements:
-1. Validate against the **exact raw request body string** prior to any JSON parsing.
-2. Read the `X-Signature` header.
-3. Compute `crypto.createHmac("sha256", secret).update(rawBody).digest("hex")`.
-4. Compare digest and header using `crypto.timingSafeEqual` with equal-length Buffer allocations.
-5. Parse the JSON payload **only after** signature verification succeeds.
-6. Reject requests with invalid signatures immediately with status `400 Bad Request`.
+Register `/lemonsqueezy/webhook` in `convex/http.ts`. Read the request with `request.text()` once and keep that exact string until verification finishes. Compute HMAC-SHA256 with `LEMON_SQUEEZY_WEBHOOK_SECRET`, decode the `X-Signature` hexadecimal value, check the lengths, and compare with `crypto.timingSafeEqual`. Parse JSON only after the comparison succeeds.
 
-```typescript
-import crypto from "node:crypto";
-import { httpAction } from "./_generated/server";
+Reject a missing, malformed, or mismatched signature before calling any mutation. Do not compute the digest from parsed and re-serialized JSON because whitespace and key order are part of the signed body.
 
-export const handleLemonSqueezyWebhook = httpAction(async (ctx, request) => {
-  const signatureHeader = request.headers.get("x-signature");
-  if (!signatureHeader) {
-    return new Response("Missing X-Signature header", { status: 400 });
-  }
+Lemon Squeezy payloads do not provide a standalone event ID. After verification, derive the delivery ID from a SHA-256 digest of the raw body. Store that ID and the entitlement update in one internal Convex mutation. A retry with the same body becomes a no-op, and an older `updated_at` or `created_at` value cannot overwrite newer state.
 
-  const rawBody = await request.text();
-  const secret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET;
-  if (!secret) {
-    return new Response("Webhook secret not configured", { status: 500 });
-  }
+## Apply subscription state
 
-  // Compute HMAC-SHA256 over exact raw body
-  const hmac = crypto.createHmac("sha256", secret);
-  const computedHex = hmac.update(rawBody).digest("hex");
+Use these transitions:
 
-  const digestBuffer = Buffer.from(computedHex, "utf8");
-  const signatureBuffer = Buffer.from(signatureHeader, "utf8");
+| Event | Entitlement action |
+| --- | --- |
+| `subscription_created` | Apply the verified subscription status; active and on-trial states grant access |
+| `subscription_updated` | Reconcile status, plan, renewal date, cancellation date, and portal URL |
+| `subscription_paused` | Suspend paid access |
+| `subscription_unpaused` | Restore active access |
+| `subscription_cancelled` | Keep access until `ends_at` |
+| `subscription_resumed` | Clear scheduled cancellation and keep access |
+| `subscription_expired` | Revoke access |
+| `subscription_payment_failed` | Record past-due state and keep the current grace-period decision |
+| `subscription_payment_recovered` or `subscription_payment_success` | Restore or confirm active access |
+| `subscription_payment_refunded` or `order_refunded` | Record the refund; wait for verified subscription state before revoking access |
 
-  if (
-    digestBuffer.length !== signatureBuffer.length ||
-    !crypto.timingSafeEqual(digestBuffer, signatureBuffer)
-  ) {
-    return new Response("Invalid signature", { status: 400 });
-  }
+Webhook state is the entitlement truth. Product UI reads only the webhook-backed query.
 
-  // Parse payload ONLY after signature verification succeeds
-  const payload = JSON.parse(rawBody);
-  const eventName = payload.meta?.event_name;
-  const data = payload.data;
+## Configure each environment
 
-  // Process verified lifecycle event...
-  return new Response("OK", { status: 200 });
-});
-```
+Store these values in the Convex deployment environment:
 
----
+| Variable | Purpose |
+| --- | --- |
+| `BILLING_PROVIDER=lemonsqueezy` | Select the Lemon Squeezy adapter |
+| `LEMON_SQUEEZY_API_KEY` | Server-only API credential |
+| `LEMON_SQUEEZY_WEBHOOK_SECRET` | `X-Signature` signing secret |
+| `LEMON_SQUEEZY_STORE_ID` | Selected store |
+| `LEMON_SQUEEZY_PRODUCT_ID` | Selected product |
+| `LEMON_SQUEEZY_VARIANT_<PLAN>` | Server-side variant mapping for each plan key |
+| `LEMON_SQUEEZY_MODE` | `test` outside production or `live` in production |
+| `SITE_URL` | HTTPS checkout return origin |
 
-## 🔄 Subscription Lifecycle and Entitlement Invariants
+Keep test and live resources isolated in their matching application deployments. Before launch, switch the Lemon Squeezy store out of test mode, provision live product and variant values, register the production webhook, and set `LEMON_SQUEEZY_MODE=live`. `pnpm preflight --prod` rejects test or unknown modes, missing store or product configuration, missing mappings, and simultaneous billing-provider secrets.
 
-Entitlement must be strictly derived from verified webhook state — never from client checkout redirect URLs or optimistic frontend state.
+## Verify and revoke the integration
 
-### Lifecycle Events & Entitlement Transitions:
-- `subscription_created`: Record customer ID, subscription ID, and variant ID in pending state. Grant entitlement once subscription status is confirmed `active`.
-- `subscription_updated`: Update subscription plan tier, renew dates, or billing cycle details.
-- `subscription_paused`: Temporarily suspend active plan benefits or fallback to free tier.
-- `subscription_unpaused`: **Restores a previously paused subscription** to active status and reinstates workspace entitlement.
-- `subscription_cancelled`: Mark subscription as scheduled for termination at `ends_at`; retain access during remaining paid period.
-- `subscription_resumed`: **Restores a cancelled subscription** before expiration, resetting cancellation schedule.
-- `subscription_expired`: Revoke active paid entitlements and transition workspace to free tier.
-- `subscription_payment_failed`: Mark status as `past_due` and initiate payment grace period.
-- `subscription_payment_recovered`: Restore active subscription status upon successful retry.
-- `subscription_payment_refunded`: Audit refund event and revoke corresponding plan entitlement.
+In test mode, simulate creation, update, pause, unpause, cancellation, resume, expiration, payment failure, recovery, success, and refund events. Verify that an invalid signature, duplicate delivery, and stale delivery cannot change entitlement. Exercise checkout custom data and the customer portal separately.
 
----
+To revoke access, delete the API key under Lemon Squeezy Settings → API and delete the webhook under Settings → Webhooks. Remove the Lemon Squeezy Convex environment values before selecting another billing provider.
 
-## 🛡️ Idempotency and Deduplication
-
-Lemon Squeezy webhook payloads do not include a standalone unique `event_id`.
-- Define a deterministic idempotency key from verified payload fields:
-  ```typescript
-  const deduplicationKey = `${eventName}_${data.id}_${data.attributes?.updated_at ?? data.attributes?.created_at}`;
-  ```
-- Alternatively, compute a SHA-256 digest of the verified raw request body.
-- Record the deduplication key in the same atomic database transaction as the entitlement mutation, returning `200 OK` immediately if previously processed.
-
----
-
-## 🌐 Test Mode vs Production Isolation
-
-Lemon Squeezy defines test or live mode by store settings and where API keys/resources were created.
-- Set explicit `LEMON_SQUEEZY_MODE=live` for production environments.
-- Set `LEMON_SQUEEZY_MODE=test` for preview/staging environments.
-- Production preflight rejects deployments where `LEMON_SQUEEZY_MODE` is unset or set to `test`.
+Official references: [webhook signing](https://docs.lemonsqueezy.com/help/webhooks/signing-requests), [event types](https://docs.lemonsqueezy.com/help/webhooks/event-types), [custom checkout data](https://docs.lemonsqueezy.com/help/checkout/passing-custom-data), and [testing and going live](https://docs.lemonsqueezy.com/guides/developer-guide/testing-going-live).

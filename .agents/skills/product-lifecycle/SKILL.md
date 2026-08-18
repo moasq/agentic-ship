@@ -10,7 +10,7 @@ Use repository state as the coordination layer. Chat context is helpful, but it 
 ## Start with an outcome contract
 
 1. Write a product brief that conforms to `.agents/contracts/product-brief.schema.json`.
-2. Keep the user's problem, audience, outcomes, non-goals, provider needs, and definition of done explicit.
+2. Keep the user's problem, audience, outcomes, non-goals, provider needs, and definition of done explicit. Record one provider per capability in `providerSelection`. Use a catalog default only when the user has not chosen an alternative.
 3. Turn each independently verifiable capability into a feature contract conforming to `.agents/contracts/feature-contract.schema.json`.
 4. Initialize the durable queue with `pnpm agent:work init --name <product> --goal <outcome>`.
 5. Add work with one owner role and at least one acceptance criterion. Dependencies must already exist, which forces the queue into a reviewable order.

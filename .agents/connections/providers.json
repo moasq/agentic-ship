@@ -3,6 +3,8 @@
   "providers": {
     "convex": {
       "displayName": "Convex",
+      "capability": "backend",
+      "defaultForCapability": true,
       "docsUrl": "https://docs.convex.dev/cli",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -143,9 +145,26 @@
     },
     "stripe": {
       "displayName": "Stripe",
+      "capability": "billing",
+      "defaultForCapability": true,
       "docsUrl": "https://docs.stripe.com/stripe-cli",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
+      "billing": {
+        "ownedEnvPrefixes": ["STRIPE_"],
+        "secretEnv": "STRIPE_SECRET_KEY",
+        "webhookEnv": "STRIPE_WEBHOOK_SECRET",
+        "requiredEnv": ["SITE_URL"],
+        "mappingEnvPrefix": "STRIPE_PRICE_",
+        "productionChecks": [
+          {
+            "type": "matches",
+            "env": "STRIPE_SECRET_KEY",
+            "pattern": "^(sk|rk)_live_",
+            "message": "Stripe requires a live secret key in production."
+          }
+        ]
+      },
       "agentTool": {
         "authFlow": "cli_browser_login",
         "mcpServer": "stripe",
@@ -232,6 +251,8 @@
     },
     "github": {
       "displayName": "GitHub",
+      "capability": "repository",
+      "defaultForCapability": true,
       "docsUrl": "https://cli.github.com/manual/",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -294,6 +315,8 @@
     },
     "linear": {
       "displayName": "Linear",
+      "capability": "tracking",
+      "defaultForCapability": true,
       "docsUrl": "https://linear.app/docs/mcp",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -348,6 +371,8 @@
     },
     "resend": {
       "displayName": "Resend",
+      "capability": "email",
+      "defaultForCapability": true,
       "docsUrl": "https://resend.com/docs",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -432,6 +457,8 @@
     },
     "posthog": {
       "displayName": "PostHog",
+      "capability": "analytics",
+      "defaultForCapability": true,
       "docsUrl": "https://posthog.com/docs",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -517,6 +544,8 @@
     },
     "netlify": {
       "displayName": "Netlify",
+      "capability": "deployment",
+      "defaultForCapability": true,
       "docsUrl": "https://docs.netlify.com/cli/get-started/",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -604,53 +633,123 @@
         }
       ]
     },
-    "lemonsqueezy": {
-      "displayName": "Lemon Squeezy",
-      "docsUrl": "https://docs.lemonsqueezy.com/",
+    "polar": {
+      "displayName": "Polar",
+      "capability": "billing",
+      "defaultForCapability": false,
+      "docsUrl": "https://polar.sh/docs",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
-      "agentTool": {
-        "authFlow": "remote_oauth",
-        "mcpServer": "lemonsqueezy",
-        "setupUrl": "https://app.lemonsqueezy.com/settings/api",
-        "instructions": [
-          "Lemon Squeezy provides hosted checkout, merchant of record, and subscription lifecycle webhooks.",
-          "Create an API key under Settings → API at app.lemonsqueezy.com/settings/api.",
-          "Configure LEMON_SQUEEZY_API_KEY, LEMON_SQUEEZY_WEBHOOK_SECRET, LEMON_SQUEEZY_STORE_ID, and LEMON_SQUEEZY_MODE (live | test) in Convex deployment environment variables via `pnpm secret:set`."
-        ],
-        "configurationProbe": {
-          "id": "lemonsqueezy-mcp",
-          "label": "Lemon Squeezy MCP server is declared",
-          "type": "mcp_server",
-          "server": "lemonsqueezy",
-          "required": false
-        },
-        "automation": {
-          "run": [
-            {
-              "command": "pnpm open:url https://app.lemonsqueezy.com/settings/api",
-              "opensBrowser": true,
-              "why": "Open Lemon Squeezy API settings to create API keys and configure webhooks."
-            }
-          ]
-        }
+      "billing": {
+        "ownedEnvPrefixes": ["POLAR_"],
+        "secretEnv": "POLAR_ACCESS_TOKEN",
+        "webhookEnv": "POLAR_WEBHOOK_SECRET",
+        "requiredEnv": ["SITE_URL", "POLAR_SERVER"],
+        "mappingEnvPrefix": "POLAR_PRODUCT_",
+        "productionChecks": [
+          {
+            "type": "equals",
+            "env": "POLAR_SERVER",
+            "value": "production",
+            "message": "Polar requires POLAR_SERVER=production in production."
+          }
+        ]
       },
       "projectProvisioning": {
-        "setupUrl": "https://app.lemonsqueezy.com/settings/webhooks",
+        "setupUrl": "https://polar.sh/dashboard",
         "instructions": [
-          "Create a webhook endpoint pointing to `/lemonsqueezy/webhook`.",
-          "Set LEMON_SQUEEZY_API_KEY, LEMON_SQUEEZY_WEBHOOK_SECRET, LEMON_SQUEEZY_STORE_ID, LEMON_SQUEEZY_MODE, and LEMON_SQUEEZY_VARIANT_* in the Convex environment via `pnpm secret:set`.",
-          "Derive entitlement exclusively from verified webhook payloads and customer subscription state."
+          "Choose the Polar organization and environment first; production and sandbox tokens, products, and webhooks are separate.",
+          "Create an Organization Access Token under Settings → Developers → Organization Access Tokens. Register `/api/auth/polar/webhooks` as the downstream product webhook.",
+          "Set BILLING_PROVIDER=polar and POLAR_SERVER with `npx convex env set`. Set POLAR_ACCESS_TOKEN and POLAR_WEBHOOK_SECRET through `pnpm secret:set`, then add POLAR_PRODUCT_* mappings.",
+          "Use the official Polar Better Auth adapter and derive entitlement only from verified webhook events or customer state."
         ],
         "verification": {
           "policy": "probe_and_attestation",
           "probes": [
             {
-              "id": "lemonsqueezy-billing-seam",
-              "label": "Lemon Squeezy billing seam exists",
+              "id": "polar-server-adapter",
+              "label": "Polar Better Auth server adapter exists",
+              "type": "file_contains",
+              "file": "convex/auth.ts",
+              "text": "@polar-sh/better-auth",
+              "required": true
+            },
+            {
+              "id": "polar-client-adapter",
+              "label": "Polar Better Auth client adapter exists",
+              "type": "file_contains",
+              "file": "src/lib/auth-client.ts",
+              "text": "polarClient",
+              "required": true
+            },
+            {
+              "id": "polar-webhook-handler",
+              "label": "Polar verified webhook handler exists",
+              "type": "file_contains",
+              "file": "convex/auth.ts",
+              "text": "webhooks(",
+              "required": true
+            }
+          ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://polar.sh/dashboard",
+              "opensBrowser": true,
+              "why": "Open Polar so the user can choose the correct organization and production or sandbox environment before creating project resources."
+            }
+          ]
+        }
+      },
+      "revocation": [
+        {
+          "text": "Revoke the Organization Access Token in Polar Dashboard under Settings → Developers → Organization Access Tokens."
+        },
+        {
+          "text": "Delete the /api/auth/polar/webhooks endpoint in Polar webhook settings."
+        }
+      ]
+    },
+    "lemonsqueezy": {
+      "displayName": "Lemon Squeezy",
+      "capability": "billing",
+      "defaultForCapability": false,
+      "docsUrl": "https://docs.lemonsqueezy.com/guides/developer-guide/webhooks",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "billing": {
+        "ownedEnvPrefixes": ["LEMON_SQUEEZY_"],
+        "secretEnv": "LEMON_SQUEEZY_API_KEY",
+        "webhookEnv": "LEMON_SQUEEZY_WEBHOOK_SECRET",
+        "requiredEnv": ["SITE_URL", "LEMON_SQUEEZY_STORE_ID", "LEMON_SQUEEZY_PRODUCT_ID", "LEMON_SQUEEZY_MODE"],
+        "mappingEnvPrefix": "LEMON_SQUEEZY_VARIANT_",
+        "productionChecks": [
+          {
+            "type": "equals",
+            "env": "LEMON_SQUEEZY_MODE",
+            "value": "live",
+            "message": "Lemon Squeezy requires LEMON_SQUEEZY_MODE=live in production."
+          }
+        ]
+      },
+      "projectProvisioning": {
+        "setupUrl": "https://app.lemonsqueezy.com/settings/webhooks",
+        "instructions": [
+          "Choose the intended Lemon Squeezy store and test or live mode before creating products, variants, and the webhook. Keep preview and production deployment values separate.",
+          "Create an API key under Settings → API and register `/lemonsqueezy/webhook` under Settings → Webhooks. Subscribe to the subscription and subscription-payment events used by the downstream product.",
+          "Set BILLING_PROVIDER=lemonsqueezy, LEMON_SQUEEZY_MODE, LEMON_SQUEEZY_STORE_ID, and LEMON_SQUEEZY_PRODUCT_ID with `npx convex env set`. Set the API key and webhook secret through `pnpm secret:set`, then add LEMON_SQUEEZY_VARIANT_* mappings.",
+          "Validate X-Signature against the unmodified request body before parsing it. Entitlement changes only from verified webhook state."
+        ],
+        "verification": {
+          "policy": "probe_and_attestation",
+          "probes": [
+            {
+              "id": "lemonsqueezy-server-sdk",
+              "label": "Lemon Squeezy server SDK exists",
               "type": "file_contains",
               "file": "convex/billing.ts",
-              "text": "lemonsqueezy",
+              "text": "@lemonsqueezy/lemonsqueezy.js",
               "required": true
             },
             {
@@ -666,19 +765,24 @@
         "automation": {
           "run": [
             {
+              "command": "pnpm open:url https://app.lemonsqueezy.com/settings/api",
+              "opensBrowser": true,
+              "why": "Open Lemon Squeezy API settings so the user can create or select the project API key."
+            },
+            {
               "command": "pnpm open:url https://app.lemonsqueezy.com/settings/webhooks",
               "opensBrowser": true,
-              "why": "Open Lemon Squeezy webhook settings to register webhook endpoints."
+              "why": "Open Lemon Squeezy webhook settings so the user can register the project endpoint and event set."
             }
           ]
         }
       },
       "revocation": [
         {
-          "text": "Revoke the Lemon Squeezy API Key under Settings → API."
+          "text": "Revoke the API key under Lemon Squeezy Settings → API."
         },
         {
-          "text": "Delete the /lemonsqueezy/webhook endpoint in Lemon Squeezy Webhooks settings."
+          "text": "Delete the /lemonsqueezy/webhook endpoint under Lemon Squeezy Settings → Webhooks."
         }
       ]
     }

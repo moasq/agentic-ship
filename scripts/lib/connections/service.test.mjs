@@ -76,9 +76,53 @@ test("catalog exposes every supported provider and host", (t) => {
   assert.equal(result.type, "connection_status");
   assert.deepEqual(
     result.providers.map((provider) => provider.id),
-    ["convex", "stripe", "github", "linear", "resend", "posthog", "netlify", "lemonsqueezy"],
+    ["convex", "stripe", "github", "linear", "resend", "posthog", "netlify", "polar", "lemonsqueezy"],
   );
   assert.deepEqual(result.supportedHosts, ["claude", "codex", "cursor", "hermes", "openclaw"]);
+  assert.equal(result.providers.find((provider) => provider.id === "polar").agentToolConfiguration, null);
+  assert.equal(result.providers.find((provider) => provider.id === "lemonsqueezy").agentToolConfiguration, null);
+});
+
+test("project-only providers never invent an agent-tool authorization phase", (t) => {
+  const { service, projectRoot } = fixture(t);
+  const started = service.begin("polar", "codex");
+
+  assert.equal(started.type, "input_required");
+  assert.equal(started.action.phase, "project_provisioning");
+  assert.equal(started.inputRequired.kind, "project_provisioning");
+  assert.doesNotMatch(JSON.stringify(started), /Polar MCP|remote_oauth|read-only provider call/);
+
+  const missing = service.resume(started.action.actionId);
+  assert.equal(missing.type, "input_required");
+  assert.equal(missing.action.state, "failed_retryable");
+
+  write(projectRoot, "convex/auth.ts", 'import "@polar-sh/better-auth";\nconst handler = webhooks({});');
+  write(projectRoot, "src/lib/auth-client.ts", "const client = polarClient();");
+  const ready = service.resume(started.action.actionId);
+  assert.equal(ready.type, "connection_ready");
+  assert.equal(ready.verification.agentTool.required, false);
+  assert.equal(ready.verification.agentTool.basis, "not_required");
+});
+
+test("Lemon Squeezy begins with project provisioning and verifies its real seams", (t) => {
+  const { service, projectRoot } = fixture(t);
+  const started = service.begin("lemonsqueezy", "codex");
+
+  assert.equal(started.type, "input_required");
+  assert.equal(started.action.phase, "project_provisioning");
+  assert.equal(started.inputRequired.kind, "project_provisioning");
+  assert.doesNotMatch(JSON.stringify(started), /Lemon Squeezy MCP|remote_oauth|read-only provider call/);
+
+  const missing = service.resume(started.action.actionId);
+  assert.equal(missing.type, "input_required");
+  assert.equal(missing.action.state, "failed_retryable");
+
+  write(projectRoot, "convex/billing.ts", 'import "@lemonsqueezy/lemonsqueezy.js";');
+  write(projectRoot, "convex/http.ts", 'const route = "/lemonsqueezy/webhook";');
+  const ready = service.resume(started.action.actionId);
+  assert.equal(ready.type, "connection_ready");
+  assert.equal(ready.verification.agentTool.required, false);
+  assert.equal(ready.verification.agentTool.basis, "not_required");
 });
 
 test("begin checks first and reports a fully configured provider ready with no pause", (t) => {
@@ -315,6 +359,62 @@ test("catalog placeholders fail closed when a command uses an undeclared token",
   );
 });
 
+test("a project-only provider skips fictional MCP authorization", (t) => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "agent-connections-project-only-"));
+  t.onTestFinished(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  const customCatalog = join(temporaryRoot, "connections");
+  const projectRoot = join(temporaryRoot, "project");
+  const stateDirectory = join(temporaryRoot, "state");
+  mkdirSync(customCatalog, { recursive: true });
+  mkdirSync(projectRoot, { recursive: true });
+
+  const providers = JSON.parse(readFileSync(join(catalogDirectory, "providers.json"), "utf8"));
+  providers.providers.fixturepay = structuredClone(providers.providers.stripe);
+  providers.providers.fixturepay.displayName = "Fixture Pay";
+  providers.providers.fixturepay.defaultForCapability = false;
+  delete providers.providers.fixturepay.agentTool;
+  providers.providers.fixturepay.billing = {
+    ownedEnvPrefixes: ["FIXTURE_PAY_"],
+    secretEnv: "FIXTURE_PAY_SECRET",
+    webhookEnv: "FIXTURE_PAY_WEBHOOK",
+    requiredEnv: ["SITE_URL"],
+    mappingEnvPrefix: "FIXTURE_PAY_PLAN_",
+    productionChecks: [
+      {
+        type: "equals",
+        env: "FIXTURE_PAY_MODE",
+        value: "live",
+        message: "Fixture Pay requires live mode.",
+      },
+    ],
+  };
+  providers.providers.fixturepay.projectProvisioning.verification.probes = [
+    {
+      id: "fixture-seam",
+      label: "Fixture billing seam exists",
+      type: "file_contains",
+      file: "convex/billing.ts",
+      text: "fixturepay",
+      required: true,
+    },
+  ];
+  writeFileSync(join(customCatalog, "providers.json"), JSON.stringify(providers), "utf8");
+  writeFileSync(join(customCatalog, "hosts.json"), readFileSync(join(catalogDirectory, "hosts.json")), "utf8");
+
+  const service = createConnectionService({ projectRoot, catalogDirectory: customCatalog, stateDirectory });
+  const started = service.begin("fixturepay", "codex");
+  assert.equal(started.type, "input_required");
+  assert.equal(started.action.phase, "project_provisioning");
+  assert.equal(started.inputRequired.kind, "project_provisioning");
+  assert.doesNotMatch(JSON.stringify(started), /read-only provider call|remote_oauth/);
+
+  write(projectRoot, "convex/billing.ts", 'const adapter = "fixturepay";');
+  const ready = service.resume(started.action.actionId);
+  assert.equal(ready.type, "connection_ready");
+  assert.equal(ready.verification.agentTool.required, false);
+  assert.equal(ready.verification.agentTool.basis, "not_required");
+});
+
 test("active actions expire and a new begin creates a fresh receipt", (t) => {
   const { service, advance } = fixture(t);
   const first = service.begin("netlify", "codex");
@@ -412,6 +512,6 @@ test("CLI status emits machine-readable JSON in an isolated state directory", (t
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.equal(output.type, "connection_status");
-  assert.equal(output.providers.length, 8);
+  assert.equal(output.providers.length, 9);
   assert.deepEqual(readdirSync(temporaryRoot), []);
 });

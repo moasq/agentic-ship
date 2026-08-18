@@ -169,8 +169,10 @@ matrix through `visual-qa` before completion.
 ## Agentic workflow
 
 - Start product-sized work with a brief conforming to
-  `.agents/contracts/product-brief.schema.json`. Give every feature one owner, explicit
-  scope, interfaces, dependencies, and acceptance criteria through the feature contract.
+  `.agents/contracts/product-brief.schema.json`. The brief selects one provider for
+  billing, email, analytics, deployment, and tracking. Give every feature one owner,
+  explicit scope, interfaces, dependencies, and acceptance criteria through the
+  feature contract.
 - Use `pnpm agent:work` for durable coordination. A host or chat may disappear; the
   work queue must still identify what is ready, in progress, waiting for a person,
   blocked, or done. Completion always carries gate evidence.
@@ -217,6 +219,8 @@ matrix through `visual-qa` before completion.
 - Keep three connection types separate: AI-host MCP authorization, application project
   provisioning, and the product customer's runtime redirect. A Stripe customer returns
   from hosted Checkout, but entitlement still comes only from the webhook-backed query.
+- A provider with no official CLI or host MCP integration starts at project provisioning.
+  Never invent an agent-tool authorization phase or attest to an unverified connection.
 - Native adapters are generated artifacts. Edit `.agents/agents/` or `.mcp.json`, then
   regenerate; never patch `agents/`, `.codex/agents/`, `.cursor/agents/`, or
   `.cursor/mcp.json` directly.
@@ -471,10 +475,32 @@ needs, against these seams, when the user asks for them:
   gets the narrow compile-checked compatibility bridge. Only `upstream-sync` moves the
   pin after the audit, type, unit, build, and browser gates pass.
 
-## Billing rules (Stripe, wired)
+## Billing rules (replaceable provider, Stripe default)
 
-Same shape: engine wired, **no billing UI shipped** — the seams and the rules are the
-product. Full flow and rule list: `.agents/skills/convex-structure/references/stripe-billing.md`.
+The engine ships no billing UI. A product brief selects one billing provider, and the
+deployment repeats that choice in `BILLING_PROVIDER`. Stripe remains the default when
+the variable is absent, so existing products keep their current behavior. Each adapter
+owns its environment names, setup checks, production checks, and reference document.
+
+Every billing adapter must preserve these invariants:
+
+- The browser sends a plan key, never an amount or provider price ID.
+- Checkout and portal sessions come from the selected provider's hosted surfaces.
+- Authenticated context supplies user or organization references. The browser never
+  supplies an identity that the backend trusts.
+- A verified webhook or verified customer state is the only entitlement writer. A
+  checkout return URL never grants access.
+- Webhook handling is idempotent, rejects invalid signatures, and ignores stale events.
+- Only one billing provider may have an active secret on a deployment.
+- Not-yet-connected remains a WARN. Production mode fails closed on partial credentials,
+  test environments, missing mappings, or an unsupported provider selection.
+
+The selected provider reference under
+`.agents/skills/convex-structure/references/` defines its checkout, portal, webhook,
+lifecycle, and revocation details. Stripe uses `stripe-billing.md`; Polar uses
+`polar-billing.md`; Lemon Squeezy uses `lemon-squeezy-billing.md`.
+
+### Stripe adapter
 
 - The browser never names an amount or a price ID. It sends a **plan key** from
   `PLANS` in `convex/billing.ts`; price IDs live in Convex env (`STRIPE_PRICE_*`).

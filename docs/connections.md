@@ -7,12 +7,14 @@ behalf. Credentials never enter chat, agent state, or the repository. Every conn
 leaves a receipt (a small local record of what is pending or done) and a documented
 way to revoke it.
 
-## The seven providers
+## The service providers
 
 | Provider | Role | Authorization |
 | --- | --- | --- |
 | Convex | Backend and deployment env | `npx convex login` browser flow |
-| Stripe | Billing | CLI pairing code via `pnpm provider:login stripe` |
+| Stripe | Billing (default) | CLI pairing code via `pnpm provider:login stripe` |
+| Polar | Billing (alternative) | Access token via `pnpm secret:set POLAR_ACCESS_TOKEN` |
+| Lemon Squeezy | Billing (alternative) | API key via `pnpm secret:set LEMON_SQUEEZY_API_KEY` |
 | GitHub | Repository, PRs, CI | `gh` device flow via `pnpm provider:login github` |
 | Linear | Development tracking | Hosted MCP OAuth in the AI host |
 | Resend | Email | Hosted MCP OAuth, keys via hidden input |
@@ -23,6 +25,11 @@ The catalog behind this table is
 [.agents/connections/providers.json](../.agents/connections/providers.json): probes,
 instructions, automation steps, and revocation paths per provider, validated by
 schema, exercised by tests.
+
+Each entry also declares its capability and whether it is the default. Product briefs
+select one provider for billing, email, analytics, deployment, and tracking. A provider
+without an official command-line interface (CLI) or host Model Context Protocol (MCP)
+integration skips agent-tool authorization and starts at project provisioning.
 
 Hosts bring their own integrations too. Claude Code, Codex, and Cursor all support
 installable plugins and connectors for these same vendors, and the kit defers to them.

@@ -108,10 +108,10 @@ one command:
 pnpm preflight --prod
 ```
 
-It fails while production still holds test Stripe keys. It fails while email is still
-in test mode without verification, while the seed backdoor flag exists, and while
-`src/lib/site.ts` still carries placeholders. Deploy is the terminal path on Netlify:
-`netlify init`, `netlify env:set` for the deploy key, then `netlify deploy --prod`.
+It fails when the selected billing provider uses its test environment. It also fails
+when email remains in test mode without verification, when the seed backdoor flag
+exists, or when `src/lib/site.ts` still carries placeholders. Deploy through Netlify
+with `netlify init`, `netlify env:set` for the deploy key, then `netlify deploy --prod`.
 The committed `netlify.toml` is the authoritative deployment description. If
 production misbehaves, roll back to the last green deploy first and diagnose locally
 second.
