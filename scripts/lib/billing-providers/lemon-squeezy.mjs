@@ -37,10 +37,13 @@ export function createLemonSqueezyCheckoutInput({ planKey, plans, storeId, authe
   };
 }
 
-export function resolveLemonSqueezyPortalUrl({ authenticatedSubject, providerUrl }) {
-  if (!authenticatedSubject) throw new Error("Lemon Squeezy portal access requires an authenticated session");
+export function resolveLemonSqueezyPortalUrl({ authenticatedSubject, ownerSubject, providerUrl, allowedPortalHosts = [] }) {
+  if (!authenticatedSubject || authenticatedSubject !== ownerSubject) {
+    throw new Error("Lemon Squeezy portal access requires the authenticated owner");
+  }
   const url = new URL(providerUrl);
-  if (url.protocol !== "https:" || !(url.hostname === "lemonsqueezy.com" || url.hostname.endsWith(".lemonsqueezy.com"))) {
+  const knownProviderHost = url.hostname === "lemonsqueezy.com" || url.hostname.endsWith(".lemonsqueezy.com");
+  if (url.protocol !== "https:" || (!knownProviderHost && !allowedPortalHosts.includes(url.hostname))) {
     throw new Error("Lemon Squeezy portal URL must be provider-hosted");
   }
   return url.toString();
@@ -50,6 +53,9 @@ export function createLemonSqueezyEntitlementState() {
   return {
     entitled: false,
     status: "none",
+    ownerReference: null,
+    providerCustomerId: null,
+    providerSubscriptionId: null,
     lastEventAt: null,
     processedDeliveryIds: [],
   };
@@ -57,7 +63,14 @@ export function createLemonSqueezyEntitlementState() {
 
 export function toLemonSqueezyEvent(verifiedRequest) {
   if (verifiedRequest?.verified !== true) return { verified: false };
-  const attributes = verifiedRequest.payload?.data?.attributes ?? {};
+  const data = verifiedRequest.payload?.data ?? {};
+  const attributes = data.attributes ?? {};
+  const customData = verifiedRequest.payload?.meta?.custom_data ?? {};
+  const ownerReference = customData.organization_id
+    ? { kind: "organization", id: String(customData.organization_id) }
+    : customData.user_id
+      ? { kind: "user", id: String(customData.user_id) }
+      : null;
   return {
     verified: true,
     deliveryId: verifiedRequest.deliveryId,
@@ -65,12 +78,26 @@ export function toLemonSqueezyEvent(verifiedRequest) {
     occurredAt: attributes.updated_at ?? attributes.created_at,
     subscriptionStatus: attributes.status,
     endsAt: attributes.ends_at,
+    ownerReference,
+    providerCustomerId: attributes.customer_id ? String(attributes.customer_id) : null,
+    providerSubscriptionId:
+      data.type === "subscriptions" && data.id
+        ? String(data.id)
+        : attributes.subscription_id
+          ? String(attributes.subscription_id)
+          : null,
   };
 }
 
 function withDelivery(state, event, changes = {}) {
+  const routing = {
+    ...(event.ownerReference ? { ownerReference: event.ownerReference } : {}),
+    ...(event.providerCustomerId ? { providerCustomerId: event.providerCustomerId } : {}),
+    ...(event.providerSubscriptionId ? { providerSubscriptionId: event.providerSubscriptionId } : {}),
+  };
   return {
     ...state,
+    ...routing,
     ...changes,
     lastEventAt: event.occurredAt,
     processedDeliveryIds: [...state.processedDeliveryIds, event.deliveryId],
@@ -82,17 +109,16 @@ function applySubscriptionStatus(state, event) {
     return withDelivery(state, event, { entitled: true, status: "active" });
   }
   if (event.subscriptionStatus === "cancelled") {
-    const paidPeriodRemains = Date.parse(event.endsAt ?? "") > Date.parse(event.occurredAt);
-    return withDelivery(state, event, {
-      entitled: paidPeriodRemains,
-      status: paidPeriodRemains ? "canceling" : "expired",
-    });
+    return withDelivery(state, event, { entitled: true, status: "canceling" });
   }
-  if (["paused", "expired"].includes(event.subscriptionStatus)) {
-    return withDelivery(state, event, { entitled: false, status: event.subscriptionStatus });
+  if (event.subscriptionStatus === "paused") {
+    return withDelivery(state, event, { entitled: true, status: "paused" });
+  }
+  if (event.subscriptionStatus === "expired") {
+    return withDelivery(state, event, { entitled: false, status: "expired" });
   }
   if (["past_due", "unpaid"].includes(event.subscriptionStatus)) {
-    return withDelivery(state, event, { status: state.entitled ? "past_due" : state.status });
+    return withDelivery(state, event, { entitled: true, status: "past_due" });
   }
   return withDelivery(state, event, state.status === "none" ? { status: "pending" } : {});
 }
@@ -103,7 +129,7 @@ function transition(state, event) {
     case "subscription_updated":
       return applySubscriptionStatus(state, event);
     case "subscription_paused":
-      return withDelivery(state, event, { entitled: false, status: "paused" });
+      return withDelivery(state, event, { entitled: true, status: "paused" });
     case "subscription_unpaused":
     case "subscription_resumed":
     case "subscription_payment_recovered":
@@ -114,7 +140,7 @@ function transition(state, event) {
     case "subscription_expired":
       return withDelivery(state, event, { entitled: false, status: "expired" });
     case "subscription_payment_failed":
-      return withDelivery(state, event, { status: state.entitled ? "past_due" : state.status });
+      return withDelivery(state, event, { entitled: true, status: "past_due" });
     case "subscription_payment_refunded":
     case "order_refunded":
       return withDelivery(state, event);

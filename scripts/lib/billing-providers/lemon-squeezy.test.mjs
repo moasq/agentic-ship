@@ -21,25 +21,56 @@ function apply(state, nextEvent) {
 describe("Lemon Squeezy webhook verification", () => {
   const secret = "fixture_webhook_secret";
   const rawBody = JSON.stringify({
-    meta: { event_name: "subscription_created" },
+    meta: { event_name: "subscription_created", custom_data: { organization_id: "org_123" } },
     data: {
+      type: "subscriptions",
       id: "sub_123",
-      attributes: { status: "active", created_at: "2026-01-01T00:00:00.000Z" },
+      attributes: {
+        status: "active",
+        customer_id: 456,
+        created_at: "2026-01-01T00:00:00.000Z",
+      },
     },
   });
 
   test("verifies X-Signature over the exact raw body before parsing", () => {
     const signature = createHmac("sha256", secret).update(rawBody).digest("hex");
     const verified = verifyLemonSqueezyWebhook({ rawBody, signature, secret });
+    const mapped = toLemonSqueezyEvent(verified);
 
     expect(verified.verified).toBe(true);
     expect(verified.payload.meta.event_name).toBe("subscription_created");
-    expect(toLemonSqueezyEvent(verified)).toMatchObject({
+    expect(mapped).toMatchObject({
       verified: true,
       type: "subscription_created",
       occurredAt: "2026-01-01T00:00:00.000Z",
       subscriptionStatus: "active",
+      ownerReference: { kind: "organization", id: "org_123" },
+      providerCustomerId: "456",
+      providerSubscriptionId: "sub_123",
     });
+    expect(applyLemonSqueezyEntitlementEvent(null, mapped).state).toMatchObject({
+      ownerReference: { kind: "organization", id: "org_123" },
+      providerCustomerId: "456",
+      providerSubscriptionId: "sub_123",
+      entitled: true,
+    });
+  });
+
+  test("maps payment invoice events back to their provider subscription", () => {
+    const invoiceBody = JSON.stringify({
+      meta: { event_name: "subscription_payment_failed" },
+      data: {
+        type: "subscription-invoices",
+        id: "invoice_123",
+        attributes: { subscription_id: 789, created_at: "2026-02-01T00:00:00.000Z" },
+      },
+    });
+    const signature = createHmac("sha256", secret).update(invoiceBody).digest("hex");
+    const mapped = toLemonSqueezyEvent(verifyLemonSqueezyWebhook({ rawBody: invoiceBody, signature, secret }));
+
+    expect(mapped.providerSubscriptionId).toBe("789");
+    expect(mapped.type).toBe("subscription_payment_failed");
   });
 
   test("rejects changed bodies and malformed signatures without parsing or mutating", () => {
@@ -81,19 +112,29 @@ describe("Lemon Squeezy customer flows", () => {
     ).toThrow(/server-allowed plan key/);
   });
 
-  test("portal access requires a session and a provider-hosted URL", () => {
+  test("portal access requires the owner and supports an allowlisted custom store domain", () => {
     expect(
       resolveLemonSqueezyPortalUrl({
         authenticatedSubject: "user_123",
+        ownerSubject: "user_123",
         providerUrl: "https://app.lemonsqueezy.com/my-orders/example?expires=1&signature=fixture",
       }),
     ).toMatch(/^https:\/\/app\.lemonsqueezy\.com/);
-    expect(() => resolveLemonSqueezyPortalUrl({ providerUrl: "https://app.lemonsqueezy.com/my-orders/example" })).toThrow(
-      /authenticated session/,
-    );
+    expect(
+      resolveLemonSqueezyPortalUrl({
+        authenticatedSubject: "user_123",
+        ownerSubject: "user_123",
+        providerUrl: "https://billing.example.com/billing?expires=1&signature=fixture",
+        allowedPortalHosts: ["billing.example.com"],
+      }),
+    ).toMatch(/^https:\/\/billing\.example\.com/);
     expect(() =>
-      resolveLemonSqueezyPortalUrl({ authenticatedSubject: "user_123", providerUrl: "https://example.com/portal" }),
-    ).toThrow(/provider-hosted/);
+      resolveLemonSqueezyPortalUrl({
+        authenticatedSubject: "user_123",
+        ownerSubject: "user_456",
+        providerUrl: "https://app.lemonsqueezy.com/my-orders/example",
+      }),
+    ).toThrow(/authenticated owner/);
   });
 });
 
@@ -108,10 +149,10 @@ describe("Lemon Squeezy entitlement lifecycle", () => {
       state,
       event("delivery_2", "subscription_updated", "2026-01-02T00:00:00.000Z", { subscriptionStatus: "paused" }),
     );
-    expect(state).toMatchObject({ entitled: false, status: "paused" });
+    expect(state).toMatchObject({ entitled: true, status: "paused" });
   });
 
-  test("a cancelled update keeps access only through the verified paid period", () => {
+  test("a cancelled update keeps access until a verified expiration arrives", () => {
     let state = apply(
       createLemonSqueezyEntitlementState(),
       event("delivery_1", "subscription_created", "2026-01-01T00:00:00.000Z", { subscriptionStatus: "active" }),
@@ -124,13 +165,7 @@ describe("Lemon Squeezy entitlement lifecycle", () => {
       }),
     );
     expect(state).toMatchObject({ entitled: true, status: "canceling" });
-    state = apply(
-      state,
-      event("delivery_3", "subscription_updated", "2026-02-02T00:00:00.000Z", {
-        subscriptionStatus: "cancelled",
-        endsAt: "2026-02-01T00:00:00.000Z",
-      }),
-    );
+    state = apply(state, event("delivery_3", "subscription_expired", "2026-02-02T00:00:00.000Z"));
     expect(state).toMatchObject({ entitled: false, status: "expired" });
   });
 
@@ -140,7 +175,7 @@ describe("Lemon Squeezy entitlement lifecycle", () => {
       event("delivery_1", "subscription_created", "2026-01-01T00:00:00.000Z", { subscriptionStatus: "active" }),
     );
     state = apply(state, event("delivery_2", "subscription_paused", "2026-01-02T00:00:00.000Z"));
-    expect(state).toMatchObject({ entitled: false, status: "paused" });
+    expect(state).toMatchObject({ entitled: true, status: "paused" });
     state = apply(state, event("delivery_3", "subscription_unpaused", "2026-01-03T00:00:00.000Z"));
     expect(state).toMatchObject({ entitled: true, status: "active" });
     state = apply(state, event("delivery_4", "subscription_cancelled", "2026-01-04T00:00:00.000Z"));

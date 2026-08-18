@@ -12,7 +12,7 @@ Use Lemon Squeezy's hosted checkout URL. The return URL confirms navigation only
 
 ## Open the customer portal
 
-Store the signed `urls.customer_portal` value from a verified subscription webhook. Return it only after checking the current authenticated owner. The link is provider-hosted and short-lived, so fetch or refresh it when the customer opens billing settings instead of treating it as a permanent application URL.
+Associate the provider subscription ID and signed `urls.customer_portal` value with the authenticated owner after a verified subscription webhook. When that owner opens billing settings, retrieve a fresh portal URL through the API and return it only after the ownership check. Signed links expire after 24 hours. Accept the store's configured custom domain as well as Lemon Squeezy subdomains.
 
 ## Verify the exact webhook body
 
@@ -30,12 +30,12 @@ Use these transitions:
 | --- | --- |
 | `subscription_created` | Apply the verified subscription status; active and on-trial states grant access |
 | `subscription_updated` | Reconcile status, plan, renewal date, cancellation date, and portal URL |
-| `subscription_paused` | Suspend paid access |
+| `subscription_paused` | Keep access; payment collection is paused but the subscription remains active |
 | `subscription_unpaused` | Restore active access |
 | `subscription_cancelled` | Keep access until `ends_at` |
 | `subscription_resumed` | Clear scheduled cancellation and keep access |
 | `subscription_expired` | Revoke access |
-| `subscription_payment_failed` | Record past-due state and keep the current grace-period decision |
+| `subscription_payment_failed` | Record past-due state and keep access during payment recovery and dunning |
 | `subscription_payment_recovered` or `subscription_payment_success` | Restore or confirm active access |
 | `subscription_payment_refunded` or `order_refunded` | Record the refund; wait for verified subscription state before revoking access |
 
@@ -60,8 +60,8 @@ Keep test and live resources isolated in their matching application deployments.
 
 ## Verify and revoke the integration
 
-In test mode, simulate creation, update, pause, unpause, cancellation, resume, expiration, payment failure, recovery, success, and refund events. Verify that an invalid signature, duplicate delivery, and stale delivery cannot change entitlement. Exercise checkout custom data and the customer portal separately.
+In test mode, the dashboard can immediately simulate creation, update, pause, unpause, cancellation, resume, expiration, and order-refund events. Subscription-payment simulations become available only after the test subscription has completed a renewal; a daily test product is the shortest official path. Verify failure, recovery, success, and subscription refunds when that renewal data exists. An invalid signature, duplicate delivery, or stale delivery must not change entitlement. Exercise inbound custom-data routing and the customer portal ownership check separately.
 
 To revoke access, delete the API key under Lemon Squeezy Settings → API and delete the webhook under Settings → Webhooks. Remove the Lemon Squeezy Convex environment values before selecting another billing provider.
 
-Official references: [webhook signing](https://docs.lemonsqueezy.com/help/webhooks/signing-requests), [event types](https://docs.lemonsqueezy.com/help/webhooks/event-types), [custom checkout data](https://docs.lemonsqueezy.com/help/checkout/passing-custom-data), and [testing and going live](https://docs.lemonsqueezy.com/guides/developer-guide/testing-going-live).
+Official references: [webhook signing](https://docs.lemonsqueezy.com/help/webhooks/signing-requests), [event types](https://docs.lemonsqueezy.com/help/webhooks/event-types), [subscription access](https://docs.lemonsqueezy.com/help/products/subscriptions), [custom checkout data](https://docs.lemonsqueezy.com/help/checkout/passing-custom-data), [customer portal](https://docs.lemonsqueezy.com/guides/developer-guide/customer-portal), [simulated webhooks](https://docs.lemonsqueezy.com/help/webhooks/simulate-webhook-events), and [testing and going live](https://docs.lemonsqueezy.com/guides/developer-guide/testing-going-live).
