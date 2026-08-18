@@ -4,6 +4,7 @@
     "convex": {
       "displayName": "Convex",
       "capability": "backend",
+      "defaultForCapability": true,
       "docsUrl": "https://docs.convex.dev/cli",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -145,9 +146,25 @@
     "stripe": {
       "displayName": "Stripe",
       "capability": "billing",
+      "defaultForCapability": true,
       "docsUrl": "https://docs.stripe.com/stripe-cli",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
+      "billing": {
+        "ownedEnvPrefixes": ["STRIPE_"],
+        "secretEnv": "STRIPE_SECRET_KEY",
+        "webhookEnv": "STRIPE_WEBHOOK_SECRET",
+        "requiredEnv": ["SITE_URL"],
+        "mappingEnvPrefix": "STRIPE_PRICE_",
+        "productionChecks": [
+          {
+            "type": "matches",
+            "env": "STRIPE_SECRET_KEY",
+            "pattern": "^(sk|rk)_live_",
+            "message": "Stripe requires a live secret key in production."
+          }
+        ]
+      },
       "agentTool": {
         "authFlow": "cli_browser_login",
         "mcpServer": "stripe",
@@ -235,6 +252,7 @@
     "github": {
       "displayName": "GitHub",
       "capability": "repository",
+      "defaultForCapability": true,
       "docsUrl": "https://cli.github.com/manual/",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -298,6 +316,7 @@
     "linear": {
       "displayName": "Linear",
       "capability": "tracking",
+      "defaultForCapability": true,
       "docsUrl": "https://linear.app/docs/mcp",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -353,6 +372,7 @@
     "resend": {
       "displayName": "Resend",
       "capability": "email",
+      "defaultForCapability": true,
       "docsUrl": "https://resend.com/docs",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -438,6 +458,7 @@
     "posthog": {
       "displayName": "PostHog",
       "capability": "analytics",
+      "defaultForCapability": true,
       "docsUrl": "https://posthog.com/docs",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -524,6 +545,7 @@
     "netlify": {
       "displayName": "Netlify",
       "capability": "deployment",
+      "defaultForCapability": true,
       "docsUrl": "https://docs.netlify.com/cli/get-started/",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -614,34 +636,58 @@
     "polar": {
       "displayName": "Polar",
       "capability": "billing",
+      "defaultForCapability": false,
       "docsUrl": "https://polar.sh/docs",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
+      "billing": {
+        "ownedEnvPrefixes": ["POLAR_"],
+        "secretEnv": "POLAR_ACCESS_TOKEN",
+        "webhookEnv": "POLAR_WEBHOOK_SECRET",
+        "requiredEnv": ["SITE_URL", "POLAR_SERVER"],
+        "mappingEnvPrefix": "POLAR_PRODUCT_",
+        "productionChecks": [
+          {
+            "type": "equals",
+            "env": "POLAR_SERVER",
+            "value": "production",
+            "message": "Polar requires POLAR_SERVER=production in production."
+          }
+        ]
+      },
       "projectProvisioning": {
         "setupUrl": "https://polar.sh/dashboard",
         "instructions": [
           "Choose the Polar organization and environment first; production and sandbox tokens, products, and webhooks are separate.",
-          "Create an Organization Access Token under Settings → Developers → Organization Access Tokens and register the downstream product webhook described in the Polar billing reference.",
-          "Set BILLING_PROVIDER=polar, POLAR_ACCESS_TOKEN, POLAR_WEBHOOK_SECRET, POLAR_SERVER, and POLAR_PRODUCT_* in the Convex deployment environment via `pnpm secret:set`.",
+          "Create an Organization Access Token under Settings → Developers → Organization Access Tokens. Register `/api/auth/polar/webhooks` as the downstream product webhook.",
+          "Set BILLING_PROVIDER=polar and POLAR_SERVER with `npx convex env set`. Set POLAR_ACCESS_TOKEN and POLAR_WEBHOOK_SECRET through `pnpm secret:set`, then add POLAR_PRODUCT_* mappings.",
           "Use the official Polar Better Auth adapter and derive entitlement only from verified webhook events or customer state."
         ],
         "verification": {
           "policy": "probe_and_attestation",
           "probes": [
             {
-              "id": "polar-billing-seam",
-              "label": "Polar billing seam exists",
+              "id": "polar-server-adapter",
+              "label": "Polar Better Auth server adapter exists",
               "type": "file_contains",
-              "file": "convex/billing.ts",
-              "text": "polar",
+              "file": "convex/auth.ts",
+              "text": "@polar-sh/better-auth",
               "required": true
             },
             {
-              "id": "polar-webhook-route",
-              "label": "Polar webhook route is registered",
+              "id": "polar-client-adapter",
+              "label": "Polar Better Auth client adapter exists",
               "type": "file_contains",
-              "file": "convex/http.ts",
-              "text": "/polar/webhook",
+              "file": "src/lib/auth-client.ts",
+              "text": "polarClient",
+              "required": true
+            },
+            {
+              "id": "polar-webhook-handler",
+              "label": "Polar verified webhook handler exists",
+              "type": "file_contains",
+              "file": "convex/auth.ts",
+              "text": "webhooks(",
               "required": true
             }
           ]
@@ -661,7 +707,7 @@
           "text": "Revoke the Organization Access Token in Polar Dashboard under Settings → Developers → Organization Access Tokens."
         },
         {
-          "text": "Delete the /polar/webhook endpoint in Polar Webhooks settings."
+          "text": "Delete the /api/auth/polar/webhooks endpoint in Polar webhook settings."
         }
       ]
     }

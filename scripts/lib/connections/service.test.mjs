@@ -95,8 +95,8 @@ test("project-only providers never invent an agent-tool authorization phase", (t
   assert.equal(missing.type, "input_required");
   assert.equal(missing.action.state, "failed_retryable");
 
-  write(projectRoot, "convex/billing.ts", 'const provider = "polar";');
-  write(projectRoot, "convex/http.ts", 'const route = "/polar/webhook";');
+  write(projectRoot, "convex/auth.ts", 'import "@polar-sh/better-auth";\nconst handler = webhooks({});');
+  write(projectRoot, "src/lib/auth-client.ts", "const client = polarClient();");
   const ready = service.resume(started.action.actionId);
   assert.equal(ready.type, "connection_ready");
   assert.equal(ready.verification.agentTool.required, false);
@@ -335,6 +335,62 @@ test("catalog placeholders fail closed when a command uses an undeclared token",
     () => createConnectionService({ projectRoot: temporaryRoot, catalogDirectory: badCatalog, stateDirectory: join(temporaryRoot, "state") }),
     /undeclared placeholder \{oops\}/,
   );
+});
+
+test("a project-only provider skips fictional MCP authorization", (t) => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "agent-connections-project-only-"));
+  t.onTestFinished(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  const customCatalog = join(temporaryRoot, "connections");
+  const projectRoot = join(temporaryRoot, "project");
+  const stateDirectory = join(temporaryRoot, "state");
+  mkdirSync(customCatalog, { recursive: true });
+  mkdirSync(projectRoot, { recursive: true });
+
+  const providers = JSON.parse(readFileSync(join(catalogDirectory, "providers.json"), "utf8"));
+  providers.providers.fixturepay = structuredClone(providers.providers.stripe);
+  providers.providers.fixturepay.displayName = "Fixture Pay";
+  providers.providers.fixturepay.defaultForCapability = false;
+  delete providers.providers.fixturepay.agentTool;
+  providers.providers.fixturepay.billing = {
+    ownedEnvPrefixes: ["FIXTURE_PAY_"],
+    secretEnv: "FIXTURE_PAY_SECRET",
+    webhookEnv: "FIXTURE_PAY_WEBHOOK",
+    requiredEnv: ["SITE_URL"],
+    mappingEnvPrefix: "FIXTURE_PAY_PLAN_",
+    productionChecks: [
+      {
+        type: "equals",
+        env: "FIXTURE_PAY_MODE",
+        value: "live",
+        message: "Fixture Pay requires live mode.",
+      },
+    ],
+  };
+  providers.providers.fixturepay.projectProvisioning.verification.probes = [
+    {
+      id: "fixture-seam",
+      label: "Fixture billing seam exists",
+      type: "file_contains",
+      file: "convex/billing.ts",
+      text: "fixturepay",
+      required: true,
+    },
+  ];
+  writeFileSync(join(customCatalog, "providers.json"), JSON.stringify(providers), "utf8");
+  writeFileSync(join(customCatalog, "hosts.json"), readFileSync(join(catalogDirectory, "hosts.json")), "utf8");
+
+  const service = createConnectionService({ projectRoot, catalogDirectory: customCatalog, stateDirectory });
+  const started = service.begin("fixturepay", "codex");
+  assert.equal(started.type, "input_required");
+  assert.equal(started.action.phase, "project_provisioning");
+  assert.equal(started.inputRequired.kind, "project_provisioning");
+  assert.doesNotMatch(JSON.stringify(started), /read-only provider call|remote_oauth/);
+
+  write(projectRoot, "convex/billing.ts", 'const adapter = "fixturepay";');
+  const ready = service.resume(started.action.actionId);
+  assert.equal(ready.type, "connection_ready");
+  assert.equal(ready.verification.agentTool.required, false);
+  assert.equal(ready.verification.agentTool.basis, "not_required");
 });
 
 test("active actions expire and a new begin creates a fresh receipt", (t) => {

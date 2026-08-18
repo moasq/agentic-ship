@@ -7,6 +7,7 @@ const PROBE_TYPES = new Set(["any_file_exists", "env_file_key", "file_contains",
 const AUTH_FLOWS = new Set(["cli_browser_login", "remote_oauth"]);
 const VERIFICATION_POLICIES = new Set(["machine", "probe_and_attestation"]);
 const CAPABILITIES = new Set(["analytics", "backend", "billing", "deployment", "email", "repository", "tracking"]);
+const PRODUCTION_CHECK_TYPES = new Set(["equals", "matches"]);
 
 function readJson(path) {
   try {
@@ -100,6 +101,44 @@ function validateAutomation(automation, owner) {
   validateDecision(automation.decision, `${owner}.automation`);
 }
 
+function validateBillingAdapter(adapter, owner) {
+  assert(adapter && typeof adapter === "object", `${owner}.billing must be an object`);
+  assert(
+    Array.isArray(adapter.ownedEnvPrefixes) &&
+      adapter.ownedEnvPrefixes.length > 0 &&
+      adapter.ownedEnvPrefixes.every((prefix) => typeof prefix === "string" && /^[A-Z][A-Z0-9_]*_$/.test(prefix)),
+    `${owner}.billing needs uppercase ownedEnvPrefixes`,
+  );
+  for (const key of ["secretEnv", "webhookEnv"]) {
+    assert(typeof adapter[key] === "string" && /^[A-Z][A-Z0-9_]*$/.test(adapter[key]), `${owner}.billing.${key} must be an env name`);
+  }
+  assert(
+    Array.isArray(adapter.requiredEnv) && adapter.requiredEnv.every((name) => typeof name === "string" && /^[A-Z][A-Z0-9_]*$/.test(name)),
+    `${owner}.billing.requiredEnv must contain env names`,
+  );
+  assert(
+    typeof adapter.mappingEnvPrefix === "string" && /^[A-Z][A-Z0-9_]*_$/.test(adapter.mappingEnvPrefix),
+    `${owner}.billing.mappingEnvPrefix must be an uppercase env prefix`,
+  );
+  assert(Array.isArray(adapter.productionChecks) && adapter.productionChecks.length > 0, `${owner}.billing needs productionChecks`);
+  for (const [index, check] of adapter.productionChecks.entries()) {
+    const checkOwner = `${owner}.billing.productionChecks[${index}]`;
+    assert(check && typeof check === "object", `${checkOwner} must be an object`);
+    assert(PRODUCTION_CHECK_TYPES.has(check.type), `${checkOwner} uses unsupported type ${check.type}`);
+    assert(typeof check.env === "string" && /^[A-Z][A-Z0-9_]*$/.test(check.env), `${checkOwner}.env must be an env name`);
+    assert(typeof check.message === "string" && check.message.length > 0, `${checkOwner} needs a message`);
+    if (check.type === "equals") assert(typeof check.value === "string" && check.value.length > 0, `${checkOwner} needs value`);
+    if (check.type === "matches") {
+      assert(typeof check.pattern === "string" && check.pattern.length > 0, `${checkOwner} needs pattern`);
+      try {
+        new RegExp(check.pattern);
+      } catch {
+        assert(false, `${checkOwner} has an invalid pattern`);
+      }
+    }
+  }
+}
+
 export function loadConnectionCatalog({ projectRoot, catalogDirectory } = {}) {
   const root = resolve(projectRoot ?? process.cwd());
   const directory = resolve(catalogDirectory ?? join(root, ".agents", "connections"));
@@ -111,10 +150,16 @@ export function loadConnectionCatalog({ projectRoot, catalogDirectory } = {}) {
   assert(providerDocument.providers && typeof providerDocument.providers === "object", "providers.json needs providers");
   assert(hostDocument.hosts && typeof hostDocument.hosts === "object", "hosts.json needs hosts");
 
+  const defaults = new Map();
   for (const [id, provider] of Object.entries(providerDocument.providers)) {
     assert(IDENTIFIER.test(id), `provider id ${id} must be kebab-case`);
     assert(typeof provider.displayName === "string" && provider.displayName.length > 0, `${id} needs displayName`);
     assert(CAPABILITIES.has(provider.capability), `${id} needs a supported capability`);
+    assert(typeof provider.defaultForCapability === "boolean", `${id} must declare defaultForCapability`);
+    if (provider.defaultForCapability) {
+      assert(!defaults.has(provider.capability), `${id} duplicates the ${provider.capability} default ${defaults.get(provider.capability)}`);
+      defaults.set(provider.capability, id);
+    }
     assert(Number.isInteger(provider.actionTtlMinutes) && provider.actionTtlMinutes > 0, `${id} needs a positive actionTtlMinutes`);
     assert(Number.isInteger(provider.maxVerificationAttempts) && provider.maxVerificationAttempts > 0, `${id} needs positive maxVerificationAttempts`);
     if (provider.agentTool !== undefined) {
@@ -130,6 +175,8 @@ export function loadConnectionCatalog({ projectRoot, catalogDirectory } = {}) {
       validateProbe(provider.agentTool.configurationProbe, `${id}.agentTool`);
       validateAutomation(provider.agentTool.automation, `${id}.agentTool`);
     }
+    if (provider.capability === "billing") validateBillingAdapter(provider.billing, id);
+    else assert(provider.billing === undefined, `${id} declares billing configuration for ${provider.capability}`);
     validateAutomation(provider.projectProvisioning?.automation, `${id}.projectProvisioning`);
     validateSteps(provider.revocation, `${id}.revocation`);
 
@@ -145,6 +192,8 @@ export function loadConnectionCatalog({ projectRoot, catalogDirectory } = {}) {
     for (const probe of verification.probes) validateProbe(probe, `${id}.projectProvisioning`);
   }
 
+  for (const capability of CAPABILITIES) assert(defaults.has(capability), `capability ${capability} needs exactly one default provider`);
+
   for (const [id, host] of Object.entries(hostDocument.hosts)) {
     assert(IDENTIFIER.test(id), `host id ${id} must be kebab-case`);
     assert(typeof host.displayName === "string" && host.displayName.length > 0, `${id} needs displayName`);
@@ -157,6 +206,7 @@ export function loadConnectionCatalog({ projectRoot, catalogDirectory } = {}) {
   return {
     schemaVersion: 1,
     providers: providerDocument.providers,
+    defaults: Object.fromEntries(defaults),
     hosts: hostDocument.hosts,
   };
 }

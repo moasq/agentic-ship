@@ -206,6 +206,11 @@ Never in `.env.local`, never in Next's env. The only Convex values Next sees are
 `NEXT_PUBLIC_CONVEX_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL` — both URLs, both public by
 design.
 
+Before writing billing code, read the reference for the provider selected in the product
+brief. Stripe uses `references/stripe-billing.md`; Polar uses
+`references/polar-billing.md`. A provider reference may add setup details, but it cannot
+weaken the billing invariants declared in `AGENTS.md`.
+
 ## 9. Adding a feature — the fixed sequence
 
 1. Table + indexes in `schema.ts`
