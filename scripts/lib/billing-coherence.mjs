@@ -21,6 +21,7 @@ export const BILLING_ENV = {
 export const POLAR_BILLING_ENV = {
   secret: "POLAR_ACCESS_TOKEN",
   webhook: "POLAR_WEBHOOK_SECRET",
+  server: "POLAR_SERVER",
   productPrefix: "POLAR_PRODUCT_",
   siteUrl: "SITE_URL",
 };
@@ -91,6 +92,14 @@ function inspectPolarCoherence(names, has) {
     };
   }
 
+  if (has(POLAR_BILLING_ENV.secret) && !has(POLAR_BILLING_ENV.server)) {
+    return {
+      status: "FAIL",
+      detail:
+        "POLAR_ACCESS_TOKEN is set but POLAR_SERVER is not configured — set POLAR_SERVER=production (or sandbox for testing).",
+    };
+  }
+
   if (has(POLAR_BILLING_ENV.secret) && products.length === 0) {
     return {
       status: "FAIL",
@@ -108,11 +117,15 @@ function inspectPolarCoherence(names, has) {
   }
 
   if (!has(POLAR_BILLING_ENV.secret)) {
-    const orphans = [has(POLAR_BILLING_ENV.webhook) ? POLAR_BILLING_ENV.webhook : null, ...products].filter(Boolean);
+    const orphans = [
+      has(POLAR_BILLING_ENV.webhook) ? POLAR_BILLING_ENV.webhook : null,
+      has(POLAR_BILLING_ENV.server) ? POLAR_BILLING_ENV.server : null,
+      ...products,
+    ].filter(Boolean);
     return {
       status: "WARN",
       detail:
-        `${orphans.join(", ")} present but POLAR_ACCESS_TOKEN is missing — billing is OFF despite looking configured. ` +
+        `${orphans.join(", ")} present but POLAR_ACCESS_TOKEN is missing — Polar billing is OFF despite looking configured. ` +
         "createCheckout refuses, the settings screen offers direct plan switching, and entitlement is not webhook-owned yet. " +
         "Finish it with `pnpm secret:set POLAR_ACCESS_TOKEN` (hidden input, straight into Convex env). " +
         `To stay pre-billing on purpose instead, drop the orphans: ${orphans.map((name) => `\`npx convex env remove ${name}\``).join(" ")}.`,
@@ -129,6 +142,17 @@ function inspectPolarCoherence(names, has) {
 export function inspectBillingCoherence(envNames) {
   const names = new Set(envNames);
   const has = (name) => names.has(name);
+
+  const hasStripeSecret = has(BILLING_ENV.secret);
+  const hasPolarSecret = has(POLAR_BILLING_ENV.secret);
+
+  if (hasStripeSecret && hasPolarSecret) {
+    return {
+      status: "FAIL",
+      detail:
+        "Both STRIPE_SECRET_KEY and POLAR_ACCESS_TOKEN are configured — multiple active billing providers on a single deployment are not supported. Choose one primary provider.",
+    };
+  }
 
   const stripeResult = inspectStripeCoherence(names, has);
   const polarResult = inspectPolarCoherence(names, has);

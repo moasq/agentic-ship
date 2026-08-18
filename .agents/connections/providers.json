@@ -610,13 +610,13 @@
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
       "agentTool": {
-        "authFlow": "cli_browser_login",
+        "authFlow": "remote_oauth",
         "mcpServer": "polar",
-        "setupUrl": "https://polar.sh/settings",
+        "setupUrl": "https://polar.sh/dashboard/settings",
         "instructions": [
-          "Polar provides monetization with built-in customer portal, product management, and webhooks.",
-          "Create a personal access token under Settings → Developer → Access Tokens at polar.sh/settings.",
-          "Set POLAR_ACCESS_TOKEN and POLAR_WEBHOOK_SECRET in Convex deployment environment variables."
+          "Polar provides subscription monetization with built-in customer portal, product catalog, and webhooks.",
+          "Create an Organization Access Token under Settings → Developers → Organization Access Tokens in the Polar dashboard (or sandbox.polar.sh/dashboard/settings for sandbox testing).",
+          "Set POLAR_ACCESS_TOKEN, POLAR_WEBHOOK_SECRET, and POLAR_SERVER (production | sandbox) in Convex deployment environment variables via `pnpm secret:set`."
         ],
         "configurationProbe": {
           "id": "polar-mcp",
@@ -628,19 +628,19 @@
         "automation": {
           "run": [
             {
-              "command": "pnpm open:url https://polar.sh/settings",
+              "command": "pnpm open:url https://polar.sh/dashboard/settings",
               "opensBrowser": true,
-              "why": "Open Polar settings in the browser to create access tokens and configure webhook endpoints."
+              "why": "Open Polar dashboard organization settings to generate an Organization Access Token and configure webhook endpoints."
             }
           ]
         }
       },
       "projectProvisioning": {
-        "setupUrl": "https://polar.sh/dashboard",
+        "setupUrl": "https://polar.sh/dashboard/settings/webhooks",
         "instructions": [
-          "Configure Polar products and webhook endpoints pointing to `/polar/webhook`.",
-          "Set POLAR_ACCESS_TOKEN, POLAR_WEBHOOK_SECRET, and POLAR_PRODUCT_* in the Convex environment via `pnpm secret:set`.",
-          "Derive entitlement only from verified webhook payloads and customer state."
+          "Configure Polar subscription products and webhook endpoints pointing to `/polar/webhook`.",
+          "Set POLAR_ACCESS_TOKEN, POLAR_WEBHOOK_SECRET, POLAR_SERVER, and POLAR_PRODUCT_* in the Convex environment via `pnpm secret:set`.",
+          "Derive entitlement exclusively from verified webhook events (`subscription.active`, `subscription.revoked`) and customer state."
         ],
         "verification": {
           "policy": "probe_and_attestation",
@@ -651,7 +651,7 @@
               "type": "file_contains",
               "file": "convex/billing.ts",
               "text": "polar",
-              "required": false
+              "required": true
             },
             {
               "id": "polar-webhook-route",
@@ -659,23 +659,23 @@
               "type": "file_contains",
               "file": "convex/http.ts",
               "text": "/polar/webhook",
-              "required": false
+              "required": true
             }
           ]
         },
         "automation": {
           "run": [
             {
-              "command": "pnpm open:url https://polar.sh/dashboard",
+              "command": "pnpm open:url https://polar.sh/dashboard/settings/webhooks",
               "opensBrowser": true,
-              "why": "Open the Polar dashboard to configure products and webhook endpoints."
+              "why": "Open Polar webhook settings to configure endpoint URLs."
             }
           ]
         }
       },
       "revocation": [
         {
-          "text": "Revoke the Polar Access Token under Polar Settings → Developer → Access Tokens."
+          "text": "Revoke the Organization Access Token in Polar Dashboard under Settings → Developers → Organization Access Tokens."
         },
         {
           "text": "Delete the /polar/webhook endpoint in Polar Webhooks settings."

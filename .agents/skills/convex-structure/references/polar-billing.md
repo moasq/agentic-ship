@@ -22,13 +22,15 @@ Reference for the convex-structure skill. The engine supports **Polar** as an al
 
 | Event | Action Taken |
 | --- | --- |
-| `subscription.created` / `subscription.active` | Set workspace/user plan to active state, record subscription ID and current period end |
-| `subscription.updated` | Update active plan tier upon upgrade or downgrade |
-| `subscription.canceled` | Mark subscription as pending cancellation at period end; retain access until `current_period_end` |
-| `subscription.uncanceled` | Restore subscription to normal renew status |
-| `subscription.revoked` | Revoke entitlement immediately upon payment failure or chargeback |
+| `subscription.created` | Record customer ID and subscription metadata in pending state (**do not grant active plan yet; first payment may still be processing**) |
+| `subscription.active` | Provision active workspace entitlement, grant plan benefits, record `current_period_end` |
+| `subscription.updated` | Update plan tier and billing cycle dates on upgrade/downgrade |
+| `subscription.past_due` | Retain access during grace period; mark status as `past_due` and notify customer |
+| `subscription.canceled` | Retain access until `current_period_end`; schedule revocation at termination date |
+| `subscription.uncanceled` | Restore subscription to normal renewing status |
+| `subscription.revoked` | Revoke entitlement immediately upon terminal payment failure, dispute, or end of cancellation period |
 | `order.created` | Record one-time purchase or initial invoice receipt |
-| `order.refunded` | Revoke product access associated with the refunded order |
+| `order.refunded` | Revoke product entitlement associated with the refunded order |
 
 ## Customer Portal
 

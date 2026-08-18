@@ -64,28 +64,51 @@ describe("billing coherence - Stripe", () => {
 });
 
 describe("billing coherence - Polar", () => {
+  const POLAR_SERVER = "POLAR_SERVER";
+
   test("a complete Polar configuration passes", () => {
-    const result = inspectBillingCoherence([POLAR_SECRET, POLAR_WEBHOOK, POLAR_PRODUCT, SITE]);
+    const result = inspectBillingCoherence([POLAR_SECRET, POLAR_WEBHOOK, POLAR_SERVER, POLAR_PRODUCT, SITE]);
     expect(result.status).toBe("PASS");
     expect(result.detail).toMatch(/Polar access token, webhook and 1 product\(s\) all present/);
   });
 
   test("Polar access token without a webhook secret is CRITICAL", () => {
-    const result = inspectBillingCoherence([POLAR_SECRET, POLAR_PRODUCT, SITE]);
+    const result = inspectBillingCoherence([POLAR_SECRET, POLAR_SERVER, POLAR_PRODUCT, SITE]);
     expect(result.status).toBe("CRITICAL");
     expect(result.detail).toMatch(/POLAR_ACCESS_TOKEN is set but POLAR_WEBHOOK_SECRET is not/);
   });
 
+  test("Polar access token without POLAR_SERVER fails", () => {
+    const result = inspectBillingCoherence([POLAR_SECRET, POLAR_WEBHOOK, POLAR_PRODUCT, SITE]);
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toMatch(/POLAR_SERVER is not configured/);
+  });
+
   test("Polar access token without products fails", () => {
-    const result = inspectBillingCoherence([POLAR_SECRET, POLAR_WEBHOOK, SITE]);
+    const result = inspectBillingCoherence([POLAR_SECRET, POLAR_WEBHOOK, POLAR_SERVER, SITE]);
     expect(result.status).toBe("FAIL");
     expect(result.detail).toMatch(/no POLAR_PRODUCT_\* is/);
   });
 
   test("Polar access token without SITE_URL fails", () => {
-    const result = inspectBillingCoherence([POLAR_SECRET, POLAR_WEBHOOK, POLAR_PRODUCT]);
+    const result = inspectBillingCoherence([POLAR_SECRET, POLAR_WEBHOOK, POLAR_SERVER, POLAR_PRODUCT]);
     expect(result.status).toBe("FAIL");
     expect(result.detail).toMatch(/POLAR_ACCESS_TOKEN is set but SITE_URL is not/);
+  });
+
+  test("Configuring both Stripe and Polar secret keys fails with provider collision error", () => {
+    const result = inspectBillingCoherence([
+      SECRET,
+      WEBHOOK,
+      PRICE,
+      POLAR_SECRET,
+      POLAR_WEBHOOK,
+      POLAR_SERVER,
+      POLAR_PRODUCT,
+      SITE,
+    ]);
+    expect(result.status).toBe("FAIL");
+    expect(result.detail).toMatch(/Both STRIPE_SECRET_KEY and POLAR_ACCESS_TOKEN are configured/);
   });
 
   test("Polar products and webhook with no access token warns", () => {
