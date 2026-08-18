@@ -13,6 +13,7 @@ const required = [
   ".agents/skills",
   ".agents/agents",
   ".agents/contracts/product-brief.schema.json",
+  ".agents/contracts/provider-selection.schema.json",
   ".agents/contracts/feature-contract.schema.json",
   ".agents/contracts/input-required.schema.json",
   ".agents/contracts/ui-plan.schema.json",

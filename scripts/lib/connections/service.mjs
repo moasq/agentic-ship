@@ -110,6 +110,7 @@ export function createConnectionService({
   }
 
   function agentToolConfiguration(provider) {
+    if (!provider.agentTool) return null;
     return runConnectionProbe(provider.agentTool.configurationProbe, probeContext);
   }
 
@@ -123,6 +124,7 @@ export function createConnectionService({
 
   function agentToolInput(action, at) {
     const provider = getProvider(action.provider);
+    if (!provider.agentTool) throw new Error(`${action.provider} does not require agent-tool authorization`);
     const host = getHost(action.host);
     const configuration = agentToolConfiguration(provider);
     const hostInstruction = host.authInstructions[provider.agentTool.authFlow].replaceAll("<server>", provider.agentTool.mcpServer);
@@ -204,12 +206,18 @@ export function createConnectionService({
           policy: getProvider(action.provider).projectProvisioning.verification.policy,
           project: verification ?? projectVerification(getProvider(action.provider)),
           agentTool: {
-            passed: Boolean(action.agentToolAttestedAt) || action.history.some((entry) => entry.event === "verified_preexisting"),
-            basis: action.agentToolAttestedAt
-              ? "resume_after_user_consent_and_host_read_only_probe"
-              : action.history.some((entry) => entry.event === "verified_preexisting")
-                ? "preexisting_local_configuration"
-                : "resume_after_user_consent_and_host_read_only_probe",
+            required: Boolean(getProvider(action.provider).agentTool),
+            passed:
+              !getProvider(action.provider).agentTool ||
+              Boolean(action.agentToolAttestedAt) ||
+              action.history.some((entry) => entry.event === "verified_preexisting"),
+            basis: !getProvider(action.provider).agentTool
+              ? "not_required"
+              : action.agentToolAttestedAt
+                ? "resume_after_user_consent_and_host_read_only_probe"
+                : action.history.some((entry) => entry.event === "verified_preexisting")
+                  ? "preexisting_local_configuration"
+                  : "resume_after_user_consent_and_host_read_only_probe",
           },
         },
       };
@@ -320,7 +328,7 @@ export function createConnectionService({
         const preexistingConfiguration = agentToolConfiguration(provider);
         const preexistingVerification = projectVerification(provider);
         if (
-          preexistingConfiguration.passed &&
+          (!provider.agentTool || preexistingConfiguration.passed) &&
           provider.projectProvisioning.verification.policy === "machine" &&
           preexistingVerification.passed
         ) {
@@ -336,7 +344,7 @@ export function createConnectionService({
             updatedAt: bornAt,
             expiresAt: timestamp(new Date(at.getTime() + provider.actionTtlMinutes * 60_000)),
             verificationAttempts: 0,
-            completedPhases: ["agent_tool_authorization", "project_provisioning"],
+            completedPhases: provider.agentTool ? ["agent_tool_authorization", "project_provisioning"] : ["project_provisioning"],
             agentToolAttestedAt: null,
             projectAttestedAt: null,
             history: [
@@ -355,7 +363,7 @@ export function createConnectionService({
           provider: providerId,
           host: hostId,
           state: "waiting_for_user",
-          phase: "agent_tool_authorization",
+          phase: provider.agentTool ? "agent_tool_authorization" : "project_provisioning",
           createdAt,
           updatedAt: createdAt,
           expiresAt: timestamp(new Date(at.getTime() + provider.actionTtlMinutes * 60_000)),
@@ -366,7 +374,7 @@ export function createConnectionService({
           history: [{ event: "created", at: createdAt }],
         };
         store.write(action);
-        return agentToolInput(action, at);
+        return provider.agentTool ? agentToolInput(action, at) : projectInput(action, at, preexistingVerification);
       });
     },
 

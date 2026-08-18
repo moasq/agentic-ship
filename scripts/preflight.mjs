@@ -3,8 +3,8 @@
  * Production preflight — the go-live gate.
  *
  * `pnpm health` asks "is development sound?". This asks a different question:
- * "is PRODUCTION real?" — live Stripe keys in the prod deployment, email leaving
- * testMode with verification on, no test-seed backdoor, real URLs. Run it before the
+ * "is PRODUCTION real?" — selected-provider production billing, email leaving testMode
+ * with verification on, no test-seed backdoor, real URLs. Run it before the
  * first real deploy and before every launch after config changes.
  *
  *   pnpm preflight            checks that need no deployment (code + files)
@@ -18,7 +18,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { envNamesFrom, inspectBillingCoherence } from "./lib/billing-coherence.mjs";
+import { inspectProductionBillingEnvironment } from "./lib/billing-coherence.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => (existsSync(join(root, p)) ? readFileSync(join(root, p), "utf8") : "");
@@ -62,12 +62,20 @@ if (!authSrc) {
 
 const siteSrc = read("src/lib/site.ts");
 const placeholder = /My App|what it does, in one line|someone would actually read/.test(siteSrc);
-add("site identity is real", placeholder ? "FAIL" : "PASS", placeholder ? "src/lib/site.ts still holds the scaffold placeholders — this text is your <title>, OG card and llms.txt" : "");
+add(
+  "site identity is real",
+  siteSrc ? (placeholder ? "FAIL" : "PASS") : "SKIP",
+  siteSrc ? (placeholder ? "src/lib/site.ts still holds scaffold placeholders used by metadata" : "") : "no product site exists in this tool repository",
+);
 
 // The public URL is env-driven per environment; the prod value is audited in the
 // --prod section below. Locally, the blueprint is the thing that must be intact:
 const blueprint = read("netlify.toml");
-add("deploy blueprint intact", /convex deploy/.test(blueprint) ? "PASS" : "FAIL", /convex deploy/.test(blueprint) ? "" : "netlify.toml missing or its build command no longer runs `npx convex deploy` — frontend would ship against a stale backend");
+add(
+  "deploy blueprint intact",
+  blueprint ? (/convex deploy/.test(blueprint) ? "PASS" : "FAIL") : "SKIP",
+  blueprint ? (/convex deploy/.test(blueprint) ? "" : "netlify.toml no longer deploys Convex before the frontend build") : "no downstream product deployment exists in this tool repository",
+);
 
 /* ---------- the CSP that actually ships ---------- */
 
@@ -90,8 +98,12 @@ add(
 /* ---------- dev-side leaks that become launch incidents ---------- */
 
 const envLocal = read(".env.local");
-const localLiveKey = /\b(sk_live_|rk_live_)/.test(envLocal);
-add("no live Stripe key on this machine", localLiveKey ? "FAIL" : "PASS", localLiveKey ? "live keys belong in the PROD Convex deployment env only (rule R7)" : "");
+const localBillingSecret = /\b(sk_live_|rk_live_)|^(POLAR_ACCESS_TOKEN|LEMON_SQUEEZY_API_KEY)=/m.test(envLocal);
+add(
+  "no production billing secret on this machine",
+  localBillingSecret ? "FAIL" : "PASS",
+  localBillingSecret ? "production billing secrets belong in the production Convex deployment environment" : "",
+);
 
 /* ---------- the full local gate ---------- */
 
@@ -113,11 +125,8 @@ if (withProd) {
     const has = (k) => new RegExp(`^${k}=`, "m").test(env);
     const val = (k) => (env.match(new RegExp(`^${k}=(.*)$`, "m")) ?? [])[1] ?? "";
 
-    add("prod Stripe key is LIVE", /^(sk|rk)_live_/.test(val("STRIPE_SECRET_KEY")) ? "PASS" : "FAIL", "prod has a test key (or none) — production would take test payments. Set the live key with `npx convex env set --prod STRIPE_SECRET_KEY ...`");
-    // The individual keys are audited above; this states the COMBINATIONS, from the same
-    // module `pnpm health` uses, so the rule has one home rather than two drifting copies.
-    const coherence = inspectBillingCoherence(envNamesFrom(env));
-    add("prod billing coherence", coherence.status === "PASS" ? "PASS" : "FAIL", coherence.status === "PASS" ? "" : coherence.detail);
+    const billing = inspectProductionBillingEnvironment(env);
+    add("prod billing provider is live", billing.status === "PASS" ? "PASS" : "FAIL", billing.status === "PASS" ? "" : billing.detail);
     add("prod Resend key set", has("RESEND_API_KEY") ? "PASS" : "FAIL", "production sends no email without it");
     add("prod EMAIL_FROM on a verified domain", has("EMAIL_FROM") && !/resend\.dev/.test(val("EMAIL_FROM")) ? "PASS" : "FAIL", "EMAIL_FROM missing or still the onboarding fallback — verify a sending domain and set it");
     add("prod SITE_URL is https and not localhost", /^https:\/\//.test(val("SITE_URL")) && !/localhost/.test(val("SITE_URL")) ? "PASS" : "FAIL", "auth callbacks and emails will point at the wrong host");

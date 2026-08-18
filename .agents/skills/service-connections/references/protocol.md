@@ -75,9 +75,11 @@ payloads.
 
 ## Adding a provider
 
-Add a provider entry to `.agents/connections/providers.json`. Declare both
-`agentTool` and `projectProvisioning`, even when one is minimal. Use only the supported
-local probe types:
+Add a provider entry to `.agents/connections/providers.json`. Set `capability` and
+`defaultForCapability`, then declare `projectProvisioning`. Declare `agentTool` only
+when an official CLI or host MCP integration can authorize and verify the connection.
+Providers without one start at project provisioning. Use only the supported local probe
+types:
 
 - `mcp_server`
 - `file_exists`
@@ -92,3 +94,8 @@ local probe types:
 Choose `machine` only when local, non-secret signals prove readiness. Choose
 `probe_and_attestation` when provider dashboard state cannot be inspected safely. Add
 tests for the new policy and run the catalog validator through the connection service.
+
+Billing providers also declare a `billing` adapter. It owns the provider's environment
+prefixes, secret and webhook names, plan mapping prefix, and production value checks.
+The shared coherence and preflight code reads that data. Adding a billing provider must
+not add a provider-specific branch to either dispatcher.

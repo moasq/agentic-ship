@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-workspace.dev/contracts/provider-selection.schema.json",
+  "title": "Provider selection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["billing", "email", "analytics", "deployment", "tracking"],
+  "properties": {
+    "billing": { "$ref": "#/$defs/providerId", "default": "stripe" },
+    "email": { "$ref": "#/$defs/providerId", "default": "resend" },
+    "analytics": { "$ref": "#/$defs/providerId", "default": "posthog" },
+    "deployment": { "$ref": "#/$defs/providerId", "default": "netlify" },
+    "tracking": {
+      "oneOf": [{ "$ref": "#/$defs/providerId" }, { "type": "null" }],
+      "default": "linear"
+    }
+  },
+  "$defs": {
+    "providerId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    }
+  }
+}

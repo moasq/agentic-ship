@@ -3,6 +3,8 @@
   "providers": {
     "convex": {
       "displayName": "Convex",
+      "capability": "backend",
+      "defaultForCapability": true,
       "docsUrl": "https://docs.convex.dev/cli",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -143,9 +145,26 @@
     },
     "stripe": {
       "displayName": "Stripe",
+      "capability": "billing",
+      "defaultForCapability": true,
       "docsUrl": "https://docs.stripe.com/stripe-cli",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
+      "billing": {
+        "ownedEnvPrefixes": ["STRIPE_"],
+        "secretEnv": "STRIPE_SECRET_KEY",
+        "webhookEnv": "STRIPE_WEBHOOK_SECRET",
+        "requiredEnv": ["SITE_URL"],
+        "mappingEnvPrefix": "STRIPE_PRICE_",
+        "productionChecks": [
+          {
+            "type": "matches",
+            "env": "STRIPE_SECRET_KEY",
+            "pattern": "^(sk|rk)_live_",
+            "message": "Stripe requires a live secret key in production."
+          }
+        ]
+      },
       "agentTool": {
         "authFlow": "cli_browser_login",
         "mcpServer": "stripe",
@@ -232,6 +251,8 @@
     },
     "github": {
       "displayName": "GitHub",
+      "capability": "repository",
+      "defaultForCapability": true,
       "docsUrl": "https://cli.github.com/manual/",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -294,6 +315,8 @@
     },
     "linear": {
       "displayName": "Linear",
+      "capability": "tracking",
+      "defaultForCapability": true,
       "docsUrl": "https://linear.app/docs/mcp",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -348,6 +371,8 @@
     },
     "resend": {
       "displayName": "Resend",
+      "capability": "email",
+      "defaultForCapability": true,
       "docsUrl": "https://resend.com/docs",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -432,6 +457,8 @@
     },
     "posthog": {
       "displayName": "PostHog",
+      "capability": "analytics",
+      "defaultForCapability": true,
       "docsUrl": "https://posthog.com/docs",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
@@ -517,6 +544,8 @@
     },
     "netlify": {
       "displayName": "Netlify",
+      "capability": "deployment",
+      "defaultForCapability": true,
       "docsUrl": "https://docs.netlify.com/cli/get-started/",
       "actionTtlMinutes": 1440,
       "maxVerificationAttempts": 5,
