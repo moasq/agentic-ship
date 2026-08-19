@@ -52,3 +52,8 @@ url = "https://mcp.linear.app/mcp"
 [mcp_servers.workspace-playwright-test]
 command = "npx"
 args = ["-y", "playwright@1.62.1", "run-test-mcp-server"]
+
+# Source server: agentic-ship
+[mcp_servers.workspace-agentic-ship]
+command = "node"
+args = ["scripts/mcp-server.mjs", "--allow-mutations"]

@@ -75,7 +75,7 @@ reasoning behind each pick lives in [docs/stack.md](docs/stack.md).
 | Delivery | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/github-dark.svg"><img alt="" src=".github/assets/stack/github-light.svg" height="14"></picture> GitHub — `gh` CLI device-flow OAuth for repo, PRs, and CI |
 | Tracking | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/github-dark.svg"><img alt="" src=".github/assets/stack/github-light.svg" height="14"></picture> GitHub Issues and Projects through `gh`, or <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/linear-dark.svg"><img alt="" src=".github/assets/stack/linear-light.svg" height="14"></picture> Linear through its hosted MCP; both mirror the local queue |
 | AI hosts | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/claude-code-dark.svg"><img alt="" src=".github/assets/hosts/claude-code-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/codex-dark.svg"><img alt="" src=".github/assets/hosts/codex-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/cursor-dark.svg"><img alt="" src=".github/assets/hosts/cursor-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/hermes-dark.svg"><img alt="" src=".github/assets/hosts/hermes-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/openclaw-dark.svg"><img alt="" src=".github/assets/hosts/openclaw-light.svg" height="14"></picture> Claude Code · Codex · Cursor · Windsurf · Cline · Copilot · Gemini CLI · Hermes · OpenClaw |
-| Tool catalog | 11 pinned MCP servers in [.mcp.json](.mcp.json), mirrored per host |
+| Tool catalog | 12 pinned MCP servers in [.mcp.json](.mcp.json), including the local Agentic Ship health and queue server, mirrored per host |
 | Writing | Vendored docs handbook, humanizer pass, README doctrine, plain-language audit, ADRs — docs are gated prose |
 
 Stack marks are vendored, not hotlinked — provenance in
@@ -89,6 +89,15 @@ offline `pnpm verify` gate used locally. The action requests only read access, u
 artifacts, writes a concise job summary, and keeps the networked supply-chain audit
 opt-in. See the [GitHub action guide](.agents/skills/testing/references/github-action.md)
 for the pinned workflow example and update procedure.
+
+### Inspect the toolkit through MCP
+
+The project-scoped `agentic-ship` server exposes real health and verification results,
+safe connection status, the durable queue, and UI plan and evidence state. Queue
+mutations use the same locked transition service as `pnpm agent:work`; they are enabled
+only when the server starts with `--allow-mutations`. See the
+[project MCP guide](.agents/skills/agent-compatibility/references/agentic-ship-mcp.md)
+for the tool list, read-only mode, verification, and removal.
 
 - ✅ **Pinned** — every version, registry, and MCP server locked in [skills.lock.json](skills.lock.json)
 - ✅ **Gated** — `pnpm verify` is the definition of done on every completion, not a release ritual
