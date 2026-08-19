@@ -46,7 +46,7 @@
     },
     "agentic-ship": {
       "command": "node",
-      "args": ["scripts/mcp-server.mjs"]
+      "args": ["scripts/mcp-server.mjs", "--allow-mutations"]
     }
   }
 }

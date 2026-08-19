@@ -1,11 +1,10 @@
 #!/usr/bin/env node
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import readline from "node:readline";
 import { createAgenticShipMcpServer } from "./lib/mcp-server.mjs";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const server = createAgenticShipMcpServer(root);
+const server = createAgenticShipMcpServer(process.cwd(), {
+  allowMutations: process.argv.includes("--allow-mutations"),
+});
 
 const rl = readline.createInterface({
   input: process.stdin,

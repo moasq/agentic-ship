@@ -29,6 +29,10 @@ the task needs it.
 Instructions live here. Procedures live in `.agents/skills/`. Tool wiring lives in
 `.mcp.json`. Product, feature, and human-input contracts live in `.agents/contracts/`.
 Safe runtime coordination lives under gitignored `.agent-state/`; credentials never do.
+The project-scoped `agentic-ship` MCP server wraps the real health, verification,
+connection, queue, and UI-evidence services. Its mutation tools require the explicit
+`--allow-mutations` server argument; its full contract lives in
+`.agents/skills/agent-compatibility/references/agentic-ship-mcp.md`.
 Plugin wiring lives in `.claude/settings.json` (the official `nextjs` plugin from the
 vercel/next.js repo is declared there). Provenance for all of it lives in
 `skills.lock.json`. One rule, one home: it is declared here, applied there.

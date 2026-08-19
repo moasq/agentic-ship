@@ -70,6 +70,10 @@ or authorization to the user.
 
 ## Configure MCP without transport shims
 
+The native local server contract, read-only mode, mutation capability, verification,
+and removal procedure live in `references/agentic-ship-mcp.md`. Read it before changing
+the `agentic-ship` entry or its tools.
+
 Keep local stdio servers in `.mcp.json` as exact `command` and `args` entries. Keep
 remote servers as direct HTTP entries with `type: "http"` and their HTTPS URL.
 

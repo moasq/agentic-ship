@@ -32,6 +32,23 @@ Format:
   when the parent range admits it.
 - status: open
 
+## 2026-08-19 mcp-health-returned-a-hardcoded-success
+
+- cause: the first native MCP server returned `healthy` without running health, read UI
+  artifacts from nonexistent state paths, accepted malformed tool arguments, exposed
+  an absolute project path, and returned unsanitized errors. Its tests asserted those
+  placeholders rather than the underlying services.
+- fix: read tools now run the real health and verification gates, connection status,
+  canonical UI artifacts, and work queue. Every tool has an exact input and output
+  schema, versioned structured output, current protocol negotiation, safe annotations,
+  and global credential and personal-data filtering. Queue mutations require an
+  explicit server capability.
+- prevention: protocol and service contract tests cover lifecycle order, notifications,
+  malformed arguments, invalid roles and providers, disabled mutations, required human
+  action IDs, canonical artifact paths, repeated secret redaction, and actual gate exit
+  propagation.
+- status: open
+
 ## 2026-08-11 visual-capture-hung-on-a-lazy-image
 - cause: `captureUiEvidence` awaited `image.decode()` on every image whose
   `complete` was false, with no bound. A below-the-fold `next/image` is lazy by

@@ -5,7 +5,7 @@ build a real product on a fixed, verified stack. The stack has three bands. The 
 band is this repository: Node scripts, contracts, and gates. The product band is what
 your agent builds with: Next.js on Convex, with a wired seam per vendor (the one
 small file where auth, billing, email, or analytics plugs in). The AI band is what
-builds it: any of nine coding hosts, eleven pinned MCP servers, five specialist
+builds it: any of nine coding hosts, twelve pinned MCP servers, five specialist
 roles, and five writing skills. This article walks each
 layer and says why it was picked; the pins themselves live in
 [skills.lock.json](../skills.lock.json).
@@ -56,7 +56,7 @@ but gives an agent little to read back.
 | Layer | Contents |
 | --- | --- |
 | Hosts | <picture><source media="(prefers-color-scheme: dark)" srcset="../.github/assets/hosts/claude-code-dark.svg"><img alt="" src="../.github/assets/hosts/claude-code-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset="../.github/assets/hosts/codex-dark.svg"><img alt="" src="../.github/assets/hosts/codex-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset="../.github/assets/hosts/cursor-dark.svg"><img alt="" src="../.github/assets/hosts/cursor-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset="../.github/assets/hosts/hermes-dark.svg"><img alt="" src="../.github/assets/hosts/hermes-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset="../.github/assets/hosts/openclaw-dark.svg"><img alt="" src="../.github/assets/hosts/openclaw-light.svg" height="14"></picture> Claude Code, Codex, Cursor, Windsurf, Cline, Copilot, Gemini CLI, Hermes, OpenClaw |
-| MCP catalog | shadcn, next-devtools, magicui, 21st, context7, convex, stripe, resend, posthog, linear, playwright-test |
+| MCP catalog | shadcn, next-devtools, magicui, 21st, context7, convex, stripe, resend, posthog, linear, playwright-test, and the local Agentic Ship health and queue server |
 | Roles | product-orchestrator, frontend-builder, backend-builder, connection-guide, quality-engineer, plus the vendor-generated Playwright planner, generator, and healer |
 | Writing | `writing-guidelines`, `humanizer`, `documentation-and-adrs`, `crafting-effective-readmes`, `plain-language` |
 

@@ -1,162 +1,149 @@
 // @vitest-environment node
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, describe, expect, test } from "vitest";
-import { createAgenticShipMcpServer, MCP_TOOLS } from "./mcp-server.mjs";
-import { createWorkStore } from "./work-state.mjs";
+import { dirname, join } from "node:path";
+import { afterEach, describe, expect, test, vi } from "vitest";
+import { createAgenticShipMcpServer, MCP_PROTOCOL_VERSION, MCP_TOOLS } from "./mcp-server.mjs";
+import { createWorkStore, WORK_ROLES } from "./work-state.mjs";
 
 const roots = [];
-const makeTempDir = () => {
+function fixture() {
   const root = mkdtempSync(join(tmpdir(), "agentic-mcp-"));
   roots.push(root);
   return root;
-};
+}
+
+function write(root, path, value) {
+  const target = join(root, path);
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, typeof value === "string" ? value : JSON.stringify(value), "utf8");
+}
+
+async function initialize(server, protocolVersion = MCP_PROTOCOL_VERSION) {
+  return server.handleRequest({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "initialize",
+    params: { protocolVersion, clientInfo: { name: "test", version: "1" }, capabilities: {} },
+  });
+}
+
+async function call(server, name, args = {}, id = 2) {
+  return server.handleRequest({ jsonrpc: "2.0", id, method: "tools/call", params: { name, arguments: args } });
+}
 
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-describe("Agentic Ship MCP Server", () => {
-  test("implements MCP protocol initialize and tools/list", async () => {
-    const root = makeTempDir();
-    const server = createAgenticShipMcpServer(root);
+describe("Agentic Ship MCP server", () => {
+  test("negotiates the current protocol and declares read versus mutation tools", async () => {
+    const server = createAgenticShipMcpServer(fixture());
+    const initialized = await initialize(server, "2024-11-05");
+    expect(initialized.result.protocolVersion).toBe(MCP_PROTOCOL_VERSION);
 
-    const initRes = await server.handleRequest({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "initialize",
-      params: {},
-    });
-
-    expect(initRes.result.serverInfo.name).toBe("agentic-ship");
-    expect(initRes.result.protocolVersion).toBe("2024-11-05");
-
-    const listRes = await server.handleRequest({
-      jsonrpc: "2.0",
-      id: 2,
-      method: "tools/list",
-      params: {},
-    });
-
-    expect(listRes.result.tools).toHaveLength(MCP_TOOLS.length);
-    const toolNames = listRes.result.tools.map((t) => t.name);
-    expect(toolNames).toContain("get_health");
-    expect(toolNames).toContain("get_work_status");
-    expect(toolNames).toContain("complete_work");
+    const listed = await server.handleRequest({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} });
+    expect(listed.result.tools).toHaveLength(MCP_TOOLS.length);
+    expect(listed.result.tools.find((item) => item.name === "get_health").annotations.readOnlyHint).toBe(true);
+    expect(listed.result.tools.find((item) => item.name === "complete_work").annotations.readOnlyHint).toBe(false);
+    expect(listed.result.tools.every((item) => item.outputSchema)).toBe(true);
   });
 
-  test("executes read tools against workspace state", async () => {
-    const root = makeTempDir();
+  test("runs real health and verification services instead of hardcoding success", async () => {
+    const runScript = vi
+      .fn()
+      .mockReturnValueOnce({ status: 1, stdout: "", stderr: "health failed" })
+      .mockReturnValueOnce({ status: 0, stdout: "verified", stderr: "" });
+    const server = createAgenticShipMcpServer(fixture(), { runScript });
+    await initialize(server);
+
+    const health = await call(server, "get_health");
+    const verify = await call(server, "get_verification_results");
+    expect(health.result.structuredContent.data.status).toBe("fail");
+    expect(verify.result.structuredContent.data.status).toBe("pass");
+    expect(runScript.mock.calls).toEqual([["health.mjs"], ["verify.mjs", ["--quiet"]]]);
+  });
+
+  test("reads canonical work, UI plan, evidence, and filtered connection status", async () => {
+    const root = fixture();
     const store = createWorkStore(root);
-    store.init({ name: "Demo Product", goal: "Test MCP Server" });
-    store.add({
-      id: "feature-1",
-      role: "frontend-builder",
-      summary: "Build login screen",
-      acceptanceCriteria: ["Form submits"],
-    });
+    store.init({ name: "Demo", goal: "Verify MCP" });
+    store.add({ id: "feature-one", role: "frontend-builder", summary: "Build", acceptanceCriteria: ["Pass"] });
+    write(root, ".agents/ui/plan.json", { schemaVersion: 1, product: { name: "Demo" } });
+    const connectionService = {
+      status: () => ({
+        type: "connection_status",
+        providers: [{ id: "stripe" }, { id: "github" }],
+        actions: [{ actionId: "conn_one", provider: "stripe" }, { actionId: "conn_two", provider: "github" }],
+      }),
+    };
+    const server = createAgenticShipMcpServer(root, { connectionService });
+    await initialize(server);
 
-    const server = createAgenticShipMcpServer(root);
-
-    // 1. get_health
-    const healthRes = await server.handleRequest({
-      jsonrpc: "2.0",
-      id: 3,
-      method: "tools/call",
-      params: { name: "get_health" },
-    });
-    const healthData = JSON.parse(healthRes.result.content[0].text);
-    expect(healthData.status).toBe("healthy");
-    expect(healthData.hasWorkState).toBe(true);
-
-    // 2. get_work_status
-    const workRes = await server.handleRequest({
-      jsonrpc: "2.0",
-      id: 4,
-      method: "tools/call",
-      params: { name: "get_work_status" },
-    });
-    const workData = JSON.parse(workRes.result.content[0].text);
-    expect(workData.product.name).toBe("Demo Product");
-    expect(workData.items).toHaveLength(1);
-
-    // 3. get_next_work
-    const nextRes = await server.handleRequest({
-      jsonrpc: "2.0",
-      id: 5,
-      method: "tools/call",
-      params: { name: "get_next_work", arguments: { role: "frontend-builder" } },
-    });
-    const nextData = JSON.parse(nextRes.result.content[0].text);
-    expect(nextData[0].id).toBe("feature-1");
+    expect((await call(server, "get_next_work", { role: "frontend-builder" })).result.structuredContent.data[0].id).toBe("feature-one");
+    expect((await call(server, "get_ui_plan")).result.structuredContent.data.product.name).toBe("Demo");
+    expect((await call(server, "get_ui_evidence")).result.structuredContent.data.inspection.status).toBe("not_applicable");
+    const connections = (await call(server, "get_connections", { provider: "stripe" })).result.structuredContent.data;
+    expect(connections.providers).toEqual([{ id: "stripe" }]);
+    expect(connections.actions).toEqual([{ actionId: "conn_one", provider: "stripe" }]);
   });
 
-  test("executes mutating tools with strict evidence and transition validation", async () => {
-    const root = makeTempDir();
+  test("requires explicit mutation capability and required action identifiers", async () => {
+    const root = fixture();
     const store = createWorkStore(root);
-    store.init({ name: "Demo Product", goal: "Test MCP Mutations" });
-    store.add({
-      id: "feature-core",
-      role: "backend-builder",
-      summary: "Create core API",
-      acceptanceCriteria: ["API passes tests"],
-    });
+    store.init({ name: "Demo", goal: "Verify MCP" });
+    store.add({ id: "backend", role: "backend-builder", summary: "Build", acceptanceCriteria: ["Pass"] });
 
-    const server = createAgenticShipMcpServer(root);
+    const readOnly = createAgenticShipMcpServer(root);
+    await initialize(readOnly);
+    expect((await call(readOnly, "start_work", { id: "backend" })).result.isError).toBe(true);
 
-    // 1. start_work
-    const startRes = await server.handleRequest({
-      jsonrpc: "2.0",
-      id: 6,
-      method: "tools/call",
-      params: { name: "start_work", arguments: { id: "feature-core" } },
-    });
-    expect(startRes.result.isError).toBeUndefined();
-
-    // 2. complete_work without evidence fails
-    const failCompleteRes = await server.handleRequest({
-      jsonrpc: "2.0",
-      id: 7,
-      method: "tools/call",
-      params: { name: "complete_work", arguments: { id: "feature-core", evidence: [] } },
-    });
-    expect(failCompleteRes.result.isError).toBe(true);
-    expect(failCompleteRes.result.content[0].text).toContain("complete_work requires non-empty evidence array");
-
-    // 3. complete_work with valid gate evidence succeeds
-    const successCompleteRes = await server.handleRequest({
-      jsonrpc: "2.0",
-      id: 8,
-      method: "tools/call",
-      params: {
-        name: "complete_work",
-        arguments: { id: "feature-core", evidence: ["npm test: all suites green"] },
-      },
-    });
-    expect(successCompleteRes.result.isError).toBeUndefined();
-
-    const finalState = store.load();
-    expect(finalState.items[0].status).toBe("done");
+    const writable = createAgenticShipMcpServer(root, { allowMutations: true });
+    await initialize(writable);
+    expect((await call(writable, "wait_work", { id: "backend", reason: "Consent" })).result.isError).toBe(true);
+    expect((await call(writable, "start_work", { id: "backend" })).result.isError).toBeUndefined();
   });
 
-  test("returns JSON-RPC error on unknown methods or tools", async () => {
-    const root = makeTempDir();
-    const server = createAgenticShipMcpServer(root);
+  test("rejects unsupported keys, roles, credentials, and personal data", async () => {
+    const root = fixture();
+    const store = createWorkStore(root);
+    store.init({ name: "Demo", goal: "Verify MCP" });
+    store.add({ id: "backend", role: "backend-builder", summary: "Build", acceptanceCriteria: ["Pass"] });
+    const server = createAgenticShipMcpServer(root, { allowMutations: true });
+    await initialize(server);
 
-    const unknownMethodRes = await server.handleRequest({
-      jsonrpc: "2.0",
-      id: 9,
-      method: "invalid/method",
-    });
-    expect(unknownMethodRes.error.code).toBe(-32601);
+    expect((await call(server, "get_next_work", { role: "invented" })).result.isError).toBe(true);
+    expect((await call(server, "start_work", { id: "backend", extra: true })).result.isError).toBe(true);
+    await call(server, "start_work", { id: "backend" });
+    const privateReason = await call(server, "block_work", { id: "backend", reason: "Contact person@example.com with github_pat_ABC12345678901234567890" });
+    expect(privateReason.result.isError).toBe(true);
+    expect(privateReason.result.content[0].text).not.toContain("person@example.com");
+    expect(privateReason.result.content[0].text).not.toContain("github_pat_");
+  });
 
-    const unknownToolRes = await server.handleRequest({
-      jsonrpc: "2.0",
-      id: 10,
-      method: "tools/call",
-      params: { name: "non_existent_tool" },
+  test("sanitizes every secret occurrence in tool output", async () => {
+    const secrets = [`github_${"pat"}_${"A".repeat(30)}`, `sk_${"live"}_${"B".repeat(24)}`];
+    const server = createAgenticShipMcpServer(fixture(), {
+      runScript: () => ({ status: 1, stdout: secrets.join(" "), stderr: secrets.join(" ") }),
     });
-    expect(unknownToolRes.error.code).toBe(-32601);
+    await initialize(server);
+    const response = await call(server, "get_health");
+    const serialized = JSON.stringify(response);
+    for (const secret of secrets) expect(serialized).not.toContain(secret);
+    expect(serialized.match(/\[REDACTED\]/g).length).toBeGreaterThan(1);
+  });
+
+  test("returns protocol errors for malformed lifecycle and unknown calls", async () => {
+    const server = createAgenticShipMcpServer(fixture());
+    expect((await server.handleRequest({ jsonrpc: "1.0", id: 1, method: "tools/list" })).error.code).toBe(-32600);
+    expect((await server.handleRequest({ jsonrpc: "2.0", id: 2, method: "tools/list" })).error.code).toBe(-32002);
+    await initialize(server);
+    expect(await server.handleRequest({ jsonrpc: "2.0", method: "notifications/initialized" })).toBeNull();
+    expect((await call(server, "missing")).error.code).toBe(-32602);
+    expect((await server.handleRequest({ jsonrpc: "2.0", id: 3, method: "missing" })).error.code).toBe(-32601);
+  });
+
+  test("keeps the role contract synchronized", () => {
+    expect(MCP_TOOLS.find((item) => item.name === "get_next_work").inputSchema.properties.role.enum).toEqual(WORK_ROLES);
   });
 });
