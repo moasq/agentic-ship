@@ -38,7 +38,7 @@ Exit 1 on any FAIL. Run `--prod` before every launch; the plain form on every de
 | prod `BETTER_AUTH_SECRET` set | sessions cannot be issued |
 | **`ALLOW_TEST_SEED` absent from prod** | anyone-callable seeding of production data |
 | no live key in `.env.local` | a live credential one `git add` from public |
-| `netlify.toml` still runs `npx convex deploy --cmd 'pnpm build'` | frontend ships against a stale backend |
+| the selected Netlify or Vercel adapter runs `npx convex deploy --cmd 'pnpm build'`, with no second adapter active | frontend ships against a stale backend or the wrong host |
 | `pnpm verify` + `pnpm test` green | launching a build that does not build |
 
 ## The judgment half (yours, or the agent's — not scriptable)
@@ -51,14 +51,14 @@ Exit 1 on any FAIL. Run `--prod` before every launch; the plain form on every de
    renewals, but only a live transaction proves the production pipeline.
 3. **Email round trip on prod:** sign up with a real address, receive the
    verification, complete it.
-4. **Rollback story:** know the last green deploy in Netlify before you need it.
+4. **Rollback story:** know the last green deploy in the selected host before you need it.
    Prod incidents get a rollback first, diagnosis second — never a patch loop on prod.
 5. **Convex prod is its own deployment** with its own env — confirm you set values with
    `--prod` and not into dev. `npx convex env list --prod` is the receipt.
 
 ## Order of flips (do not improvise)
 
-Same order as deploy-netlify's go-live checklist — the two documents deliberately agree:
+Same order as the selected deployment guide's go-live checklist:
 
 1. Verify the sending domain in Resend → set prod `EMAIL_FROM`. Preparation only —
    nothing sends yet while `testMode` holds.
@@ -69,6 +69,6 @@ Same order as deploy-netlify's go-live checklist — the two documents deliberat
 5. `pnpm preflight --prod` → all green
 6. Deploy, then the acceptance tests above
 
-Deep references, all under `convex-structure/references/`: `deploy-netlify.md` (env
-matrix, go-live checklist), `email-resend.md` (the 3-step email flip),
+Deep references, all under `convex-structure/references/`: `deploy-netlify.md` and
+`deploy-vercel.md` (env matrices and go-live checklists), `email-resend.md` (the 3-step email flip),
 `stripe-billing.md`, `polar-billing.md`, and `lemon-squeezy-billing.md`.

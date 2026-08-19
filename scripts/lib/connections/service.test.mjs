@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url";
 import { pathToFileURL } from "node:url";
 import { test } from "vitest";
 import { ConnectionCommandError, createConnectionService } from "./service.mjs";
+import { loadConnectionCatalog } from "./catalog.mjs";
+import { runConnectionProbe } from "./probes.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const catalogDirectory = join(repositoryRoot, ".agents", "connections");
@@ -81,6 +83,51 @@ test("catalog exposes every supported provider and host", (t) => {
   assert.deepEqual(result.supportedHosts, ["claude", "codex", "cursor", "hermes", "openclaw"]);
   assert.equal(result.providers.find((provider) => provider.id === "polar").agentToolConfiguration, null);
   assert.equal(result.providers.find((provider) => provider.id === "lemonsqueezy").agentToolConfiguration, null);
+});
+
+test("Vercel uses a read-only CLI auth probe and explicit project choice", (t) => {
+  const { projectRoot, homeDirectory } = fixture(t);
+  const catalog = loadConnectionCatalog({ projectRoot, catalogDirectory });
+  const vercel = catalog.providers.vercel;
+  const calls = [];
+  const result = runConnectionProbe(vercel.agentTool.configurationProbe, {
+    projectRoot,
+    homeDirectory,
+    commandRunner(command, args) {
+      calls.push([command, args]);
+      return { status: 0 };
+    },
+  });
+
+  assert.equal(result.passed, true);
+  assert.deepEqual(calls, [["vercel", ["whoami"]]]);
+  assert.deepEqual(
+    vercel.projectProvisioning.automation.decision.options.map((option) => option.value),
+    ["existing", "new"],
+  );
+});
+
+test("Vercel project verification requires the link and atomic build config", (t) => {
+  const { projectRoot, homeDirectory } = fixture(t);
+  const vercel = loadConnectionCatalog({ projectRoot, catalogDirectory }).providers.vercel;
+
+  const missing = vercel.projectProvisioning.verification.probes.map((probe) =>
+    runConnectionProbe(probe, { projectRoot, homeDirectory }),
+  );
+  assert.equal(missing.every((probe) => !probe.passed), true);
+
+  write(projectRoot, ".vercel/project.json", '{"projectId":"prj_test","orgId":"team_test"}');
+  write(projectRoot, "vercel.json", '{"buildCommand":"pnpm build"}');
+  const stale = vercel.projectProvisioning.verification.probes.map((probe) =>
+    runConnectionProbe(probe, { projectRoot, homeDirectory }),
+  );
+  assert.equal(stale.find((probe) => probe.id === "atomic-deploy").passed, false);
+
+  write(projectRoot, "vercel.json", JSON.stringify({ buildCommand: "npx convex deploy --cmd 'pnpm build'" }));
+  const ready = vercel.projectProvisioning.verification.probes.map((probe) =>
+    runConnectionProbe(probe, { projectRoot, homeDirectory }),
+  );
+  assert.equal(ready.every((probe) => probe.passed), true);
 });
 
 test("project-only providers never invent an agent-tool authorization phase", (t) => {

@@ -1,48 +1,64 @@
-# Deploy — Vercel
+# Deploy with Vercel
 
-Reference for the service-connections, production-preflight, and convex-structure skills.
+Use Vercel when the product brief selects `providerSelection.deployment: "vercel"`.
+Netlify remains the default. Keep one deployment adapter: a workspace with both
+`netlify.toml` and `vercel.json` fails preflight.
 
----
+## Connect and link
 
-## 🚀 Overview
+Run `pnpm onboard vercel --host <host>`. After consent, the agent installs the official
+CLI when needed, runs `vercel login`, and verifies the session with the read-only
+`vercel whoami` command. The credential remains in Vercel's machine-local store.
 
-Vercel provides native Next.js deployment with global Edge network routing and continuous integration from GitHub.
+Choose whether to link an existing project or create a named project. The connection
+receipt records that decision before it runs `vercel project add` or `vercel link`.
+Successful linking creates `.vercel/project.json`; that file is local provider state
+and must stay uncommitted.
 
----
+Commit this project configuration:
 
-## 🛠️ Project Provisioning
+```json
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npx convex deploy --cmd 'pnpm build'"
+}
+```
 
-1. **Authentication**:
-   ```bash
-   pnpm provider:login vercel
-   # or
-   npx vercel login
-   ```
+The build command deploys the production Convex functions before building Next.js.
+Running only `pnpm build` can ship a frontend against stale backend functions.
 
-2. **Link Project**:
-   ```bash
-   npx vercel link
-   ```
+## Environment ownership
 
-3. **Deploy Key**:
-   Set `CONVEX_DEPLOY_KEY` in production environment:
-   ```bash
-   npx vercel env add CONVEX_DEPLOY_KEY production
-   ```
+| Value | Location |
+| --- | --- |
+| `CONVEX_DEPLOY_KEY` | Vercel project environment; add for Preview and Production as appropriate |
+| `NEXT_PUBLIC_SITE_URL` | Vercel project environment for each public host |
+| `NEXT_PUBLIC_POSTHOG_KEY` | Vercel project environment when analytics is selected |
+| `BETTER_AUTH_SECRET`, `SITE_URL` | Production Convex environment |
+| Billing and email secrets | Production Convex environment |
 
-4. **Ship**:
-   ```bash
-   npx vercel --prod
-   ```
+Use `vercel env add <NAME> <environment>` so secret values are entered through the
+CLI prompt. Do not put values in `vercel.json`, chat, or connection receipts. Convex
+injects its public deployment URL while running the configured build command.
 
----
+## Deploy and verify
 
-## 🛡️ Secret Isolation
+Run a preview with `vercel deploy`, inspect it with `vercel inspect <preview-url>`, and
+check errors before promotion. Run production with `vercel deploy --prod`, then verify:
 
-| Variable | Location | Notes |
-| :--- | :--- | :--- |
-| `CONVEX_DEPLOY_KEY` | **Vercel** Project Env | Authorizes production builds |
-| `NEXT_PUBLIC_CONVEX_URL` | **Vercel** Project Env | Client connection pointer |
-| `BETTER_AUTH_SECRET`, `SITE_URL` | **prod Convex** deployment env | Backend only |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | **prod Convex** deployment env | Backend only |
-| `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` | **prod Convex** deployment env | Backend only |
+1. The production and preview URLs serve the expected commit over HTTPS.
+2. `SITE_URL` and `NEXT_PUBLIC_SITE_URL` match the production host, and the Better Auth
+   callback succeeds on that host.
+3. Billing and Resend webhooks still target the production Convex site URL; changing
+   the frontend host does not move those endpoints.
+4. A custom domain is attached to the intended Vercel project and has a valid
+   certificate before HSTS reaches users.
+5. `pnpm preflight --prod` passes, followed by the selected billing, email, and auth
+   production acceptance flows.
+
+## Revoke or replace
+
+`vercel logout` removes the local CLI session. Unlinking removes local `.vercel` state;
+deleting the remote project or OAuth grant is a separate Vercel action. To return to
+Netlify, remove `vercel.json`, restore the documented `netlify.toml`, update the product
+brief selection, and rerun connection verification and preflight.

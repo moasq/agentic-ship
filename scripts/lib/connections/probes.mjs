@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { homedir } from "node:os";
 import { isAbsolute, relative, resolve } from "node:path";
 
@@ -56,7 +57,12 @@ function homePath(homeDirectory, candidate) {
   return path;
 }
 
-export function runConnectionProbe(probe, { projectRoot, homeDirectory }) {
+function runReadOnlyCommand(command, args) {
+  const executable = process.platform === "win32" ? `${command}.cmd` : command;
+  return spawnSync(executable, args, { stdio: "ignore" });
+}
+
+export function runConnectionProbe(probe, { projectRoot, homeDirectory, commandRunner = runReadOnlyCommand }) {
   if (probe.type === "file_exists") {
     const passed = existsSync(projectPath(projectRoot, probe.path));
     return probeResult(probe, passed, passed ? "detected" : "not detected");
@@ -67,6 +73,12 @@ export function runConnectionProbe(probe, { projectRoot, homeDirectory }) {
   if (probe.type === "home_file_exists") {
     const passed = existsSync(homePath(homeDirectory, probe.homePath));
     return probeResult(probe, passed, passed ? "detected" : "not detected");
+  }
+
+  if (probe.type === "command_succeeds") {
+    const result = commandRunner(probe.command, probe.args);
+    const passed = result.status === 0 && !result.error;
+    return probeResult(probe, passed, passed ? "authenticated read-only call passed" : "authenticated read-only call failed");
   }
 
   if (probe.type === "any_file_exists") {

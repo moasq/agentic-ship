@@ -293,5 +293,4 @@ If no vulnerabilities found, state: "No high-confidence vulnerabilities identifi
 
 
 ### Infrastructure
-Not vendored — this stack deploys to managed hosting (Netlify + Convex). The upstream repository carries Docker, Kubernetes, Terraform, CI/CD, and cloud guides.
-
+Not vendored — this stack deploys to managed hosting (Netlify or Vercel with Convex). The upstream repository carries Docker, Kubernetes, Terraform, CI/CD, and cloud guides.

@@ -65,6 +65,21 @@ Format:
   and the absence of direct write permission and `pull_request_target`.
 - status: open
 
+## 2026-08-19 vercel-provider-trusted-a-guessed-token-path
+
+- cause: the first Vercel provider entry documented a login command the provider runner
+  did not support and treated a guessed home-directory file as proof of authentication.
+  It also accepted either an unlinked config file or a local link as complete project
+  provisioning, without checking the Convex-first build command.
+- fix: the official CLI is now installed and paired by `provider:login`; authentication
+  is verified with the read-only `vercel whoami` call. Provisioning requires an explicit
+  existing-or-new project decision, `.vercel/project.json`, and a committed
+  `vercel.json` whose build command deploys Convex before Next.js.
+- prevention: connection tests cover the exact read-only probe, project decision, link
+  receipt, and stale build config. A shared deployment-coherence gate rejects two active
+  adapters and validates both the Netlify default and Vercel alternative.
+- status: open
+
 ## 2026-08-11 visual-capture-hung-on-a-lazy-image
 - cause: `captureUiEvidence` awaited `image.decode()` on every image whose
   `complete` was false, with no bound. A below-the-fold `next/image` is lazy by

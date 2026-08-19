@@ -30,9 +30,9 @@ to write literally.
 accept it. `||`, `$(...)`, single quotes, and `2>/dev/null` are not — cmd.exe treats
 single quotes as literal characters. Scope of this rule: commands that must run on the
 **buyer's own shell** (package.json scripts and published commands).
-A command executed inside a known Linux container is exempt — `netlify.toml`'s
-`npx convex deploy --cmd 'pnpm build'` is the sanctioned example: Netlify builds run in
-bash, so the quotes are correct there and AGENTS.md mandates that exact line.
+A command executed inside a known Linux container is exempt. The committed Netlify and
+Vercel adapters use `npx convex deploy --cmd 'pnpm build'`: both providers run that
+build in Linux, so the quotes are correct there and AGENTS.md mandates the exact line.
 
 ## Why `.claude/skills` is generated, not just committed
 

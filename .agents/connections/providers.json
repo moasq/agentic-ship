@@ -645,15 +645,16 @@
         "mcpServer": "vercel",
         "setupUrl": "https://vercel.com/",
         "instructions": [
-          "Vercel's validated OAuth for tooling is the CLI: `vercel login` opens a browser authorization page.",
-          "The manual equivalent is running `npx vercel login` yourself.",
+          "Vercel's validated OAuth for tooling is the official CLI: `vercel login` uses browser device authorization.",
+          "The manual equivalent is installing the Vercel CLI and running `vercel login` yourself.",
           "The credential lands in Vercel's global config directory outside this repository."
         ],
         "configurationProbe": {
           "id": "vercel-cli-paired",
           "label": "Vercel CLI is authenticated",
-          "type": "home_file_exists",
-          "homePath": ".vercel/auth.json",
+          "type": "command_succeeds",
+          "command": "vercel",
+          "args": ["whoami"],
           "required": true
         },
         "automation": {
@@ -669,39 +670,82 @@
       "projectProvisioning": {
         "setupUrl": "https://vercel.com/dashboard",
         "instructions": [
-          "`vercel link` links this repository to a Vercel project.",
-          "`vercel.json` configures build commands and routes.",
-          "Set `CONVEX_DEPLOY_KEY` via `vercel env add CONVEX_DEPLOY_KEY production`."
+          "Choose an existing Vercel project or create a named project before linking this repository.",
+          "Commit `vercel.json` with `npx convex deploy --cmd 'pnpm build'` as its build command so Convex deploys before Next.js.",
+          "Vercel holds `CONVEX_DEPLOY_KEY` and required public browser variables only. Backend secrets remain in the production Convex environment."
         ],
         "verification": {
           "policy": "probe_and_attestation",
           "probes": [
             {
               "id": "vercel-config",
-              "label": "Vercel deployment config or project exists",
-              "type": "any_file_exists",
-              "paths": [
-                "vercel.json",
-                ".vercel/project.json"
-              ],
+              "label": "Vercel project is linked",
+              "type": "file_exists",
+              "path": ".vercel/project.json",
+              "required": true
+            },
+            {
+              "id": "vercel-config",
+              "label": "Vercel deployment config exists",
+              "type": "file_exists",
+              "path": "vercel.json",
+              "required": true
+            },
+            {
+              "id": "atomic-deploy",
+              "label": "Vercel deploys Convex and Next.js together",
+              "type": "file_contains",
+              "file": "vercel.json",
+              "text": "npx convex deploy --cmd 'pnpm build'",
               "required": true
             }
           ]
         },
         "automation": {
-          "run": [
-            {
-              "command": "vercel link",
-              "opensBrowser": true,
-              "why": "Link this directory to a Vercel project."
-            }
-          ]
+          "decision": {
+            "id": "vercel-project",
+            "question": "Should this workspace use an existing Vercel project or create a new one?",
+            "options": [
+              {
+                "value": "existing",
+                "label": "Link an existing project",
+                "placeholders": ["project-name"],
+                "run": [
+                  {
+                    "command": "vercel link --yes --project {project-name}",
+                    "opensBrowser": false,
+                    "why": "Link the workspace to the explicitly selected existing project."
+                  }
+                ]
+              },
+              {
+                "value": "new",
+                "label": "Create a new project",
+                "placeholders": ["project-name"],
+                "run": [
+                  {
+                    "command": "vercel project add {project-name}",
+                    "opensBrowser": false,
+                    "why": "Create the explicitly named Vercel project."
+                  },
+                  {
+                    "command": "vercel link --yes --project {project-name}",
+                    "opensBrowser": false,
+                    "why": "Link the workspace to the newly created project."
+                  }
+                ]
+              }
+            ]
+          }
         }
       },
       "revocation": [
         {
           "command": "vercel logout",
           "why": "Remove the Vercel CLI credential from this machine."
+        },
+        {
+          "text": "Unlink the local project by deleting `.vercel`, and remove the remote project or OAuth grant in Vercel if those resources should no longer exist."
         }
       ]
     },
