@@ -86,3 +86,13 @@ test("the product brief requires the versioned provider selection", () => {
   expect(schema.required).toContain("providerSelection");
   expect(schema.properties.providerSelection.$ref).toBe("provider-selection.schema.json");
 });
+
+test("vercel can be selected as alternative deployment provider", () => {
+  expect(resolveProviderSelection({ deployment: "vercel" })).toEqual({
+    billing: "stripe",
+    email: "resend",
+    analytics: "posthog",
+    deployment: "vercel",
+    tracking: "linear",
+  });
+});
