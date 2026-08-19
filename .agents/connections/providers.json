@@ -633,6 +633,78 @@
         }
       ]
     },
+    "vercel": {
+      "displayName": "Vercel",
+      "capability": "deployment",
+      "defaultForCapability": false,
+      "docsUrl": "https://vercel.com/docs/cli",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "agentTool": {
+        "authFlow": "cli_browser_login",
+        "mcpServer": "vercel",
+        "setupUrl": "https://vercel.com/",
+        "instructions": [
+          "Vercel's validated OAuth for tooling is the CLI: `vercel login` opens a browser authorization page.",
+          "The manual equivalent is running `npx vercel login` yourself.",
+          "The credential lands in Vercel's global config directory outside this repository."
+        ],
+        "configurationProbe": {
+          "id": "vercel-cli-paired",
+          "label": "Vercel CLI is authenticated",
+          "type": "home_file_exists",
+          "homePath": ".vercel/auth.json",
+          "required": true
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm provider:login vercel",
+              "opensBrowser": true,
+              "why": "Install the official Vercel CLI if missing, then authenticate via browser."
+            }
+          ]
+        }
+      },
+      "projectProvisioning": {
+        "setupUrl": "https://vercel.com/dashboard",
+        "instructions": [
+          "`vercel link` links this repository to a Vercel project.",
+          "`vercel.json` configures build commands and routes.",
+          "Set `CONVEX_DEPLOY_KEY` via `vercel env add CONVEX_DEPLOY_KEY production`."
+        ],
+        "verification": {
+          "policy": "probe_and_attestation",
+          "probes": [
+            {
+              "id": "vercel-config",
+              "label": "Vercel deployment config or project exists",
+              "type": "any_file_exists",
+              "paths": [
+                "vercel.json",
+                ".vercel/project.json"
+              ],
+              "required": true
+            }
+          ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "vercel link",
+              "opensBrowser": true,
+              "why": "Link this directory to a Vercel project."
+            }
+          ]
+        }
+      },
+      "revocation": [
+        {
+          "command": "vercel logout",
+          "why": "Remove the Vercel CLI credential from this machine."
+        }
+      ]
+    },
     "polar": {
       "displayName": "Polar",
       "capability": "billing",
