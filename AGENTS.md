@@ -559,20 +559,21 @@ lifecycle, and revocation details. Stripe uses `stripe-billing.md`; Polar uses
   writing every row against that workspace's own `ownerId` — it creates no user, grants
   no membership and moves no plan, so seeding can never hand anyone access.
 
-## Email rules (Resend, wired)
+## Email rules (replaceable provider, Resend default)
 
-Detail: `.agents/skills/convex-structure/references/email-resend.md`.
+Details: `.agents/skills/convex-structure/references/email-resend.md` and `.agents/skills/convex-structure/references/email-postmark.md`.
 
-- `convex/email.ts` is the only file that imports the Resend SDK. Every outbound email
-  goes through it; adding one means adding a function there, never a direct API call.
-- Sends are enqueued **inside the calling transaction** by the component. Do not write
-  retry logic, and do not send from a client.
-- `testMode: true` is the shipped default — only Resend's test inboxes can receive mail.
+The product brief selects one email provider: Resend remains the default; Postmark is the supported alternative.
+
+- `convex/email.ts` is the only file that imports the email provider SDK. Every outbound email
+  goes through it; adding one means adding a function there, never a direct API call from domain code.
+- Sends are enqueued or dispatched through the backend seam inside the calling transaction.
+- `testMode: true` is the shipped default — only allowlisted test inboxes or sandbox tokens receive mail.
   It flips to `false` **together with** `requireEmailVerification: true` in
   `convex/auth.ts`, after a sending domain is verified. `pnpm health` fails on either
   half of that pair being wrong.
-- `/resend-webhook` in `convex/http.ts` belongs to the component; it verifies the
-  signature. Never parse a webhook body yourself.
+- Webhook routes (`/resend-webhook` or `/postmark/webhook` in `convex/http.ts`) verify signatures and
+  process delivery and bounce events idempotently. Never parse a webhook body without cryptographic verification.
 
 ## Analytics rules (PostHog, wired)
 

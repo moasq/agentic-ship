@@ -152,8 +152,13 @@ if (withProd) {
 
     const billing = inspectProductionBillingEnvironment(env);
     add("prod billing provider is live", billing.status === "PASS" ? "PASS" : "FAIL", billing.status === "PASS" ? "" : billing.detail);
-    add("prod Resend key set", has("RESEND_API_KEY") ? "PASS" : "FAIL", "production sends no email without it");
-    add("prod EMAIL_FROM on a verified domain", has("EMAIL_FROM") && !/resend\.dev/.test(val("EMAIL_FROM")) ? "PASS" : "FAIL", "EMAIL_FROM missing or still the onboarding fallback — verify a sending domain and set it");
+    const isPostmark = val("EMAIL_PROVIDER") === "postmark" || has("POSTMARK_SERVER_TOKEN");
+    if (isPostmark) {
+      add("prod Postmark token set", has("POSTMARK_SERVER_TOKEN") ? "PASS" : "FAIL", "production sends no email without it");
+    } else {
+      add("prod Resend key set", has("RESEND_API_KEY") ? "PASS" : "FAIL", "production sends no email without it");
+    }
+    add("prod EMAIL_FROM on a verified domain", has("EMAIL_FROM") && !/resend\.dev|example\.com/.test(val("EMAIL_FROM")) ? "PASS" : "FAIL", "EMAIL_FROM missing or still the onboarding fallback — verify a sending domain and set it");
     add("prod SITE_URL is https and not localhost", /^https:\/\//.test(val("SITE_URL")) && !/localhost/.test(val("SITE_URL")) ? "PASS" : "FAIL", "auth callbacks and emails will point at the wrong host");
     add("prod auth secret set", has("BETTER_AUTH_SECRET") ? "PASS" : "FAIL", "pnpm secret, then npx convex env set --prod BETTER_AUTH_SECRET ...");
     add("NO test-seed backdoor in prod", has("ALLOW_TEST_SEED") ? "FAIL" : "PASS", "ALLOW_TEST_SEED is set on PROD — anyone-callable seeding of production data. Remove it: `npx convex env remove --prod ALLOW_TEST_SEED`");

@@ -65,4 +65,50 @@ describe("email coherence", () => {
     expect(inspectEmailCoherence([KEY, HOOK], live).status).toBe("CRITICAL");
     expect(inspectEmailCoherence([HOOK], dev).status).toBe("WARN");
   });
+
+  describe("postmark email coherence", () => {
+    const PM_TOKEN = "POSTMARK_SERVER_TOKEN";
+    const PM_HOOK = "POSTMARK_WEBHOOK_SECRET";
+
+    test("no Postmark at all warns that email is a no-op", () => {
+      const result = inspectEmailCoherence(["SITE_URL"], dev, { selectedProvider: "postmark" });
+      expect(result.status).toBe("WARN");
+      expect(result.detail).toMatch(/no POSTMARK_\* on this deployment/);
+    });
+
+    test("webhook secret without token warns that email sends nothing", () => {
+      const result = inspectEmailCoherence([PM_HOOK], dev, { selectedProvider: "postmark" });
+      expect(result.status).toBe("WARN");
+      expect(result.detail).toMatch(/POSTMARK_SERVER_TOKEN is missing/);
+    });
+
+    test("complete test-mode setup for Postmark passes", () => {
+      const result = inspectEmailCoherence([PM_TOKEN, PM_HOOK], dev, { selectedProvider: "postmark" });
+      expect(result.status).toBe("PASS");
+      expect(result.detail).toMatch(/Postmark non-production/);
+    });
+
+    test("server token without webhook secret warns about invisible bounces", () => {
+      const result = inspectEmailCoherence([PM_TOKEN], dev, { selectedProvider: "postmark" });
+      expect(result.status).toBe("WARN");
+      expect(result.detail).toMatch(/POSTMARK_WEBHOOK_SECRET is not/);
+    });
+
+    test("live Postmark with no EMAIL_FROM is CRITICAL", () => {
+      const result = inspectEmailCoherence([PM_TOKEN, PM_HOOK], live, { selectedProvider: "postmark" });
+      expect(result.status).toBe("CRITICAL");
+      expect(result.detail).toMatch(/verify a sending domain in Postmark/);
+    });
+
+    test("live Postmark with verified domain passes", () => {
+      const result = inspectEmailCoherence([PM_TOKEN, PM_HOOK, FROM], live, { selectedProvider: "postmark" });
+      expect(result.status).toBe("PASS");
+    });
+
+    test("multiple email provider secrets fails closed", () => {
+      const result = inspectEmailCoherence([KEY, PM_TOKEN], dev);
+      expect(result.status).toBe("FAIL");
+      expect(result.detail).toMatch(/Multiple email provider secrets are configured/);
+    });
+  });
 });

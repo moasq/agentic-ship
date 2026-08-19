@@ -1032,6 +1032,69 @@
           "text": "Delete the /lemonsqueezy/webhook endpoint under Lemon Squeezy Settings → Webhooks."
         }
       ]
+    },
+    "postmark": {
+      "displayName": "Postmark",
+      "capability": "email",
+      "defaultForCapability": false,
+      "docsUrl": "https://postmarkapp.com/developer",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "projectProvisioning": {
+        "setupUrl": "https://account.postmarkapp.com/servers",
+        "instructions": [
+          "Choose or create the Postmark Server and Transactional Message Stream for this project.",
+          "Retrieve the Server API Token under Server → API Tokens, then run `pnpm secret:set POSTMARK_SERVER_TOKEN` in your own terminal — hidden input, piped straight into the Convex deployment env.",
+          "Register the webhook endpoint `<convex-site-url>/postmark/webhook` under Server → Webhooks for Delivery, Bounce, and Spam Complaint events. Configure HTTP Basic Auth or a custom header token, then run `pnpm secret:set POSTMARK_WEBHOOK_SECRET` the same way.",
+          "Verify delivery in non-production using Postmark's test token or sandbox mode, and ensure the sending domain (DKIM/Return-Path) is verified before production."
+        ],
+        "verification": {
+          "policy": "probe_and_attestation",
+          "probes": [
+            {
+              "id": "postmark-email-seam",
+              "label": "Postmark email seam exists",
+              "type": "file_contains",
+              "file": "convex/email.ts",
+              "text": "postmark",
+              "required": true
+            },
+            {
+              "id": "postmark-test-mode",
+              "label": "Postmark remains in test mode",
+              "type": "file_contains",
+              "file": "convex/email.ts",
+              "text": "testMode: true",
+              "required": true
+            },
+            {
+              "id": "postmark-webhook-route",
+              "label": "Postmark webhook route is registered",
+              "type": "file_contains",
+              "file": "convex/http.ts",
+              "text": "/postmark/webhook",
+              "required": true
+            }
+          ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://account.postmarkapp.com/servers",
+              "opensBrowser": true,
+              "why": "Open Postmark Servers page to obtain the Server API Token and configure webhook endpoints."
+            }
+          ]
+        }
+      },
+      "revocation": [
+        {
+          "text": "Revoke the Server API Token under Postmark Server → API Tokens."
+        },
+        {
+          "text": "Delete the /postmark/webhook endpoint under Postmark Server → Webhooks."
+        }
+      ]
     }
   }
 }
