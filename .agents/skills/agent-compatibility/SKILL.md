@@ -74,6 +74,11 @@ The native local server contract, read-only mode, mutation capability, verificat
 and removal procedure live in `references/agentic-ship-mcp.md`. Read it before changing
 the `agentic-ship` entry or its tools.
 
+The official GitHub Agentic Workflows package, compiler ownership, and operational
+procedure live in `references/github-agentic-workflows.md`. Read it before changing
+`.github/workflows/*.md`, their `.lock.yml` files, `aw.yml`, or the generated GitHub
+agent and skill.
+
 Keep local stdio servers in `.mcp.json` as exact `command` and `args` entries. Keep
 remote servers as direct HTTP entries with `type: "http"` and their HTTPS URL.
 

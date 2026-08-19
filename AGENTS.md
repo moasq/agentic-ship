@@ -234,6 +234,13 @@ matrix through `visual-qa` before completion.
 - Native adapters are generated artifacts. Edit `.agents/agents/` or `.mcp.json`, then
   regenerate; never patch `agents/`, `.codex/agents/`, `.cursor/agents/`, or
   `.cursor/mcp.json` directly.
+- GitHub Agentic Workflows have a separate official compiler boundary. Their authored
+  sources are `.github/workflows/*.md`; `gh aw compile` owns the sibling `.lock.yml`
+  files and `.github/aw/actions-lock.json`, while `gh aw init` owns
+  `.github/agents/agentic-workflows.md` and `.github/skills/agentic-workflows/`.
+  `pnpm sync:agents` must never write those paths. The install, strict validation,
+  secret isolation, safe-output, trial, update, and removal procedure lives in
+  `.agents/skills/agent-compatibility/references/github-agentic-workflows.md`.
 - **Host plugins are continued, never overridden.** Claude Code, Codex, and Cursor
   carry their own installable plugins and connectors for the same vendors (Linear,
   GitHub, Stripe, Convex, ...). A host that already provides a working connection is

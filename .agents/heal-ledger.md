@@ -49,6 +49,22 @@ Format:
   propagation.
 - status: open
 
+## 2026-08-19 agentic-workflow-compiler-only-printed-a-message
+
+- cause: the first Agentic Workflows implementation used a home-grown compiler that
+  emitted ordinary Actions jobs whose only behavior was printing the workflow name and
+  budget. It used an unsupported source directory, direct write permissions, mutable
+  action tags, and a `pull_request_target` trigger while tests checked strings only.
+- fix: the bundle now uses official `.github/workflows/*.md` sources, strict gh-aw
+  v0.86.2 `.lock.yml` output, a valid root `aw.yml` package, generated GitHub agent and
+  skill ownership, opt-in triggers, read-only agent permissions, denied general network
+  access, bounded safe outputs, and per-workflow time and AI-credit budgets.
+- prevention: CI installs the pinned official compiler, recompiles and rejects lock
+  drift, then installs all five sources into a clean fixture. Unit contracts require
+  three engines, strict metadata, immutable action SHAs, untrusted-input boundaries,
+  and the absence of direct write permission and `pull_request_target`.
+- status: open
+
 ## 2026-08-11 visual-capture-hung-on-a-lazy-image
 - cause: `captureUiEvidence` awaited `image.decode()` on every image whose
   `complete` was false, with no bound. A below-the-fold `next/image` is lazy by

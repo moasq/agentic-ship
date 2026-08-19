@@ -1,208 +1,68 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
-export const SUPPORTED_ENGINES = ["codex", "claude", "copilot"];
-
-export const ALLOWED_SAFE_OUTPUTS = [
-  "issue_comment",
-  "pull_request_comment",
-  "pull_request_review",
-  "workflow_summary",
-  "check_annotation",
+export const AGENTIC_WORKFLOW_IDS = [
+  "issue-clarification",
+  "ci-diagnosis",
+  "documentation-drift",
+  "upstream-review",
+  "release-notes",
 ];
 
-export const STARTER_WORKFLOWS = [
-  {
-    id: "issue-clarification",
-    name: "Issue Clarification",
-    engine: "claude",
-    trigger: "issues",
-    events: ["opened", "labeled"],
-    permissions: { contents: "read", issues: "write" },
-    safeOutputs: ["issue_comment"],
-    maxCostUsd: 0.1,
-    timeoutMinutes: 10,
-    description: "Evaluates newly opened issues against the feature contract and requests clarifications if requirements are underspecified.",
-  },
-  {
-    id: "ci-diagnosis",
-    name: "CI Failure Diagnosis",
-    engine: "codex",
-    trigger: "workflow_run",
-    events: ["completed"],
-    permissions: { contents: "read", actions: "read", issues: "write" },
-    safeOutputs: ["issue_comment", "workflow_summary"],
-    maxCostUsd: 0.15,
-    timeoutMinutes: 15,
-    description: "Inspects failed workflow runs, identifies the failing verify gate, and pinpoints root cause and proposed fix.",
-  },
-  {
-    id: "documentation-drift",
-    name: "Documentation Drift Detection",
-    engine: "claude",
-    trigger: "pull_request",
-    events: ["opened", "synchronize"],
-    permissions: { contents: "read", "pull-requests": "write" },
-    safeOutputs: ["pull_request_comment"],
-    maxCostUsd: 0.05,
-    timeoutMinutes: 10,
-    description: "Checks PR changes for script or command additions that are missing from README.md or docs/.",
-  },
-  {
-    id: "upstream-review",
-    name: "Upstream Dependency and Security Review",
-    engine: "copilot",
-    trigger: "pull_request_target",
-    events: ["opened"],
-    permissions: { contents: "read", "pull-requests": "write" },
-    safeOutputs: ["pull_request_review"],
-    maxCostUsd: 0.2,
-    timeoutMinutes: 20,
-    description: "Audits PR diffs for secret leakage, supply chain pin violations, and unexpected network egress.",
-  },
-  {
-    id: "release-notes",
-    name: "Release Note Drafting",
-    engine: "claude",
-    trigger: "push",
-    events: ["main"],
-    permissions: { contents: "read", "pull-requests": "write" },
-    safeOutputs: ["workflow_summary"],
-    maxCostUsd: 0.1,
-    timeoutMinutes: 15,
-    description: "Drafts structured release notes from closed work items and merged feature PRs upon main branch updates.",
-  },
-];
+function read(root, path) {
+  return readFileSync(join(root, path), "utf8");
+}
 
-export function validateWorkflowSpec(spec) {
+export function inspectAgenticWorkflowBundle(root) {
   const errors = [];
-  if (!spec.id || typeof spec.id !== "string" || !/^[a-z][a-z0-9-]*$/.test(spec.id)) {
-    errors.push("Workflow id must be non-empty kebab-case");
+  const manifest = read(root, "aw.yml");
+  for (const required of [
+    ".github/agents/agentic-workflows.md",
+    ".github/skills/agentic-workflows",
+    ...AGENTIC_WORKFLOW_IDS.map((id) => `.github/workflows/${id}.md`),
+  ]) {
+    if (!manifest.includes(`- ${required}`)) errors.push(`aw.yml does not include ${required}`);
   }
-  if (!spec.name || typeof spec.name !== "string") {
-    errors.push("Workflow name is required");
-  }
-  if (!SUPPORTED_ENGINES.includes(spec.engine)) {
-    errors.push(`Engine ${spec.engine} is not supported. Supported: ${SUPPORTED_ENGINES.join(", ")}`);
-  }
-  if (!spec.permissions || typeof spec.permissions !== "object") {
-    errors.push("Permissions object is required");
-  } else {
-    if (spec.permissions.contents && !["read", "none"].includes(spec.permissions.contents)) {
-      errors.push("contents permission must be read or none (write is forbidden)");
+  if (!existsSync(join(root, ".github", "agents", "agentic-workflows.md"))) errors.push("official gh-aw agent is missing");
+  if (!existsSync(join(root, ".github", "skills", "agentic-workflows", "SKILL.md"))) errors.push("official gh-aw skill is missing");
+
+  const engines = new Set();
+  for (const id of AGENTIC_WORKFLOW_IDS) {
+    const sourcePath = `.github/workflows/${id}.md`;
+    const lockPath = `.github/workflows/${id}.lock.yml`;
+    if (!existsSync(join(root, sourcePath)) || !existsSync(join(root, lockPath))) {
+      errors.push(`${id} needs authored Markdown and an official lock file`);
+      continue;
+    }
+    const source = read(root, sourcePath);
+    const engine = source.match(/^engine:\s*([a-z]+)$/m)?.[1];
+    if (engine) engines.add(engine);
+    if (!source.includes("network: {}")) errors.push(`${id} must deny agent network access`);
+    if (!source.includes("AGENTIC_WORKFLOWS_ENABLED")) errors.push(`${id} must be opt-in`);
+    if (!/^timeout-minutes:\s*\d+$/m.test(source) || !/^max-ai-credits:\s*\d+$/m.test(source)) {
+      errors.push(`${id} needs time and AI-credit budgets`);
+    }
+    if (/^\s+(?:actions|contents|issues|pull-requests):\s*write\s*$/m.test(source)) {
+      errors.push(`${id} grants the agent direct write permission`);
+    }
+    if (/pull_request_target/.test(source)) errors.push(`${id} uses pull_request_target`);
+    if (!/untrusted data/i.test(source)) errors.push(`${id} must define its untrusted-input boundary`);
+
+    const lock = read(root, lockPath);
+    const metadataLine = lock.split(/\r?\n/, 1)[0].replace("# gh-aw-metadata: ", "");
+    let metadata;
+    try {
+      metadata = JSON.parse(metadataLine);
+    } catch {
+      errors.push(`${id} lock metadata is invalid`);
+    }
+    if (metadata?.strict !== true || metadata?.compiler_version !== "v0.86.2") {
+      errors.push(`${id} must be strict output from gh-aw v0.86.2`);
+    }
+    for (const match of lock.matchAll(/^\s*uses:\s*([^\s]+)@([^\s#]+).*$/gm)) {
+      if (!/^[a-f0-9]{40}$/.test(match[2])) errors.push(`${id} has a mutable action reference: ${match[1]}@${match[2]}`);
     }
   }
-  if (!Number.isFinite(spec.maxCostUsd) || spec.maxCostUsd <= 0 || spec.maxCostUsd > 1.0) {
-    errors.push("maxCostUsd must be a positive budget <= $1.00");
-  }
-  if (!Number.isInteger(spec.timeoutMinutes) || spec.timeoutMinutes <= 0 || spec.timeoutMinutes > 60) {
-    errors.push("timeoutMinutes must be an integer between 1 and 60");
-  }
-  if (Array.isArray(spec.safeOutputs)) {
-    for (const output of spec.safeOutputs) {
-      if (!ALLOWED_SAFE_OUTPUTS.includes(output)) {
-        errors.push(`Invalid safeOutput ${output}. Allowed: ${ALLOWED_SAFE_OUTPUTS.join(", ")}`);
-      }
-    }
-  }
-
-  return {
-    valid: errors.length === 0,
-    errors,
-  };
-}
-
-export function compileWorkflowToYaml(spec) {
-  const validation = validateWorkflowSpec(spec);
-  if (!validation.valid) {
-    throw new Error(`Invalid workflow spec: ${validation.errors.join("; ")}`);
-  }
-
-  const permissionsYaml = Object.entries(spec.permissions)
-    .map(([k, v]) => `  ${k}: ${v}`)
-    .join("\n");
-
-  return `# Generated by Agentic Ship GitHub Agentic Workflows compiler. DO NOT EDIT DIRECTLY.
-# Source: .github/aw/${spec.id}.md
-name: aw-${spec.id}
-
-on:
-  ${spec.trigger}:
-    types: [${(spec.events || []).map((e) => `"${e}"`).join(", ")}]
-
-permissions:
-${permissionsYaml}
-
-concurrency:
-  group: aw-${spec.id}-\${{ github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  agentic-workflow:
-    name: ${spec.name} (${spec.engine})
-    runs-on: ubuntu-latest
-    timeout-minutes: ${spec.timeoutMinutes}
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node Environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Run Agentic Workflow (${spec.id})
-        env:
-          AW_ENGINE: "${spec.engine}"
-          AW_MAX_COST_USD: "${spec.maxCostUsd}"
-          AW_SAFE_OUTPUTS: "${(spec.safeOutputs || []).join(",")}"
-        run: |
-          echo "Running Agentic Workflow: ${spec.name}"
-          echo "Engine: ${spec.engine} | Budget: $\${AW_MAX_COST_USD}"
-`;
-}
-
-export function syncAgenticWorkflows(root) {
-  const awDirectory = join(root, ".github", "aw");
-  const workflowsDirectory = join(root, ".github", "workflows");
-
-  mkdirSync(awDirectory, { recursive: true });
-  mkdirSync(workflowsDirectory, { recursive: true });
-
-  const results = [];
-
-  for (const workflow of STARTER_WORKFLOWS) {
-    const mdPath = join(awDirectory, `${workflow.id}.md`);
-    if (!existsSync(mdPath)) {
-      const mdContent = `---
-id: ${workflow.id}
-name: ${workflow.name}
-engine: ${workflow.engine}
-trigger: ${workflow.trigger}
-events: [${(workflow.events || []).join(", ")}]
-maxCostUsd: ${workflow.maxCostUsd}
-timeoutMinutes: ${workflow.timeoutMinutes}
-safeOutputs: [${(workflow.safeOutputs || []).join(", ")}]
----
-
-# ${workflow.name}
-
-${workflow.description}
-
-## Security & Permission Invariants
-- Permissions: \`${JSON.stringify(workflow.permissions)}\`
-- Max Budget: \`$${workflow.maxCostUsd}\`
-- Timeout: \`${workflow.timeoutMinutes} minutes\`
-`;
-      writeFileSync(mdPath, mdContent);
-    }
-
-    const yamlContent = compileWorkflowToYaml(workflow);
-    const yamlPath = join(workflowsDirectory, `aw-${workflow.id}.yml`);
-    writeFileSync(yamlPath, yamlContent);
-
-    results.push({ id: workflow.id, yamlPath });
-  }
-
-  return results;
+  for (const engine of ["claude", "codex", "copilot"]) if (!engines.has(engine)) errors.push(`starter bundle does not exercise ${engine}`);
+  return errors;
 }
