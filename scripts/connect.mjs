@@ -14,7 +14,7 @@ function usage() {
     "  pnpm --silent connect resume <actionId> [--json]",
     "  pnpm --silent connect cancel <actionId> [--json]",
     "",
-    "Providers: convex, stripe, github, resend, posthog, netlify",
+    "Providers: convex, stripe, github, resend, posthog, netlify, vercel, polar, lemonsqueezy",
     "Hosts: claude, codex, cursor, hermes, openclaw",
   ].join("\n");
 }

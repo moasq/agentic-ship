@@ -19,6 +19,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inspectProductionBillingEnvironment } from "./lib/billing-coherence.mjs";
+import { inspectDeploymentBlueprint } from "./lib/deployment-coherence.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => (existsSync(join(root, p)) ? readFileSync(join(root, p), "utf8") : "");
@@ -70,12 +71,11 @@ add(
 
 // The public URL is env-driven per environment; the prod value is audited in the
 // --prod section below. Locally, the blueprint is the thing that must be intact:
-const blueprint = read("netlify.toml");
-add(
-  "deploy blueprint intact",
-  blueprint ? (/convex deploy/.test(blueprint) ? "PASS" : "FAIL") : "SKIP",
-  blueprint ? (/convex deploy/.test(blueprint) ? "" : "netlify.toml no longer deploys Convex before the frontend build") : "no downstream product deployment exists in this tool repository",
-);
+const deployment = inspectDeploymentBlueprint({
+  netlifySource: read("netlify.toml"),
+  vercelSource: read("vercel.json"),
+});
+add("selected deploy blueprint intact", deployment.status, deployment.detail);
 
 /* ---------- the CSP that actually ships ---------- */
 
@@ -150,7 +150,7 @@ console.log(
   failed
     ? `\nNOT READY — ${failed} blocking issue(s). Every one above ships a real incident: test payments, dead email, or an open seed gate.\n`
     : withProd
-      ? "\nREADY — code, build, tests and the prod deployment all check out. The go-live checklist in deploy-netlify.md covers the two manual webhooks.\n"
+      ? "\nREADY — code, build, tests and the prod deployment all check out. The selected deployment guide covers URL, domain, callback, and webhook acceptance.\n"
       : "\nCODE READY — now run `pnpm preflight --prod` to audit the real deployment before launch.\n",
 );
 process.exit(failed ? 1 : 0);

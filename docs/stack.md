@@ -38,7 +38,7 @@ fail-closed dependency audit before anything ships.
 | Email | <picture><source media="(prefers-color-scheme: dark)" srcset="../.github/assets/stack/resend-dark.svg"><img alt="" src="../.github/assets/stack/resend-light.svg" height="14"></picture> Resend via `@convex-dev/resend` | Ships in test mode so a wrong address in development cannot reach a real person; leaving test mode is a paired, gated flip |
 | Analytics | <picture><source media="(prefers-color-scheme: dark)" srcset="../.github/assets/stack/posthog-dark.svg"><img alt="" src="../.github/assets/stack/posthog-light.svg" height="14"></picture> PostHog | The one analytics vendor with an official plugin that reads product data back; traffic proxies through `/ingest` on your own origin so the CSP stays closed |
 | Fonts | Self-hosted OFL faces | `next/font/google` downloads at build time, which once broke CI on a host with no egress; committed OFL files cannot |
-| Deploy | <picture><source media="(prefers-color-scheme: dark)" srcset="../.github/assets/stack/netlify-dark.svg"><img alt="" src="../.github/assets/stack/netlify-light.svg" height="14"></picture> Netlify | The whole path is the terminal: `netlify init`, `netlify env:set`, `netlify deploy --prod`; Render was dropped because its first deploy cannot be reached from a terminal at all |
+| Deploy | <picture><source media="(prefers-color-scheme: dark)" srcset="../.github/assets/stack/netlify-dark.svg"><img alt="" src="../.github/assets/stack/netlify-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset="../.github/assets/stack/vercel-dark.svg"><img alt="" src="../.github/assets/stack/vercel-light.svg" height="14"></picture> Netlify or Vercel | Netlify remains the default; Vercel is an explicit alternative. Both pair through an official CLI, keep one committed adapter, and deploy Convex before Next.js |
 | Delivery | <picture><source media="(prefers-color-scheme: dark)" srcset="../.github/assets/stack/github-dark.svg"><img alt="" src="../.github/assets/stack/github-light.svg" height="14"></picture> GitHub | Repository, pull requests, and CI through the `gh` CLI's device-flow OAuth; the token lands in the system keyring and is never typed |
 | Tracking | <picture><source media="(prefers-color-scheme: dark)" srcset="../.github/assets/stack/linear-dark.svg"><img alt="" src="../.github/assets/stack/linear-light.svg" height="14"></picture> Linear | The hosted Linear MCP mirrors the work queue into a project a person can watch; the queue stays the source of truth |
 
@@ -46,7 +46,7 @@ The brand marks in these tables are vendored, never hotlinked; provenance and th
 edit made to each file are recorded in
 [.github/assets/stack/credits.md](../.github/assets/stack/credits.md).
 
-Two rejected alternatives explain the flavor of these picks. Render lost to Netlify
+Two rejected alternatives explain the flavor of these picks. Render lost to the supported deployment adapters
 because a deploy that needs a dashboard-minted ID breaks the terminal-only rule.
 Amplitude lost to PostHog because its integration is events-first: it can receive data
 but gives an agent little to read back.

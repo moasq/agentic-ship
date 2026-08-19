@@ -1,15 +1,14 @@
 #!/usr/bin/env node
 /**
- * pnpm provider:login <stripe|netlify|github|21st>
+ * pnpm provider:login <stripe|netlify|vercel|github|21st>
  *
  * One journey per provider: install the official CLI if it is missing, then run its
  * browser OAuth login and wait for consent. The terminal never carries a credential —
  * the browser approval IS the authentication, and the CLI stores what it receives in
  * its own machine-local config, outside this repository.
  *
- * Install sources are the vendors' documented ones only (Homebrew on macOS/Linux,
- * Scoop/winget on Windows). When no installer is known for this platform the script
- * stops with the docs URL instead of guessing.
+ * Install sources are the vendors' documented package managers only. When no installer
+ * is known for this platform the script stops with the docs URL instead of guessing.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -19,7 +18,7 @@ import { fileURLToPath } from "node:url";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-// On Windows the vendor CLIs are batch shims (npm.cmd, netlify.cmd, scoop, winget, gh)
+// On Windows the vendor CLIs are batch shims (npm.cmd, netlify.cmd, vercel.cmd, scoop, winget, gh)
 // that spawnSync cannot exec without a shell — without this every provider login is dead
 // on win32. Every command and argument spawned below is a static literal from the
 // PROVIDERS catalog; no user input is ever interpolated into a shell string, so shell
@@ -62,6 +61,17 @@ const PROVIDERS = {
     login: ["netlify", "login"],
     // Read-only and account-scoped: it needs the credential and touches no site.
     verify: ["netlify", "api", "getCurrentUser", "--data", "{}"],
+  },
+  vercel: {
+    binary: "vercel",
+    docs: "https://vercel.com/docs/cli",
+    install: {
+      darwin: [["pnpm", "add", "--global", "vercel"]],
+      linux: [["pnpm", "add", "--global", "vercel"]],
+      win32: [["pnpm", "add", "--global", "vercel"]],
+    },
+    login: ["vercel", "login"],
+    verify: ["vercel", "whoami"],
   },
   github: {
     binary: "gh",

@@ -42,6 +42,8 @@ vercel/next.js repo is declared there). Provenance for all of it lives in
 Node 20+ · pnpm · TypeScript parser · Playwright capture runtime. Downstream product
 stacks are selected by their own product contract.
 
+Deployment selects **Netlify** by default or **Vercel** as an alternative; both use an
+official CLI browser login and a committed adapter that deploys Convex before Next.js.
 Delivery and tracking ride on two services: **GitHub** carries the repository, pull
 requests, and CI through the authenticated `gh` CLI (`pnpm provider:login github`), and
 **Linear** is the optional development-tracking mirror through its hosted MCP — both
@@ -67,7 +69,7 @@ Windows. The buyer may be on any of the three.
 | `pnpm health` | offline tool-repo health — required skill/contract/adapter/MCP assets present, no bundled application residue, Node 20+ runtime. (Product-workspace checks — pins, SSOT, tokens, env leaks, backend status — run downstream where `src/`/`convex/` exist) |
 | `pnpm onboard [provider] --host <host>` | provider-selective status or the next resumable human step |
 | `pnpm connect` | begin, inspect, resume, or cancel safe service-connection receipts |
-| `pnpm provider:login <cli>` | install + browser-OAuth pair a vendor's official CLI (stripe, netlify, github, 21st) |
+| `pnpm provider:login <cli>` | install + browser-OAuth pair a vendor's official CLI (stripe, netlify, vercel, github, 21st) |
 | `pnpm stripe:provision` | webhook endpoint and plan prices through the paired CLI; secrets flow straight into Convex env, never printed. `--test-key` copies the CLI's TEST key so a sandbox can take a 4242 payment; it refuses anything that is not `sk_test`/`rk_test`, and refuses `--prod` |
 | `pnpm secret:set NAME` | hidden-input prompt in the user's terminal, piped into Convex env — no chat, no history, no files |
 | `pnpm setup:auth [site-url]` | generate `BETTER_AUTH_SECRET` and set it plus `SITE_URL` straight into a downstream Convex env; the secret is never printed |
@@ -214,7 +216,7 @@ matrix through `visual-qa` before completion.
   provider page itself (`pnpm open:url`, restricted to catalog origins). On no, it
   cancels the receipt and runs nothing.
 - **Authorization is the vendor's own OAuth wherever one exists.** Convex, Stripe,
-  Netlify, and GitHub authorize through their official CLI browser flows
+  Netlify, Vercel, and GitHub authorize through their official CLI browser flows
   (`pnpm provider:login`), where approving in the browser is the entire consent and
   the credential lands only in the CLI's machine-local store. Choices the catalog
   cannot make — such as Convex's new-vs-existing project — are payload `decision`s
@@ -585,33 +587,38 @@ Detail: `.agents/skills/frontend-security/references/analytics-posthog.md`.
 - `autocapture` is off and inputs are masked in replay. Turning either on is a
   `frontend-security` decision, not a convenience.
 
-## Deploy rules (Netlify)
+## Deploy rules (Netlify or Vercel)
 
-Detail: `.agents/skills/convex-structure/references/deploy-netlify.md`.
+Details: `.agents/skills/convex-structure/references/deploy-netlify.md` and
+`.agents/skills/convex-structure/references/deploy-vercel.md`.
 
-- `netlify.toml` is the deployment. Change the topology there, in a reviewable diff —
-  never by clicking in a dashboard. Netlify treats the file as authoritative and it
-  **overrides** the UI, so a dashboard edit cannot silently win.
+- The product brief selects one deployment provider. Netlify remains the default;
+  Vercel is the supported alternative. Commit exactly one adapter: `netlify.toml` or
+  `vercel.json`. Preflight fails when both exist.
+- Change deployment topology in that adapter, in a reviewable diff. Dashboard settings
+  must not silently replace the committed build contract.
 - The build command must run `npx convex deploy --cmd 'pnpm build'`, so backend and
   frontend ship together. `pnpm build` alone ships a frontend against a stale backend.
-- Netlify holds `CONVEX_DEPLOY_KEY` and public keys only. Every backend secret lives in
+- The web host holds `CONVEX_DEPLOY_KEY` and public keys only. Every backend secret lives in
   the **prod Convex deployment's** env, which is what keeps live Stripe keys off dev
   machines.
-- Secret **values** never appear in `netlify.toml` — it is committed, and a value
-  written into it is published. Set them with `netlify env:set <NAME> --secret`.
-- **The whole path is the terminal**, which is why this host and not another:
-  `netlify init` creates the site and links the repo, `netlify env:set` configures it,
+- Secret **values** never appear in the committed deployment adapter. Set them through
+  the selected provider's hidden-input environment command.
+- **The whole path is the terminal**, which is why these hosts and not another.
+  Vercel uses `vercel project add`, `vercel link`, `vercel env add`, and
+  `vercel deploy --prod`. Netlify uses `netlify init` to create and link the site,
+  `netlify env:set` to configure it, and
   `netlify deploy --prod` ships. Nothing here needs a dashboard. Render was replaced for
   exactly this reason — `render deploys create` requires a `serviceID` that only the
   dashboard can mint, and `render blueprints` can validate a blueprint but never apply
   one, so the first deploy could not be reached from a terminal at all.
 - **The custom domain is the one human-owned deploy step.** It costs money and no
   registrar lets a machine buy or point one safely: the person buys it (Hostinger is
-  the documented registrar), points DNS at Netlify by hand, and the agent re-points
-  the app afterwards. Never announce the domain before Netlify shows the certificate
+  the documented registrar), points DNS at the selected host by hand, and the agent
+  re-points the app afterwards. Never announce the domain before the host shows the certificate
   issued — HSTS ships with a two-year `max-age`, so the first response a browser sees
   there must already be valid HTTPS. Procedure and records:
-  `.agents/skills/convex-structure/references/deploy-netlify.md`.
+  the selected deployment reference.
 
 ## Security rules
 
@@ -636,14 +643,14 @@ The kit's defaults are deliberately test-safe; going live is a set of **delibera
 flips**, gated by `pnpm preflight` and the `production-preflight` skill:
 
 - Live Stripe keys exist **only** in the prod Convex deployment's env. A live key on a
-  dev machine or in Netlify is a CRITICAL, and preflight `--prod` fails if prod still
+  dev machine or in the web host is a CRITICAL, and preflight `--prod` fails if prod still
   holds a test key — that is production taking test payments.
 - Email leaves `testMode` **together with** `requireEmailVerification: true`, after a
   sending domain is verified. Never one without the other.
 - `ALLOW_TEST_SEED` must not exist on prod. Preflight fails if it does.
 - `src/lib/site.ts` placeholders must be replaced before launch — they are the
   `<title>`, the OG card and llms.txt.
-- Prod incidents: rollback first (last green deploy in Netlify), diagnose locally
+- Prod incidents: rollback first (last green deploy in the selected host), diagnose locally
   through the gates second. Never a patch loop against production.
 
 ## SEO / AEO rules

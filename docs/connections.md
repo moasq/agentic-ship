@@ -20,6 +20,7 @@ way to revoke it.
 | Resend | Email | Hosted MCP OAuth, keys via hidden input |
 | PostHog | Analytics | Hosted MCP OAuth, public `phc_` key only |
 | Netlify | Deploy | `netlify login` browser flow |
+| Vercel | Deploy (alternative) | `vercel login` device flow via `pnpm provider:login vercel` |
 
 The catalog behind this table is
 [.agents/connections/providers.json](../.agents/connections/providers.json): probes,
@@ -81,7 +82,7 @@ by ID and nothing more.
 
 `pnpm connect cancel <action-id>` retires the local receipt. Every catalog entry also
 names how access itself is withdrawn: `npx convex logout`, `stripe logout`,
-`gh auth logout`, `netlify logout`, or disconnecting the MCP server in the host and
+`gh auth logout`, `netlify logout`, `vercel logout`, or disconnecting the MCP server in the host and
 revoking the grant in the provider's security settings. Canceling tracking, for
 example, stops the Linear mirror immediately and leaves already-created issues to be
 archived in Linear itself.
@@ -93,7 +94,7 @@ The model deliberately separates concerns that look similar:
 - **AI-host MCP authorization**: the host's own OAuth to a hosted tool server (Stripe,
   Resend, PostHog, Linear, 21st). Approving in the browser is the entire consent.
 - **Project provisioning**: creating or linking the actual resources: a Convex project,
-  a Stripe webhook endpoint, a Netlify site, a Linear project.
+  a Stripe webhook endpoint, a Netlify or Vercel project, a Linear project.
 - **Customer runtime**: your product's users returning from Stripe Checkout. That flow
   belongs to the product, and entitlement comes only from the webhook-backed query,
   never from a redirect.

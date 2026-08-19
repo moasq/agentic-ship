@@ -4,10 +4,10 @@ Brand marks used in `README.md` and `docs/stack.md` to identify the layers of th
 agentic development stack. Same rule as `.github/assets/hosts/credits.md`: one line per
 asset — file, source, licence — even where attribution is not required.
 
-Eighteen come from [Simple Icons](https://github.com/simple-icons/simple-icons)
+Nineteen come from [Simple Icons](https://github.com/simple-icons/simple-icons)
 (`simple-icons` on npm). Polar is sourced from its [official brand system](https://polar.sh/brand)
 because the similarly named Simple Icons mark belongs to the Polars dataframe library.
-All nineteen marks are vendored rather than hotlinked, so the pages render with no
+All twenty marks are vendored rather than hotlinked, so the pages render with no
 third-party request.
 
 | File | Mark | Slug | Licence |
@@ -28,6 +28,7 @@ third-party request.
 | `resend-{light,dark}.svg` | Resend | `resend` | CC0-1.0 |
 | `posthog-{light,dark}.svg` | PostHog | `posthog` | CC0-1.0 |
 | `netlify-{light,dark}.svg` | Netlify | `netlify` | CC0-1.0 |
+| `vercel-{light,dark}.svg` | Vercel | `vercel` | CC0-1.0 |
 | `github-{light,dark}.svg` | GitHub | `github` | CC0-1.0 |
 | `linear-{light,dark}.svg` | Linear | `linear` | CC0-1.0 |
 | `vitest-{light,dark}.svg` | Vitest | `vitest` | CC0-1.0 |

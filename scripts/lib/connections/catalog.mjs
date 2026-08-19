@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 
 const IDENTIFIER = /^[a-z][a-z0-9-]*$/;
 const PLACEHOLDER = /\{([a-z][a-z0-9-]*)\}/g;
-const PROBE_TYPES = new Set(["any_file_exists", "env_file_key", "file_contains", "file_exists", "home_file_exists", "mcp_server"]);
+const PROBE_TYPES = new Set(["any_file_exists", "command_succeeds", "env_file_key", "file_contains", "file_exists", "home_file_exists", "mcp_server"]);
 const AUTH_FLOWS = new Set(["cli_browser_login", "remote_oauth"]);
 const VERIFICATION_POLICIES = new Set(["machine", "probe_and_attestation"]);
 const CAPABILITIES = new Set(["analytics", "backend", "billing", "deployment", "email", "repository", "tracking"]);
@@ -28,6 +28,13 @@ function validateProbe(probe, owner) {
   assert(PROBE_TYPES.has(probe.type), `${owner}.${probe.id} uses unsupported probe type ${probe.type}`);
   assert(typeof probe.required === "boolean", `${owner}.${probe.id} must declare required`);
   if (probe.type === "file_exists") assert(typeof probe.path === "string", `${owner}.${probe.id} needs a path`);
+  if (probe.type === "command_succeeds") {
+    assert(IDENTIFIER.test(probe.command ?? ""), `${owner}.${probe.id} needs a safe command name`);
+    assert(
+      Array.isArray(probe.args) && probe.args.every((arg) => typeof arg === "string" && !/[\r\n]/.test(arg)),
+      `${owner}.${probe.id} needs literal command arguments`,
+    );
+  }
   if (probe.type === "any_file_exists") {
     assert(Array.isArray(probe.paths) && probe.paths.length > 0 && probe.paths.every((path) => typeof path === "string"), `${owner}.${probe.id} needs paths`);
   }
