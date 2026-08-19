@@ -99,6 +99,17 @@ only when the server starts with `--allow-mutations`. See the
 [project MCP guide](.agents/skills/agent-compatibility/references/agentic-ship-mcp.md)
 for the tool list, read-only mode, verification, and removal.
 
+### Add safe repository maintenance workflows
+
+The root `aw.yml` package includes five opt-in GitHub Agentic Workflows for issue
+clarification, CI diagnosis, documentation drift, upstream dependency review, and
+release-note drafting across Claude, Codex, and Copilot. Sources are Markdown;
+official strict compiler output is committed as `.lock.yml`. The agents have read-only
+repository access, deny general network access, and request any comment or review only
+through bounded safe outputs. See the
+[Agentic Workflows guide](.agents/skills/agent-compatibility/references/github-agentic-workflows.md)
+for installation, engine authentication, trial runs, debugging, updates, and removal.
+
 - ✅ **Pinned** — every version, registry, and MCP server locked in [skills.lock.json](skills.lock.json)
 - ✅ **Gated** — `pnpm verify` is the definition of done on every completion, not a release ritual
 - ✅ **Consent-first** — services connect through the vendor's own OAuth, and every connection is revocable

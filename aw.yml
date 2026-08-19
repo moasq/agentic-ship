@@ -1,0 +1,13 @@
+manifest-version: "1"
+min-version: v0.86.2
+name: Agentic Ship starter workflows
+description: Five opt-in, read-only Agentic Workflows for issue, CI, documentation, dependency, and release maintenance.
+license: MIT
+includes:
+  - .github/agents/agentic-workflows.md
+  - .github/skills/agentic-workflows
+  - .github/workflows/issue-clarification.md
+  - .github/workflows/ci-diagnosis.md
+  - .github/workflows/documentation-drift.md
+  - .github/workflows/upstream-review.md
+  - .github/workflows/release-notes.md

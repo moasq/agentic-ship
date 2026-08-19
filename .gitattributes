@@ -14,3 +14,5 @@
 *.woff2 binary
 *.ttf binary
 *.otf binary
+
+.github/workflows/*.lock.yml linguist-generated=true
