@@ -83,6 +83,11 @@ Windows. The buyer may be on any of the three.
 
 `pnpm install` runs the link, MCP, and agent-adapter synchronizers through `postinstall`.
 
+Downstream GitHub repositories may pin the root composite action to run `pnpm verify`;
+the optional supply-chain audit is explicit and fail-closed. Its permissions, pinning,
+and removal procedure live in
+`.agents/skills/testing/references/github-action.md`.
+
 **Never write `cp`, `ln`, `readlink`, `grep`, `rm -rf`, `mkdir -p`, `chmod`, `openssl`,
 or `$(...)` into a script, a skill, a doc, or a reply.** None of them exist in Windows
 cmd or PowerShell, and a command that silently fails there is worse than no command.

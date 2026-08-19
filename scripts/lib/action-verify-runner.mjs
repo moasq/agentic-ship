@@ -1,146 +1,109 @@
-import { execSync } from "node:child_process";
-import { appendFileSync, existsSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { appendFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const SECRET_PATTERNS = [
-  /sk_live_[0-9a-zA-Z]{24,}/g,
-  /whsec_[0-9a-zA-Z]{24,}/g,
-  /phx_[0-9a-zA-Z]{24,}/g,
-  /bearer\s+[a-zA-Z0-9_\-\.]{20,}/gi,
+  /(?:sk|rk)_(?:live|test)_[A-Za-z0-9_\-]{16,}/g,
+  /whsec_[A-Za-z0-9_\-]{16,}/g,
+  /phx_[A-Za-z0-9_\-]{16,}/g,
+  /github_pat_[A-Za-z0-9_]+/g,
+  /gh[pousr]_[A-Za-z0-9_]{20,}/g,
+  /bearer\s+[A-Za-z0-9._\-]{20,}/gi,
 ];
 
-export function sanitizeText(text) {
-  if (typeof text !== "string") return "";
-  let out = text;
-  for (const pat of SECRET_PATTERNS) {
-    out = out.replace(pat, "[REDACTED_SECRET]");
-  }
-  return out;
+export function sanitizeText(value) {
+  let result = typeof value === "string" ? value : "";
+  for (const pattern of SECRET_PATTERNS) result = result.replace(pattern, "[REDACTED_SECRET]");
+  return result;
 }
 
-export function formatStepSummary(gates, auditResult = null) {
-  const lines = [
-    "## 🚢 Agentic Ship Offline Verification Summary",
-    "",
-    "| Gate | Name | Status | Details |",
-    "| :--- | :--- | :---: | :--- |",
-  ];
+function conciseOutput(result) {
+  return sanitizeText(`${result.stdout ?? ""}${result.stderr ?? ""}`)
+    .trim()
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .slice(-12)
+    .join(" · ");
+}
 
-  for (const g of gates) {
-    const icon = g.passed ? "✅" : "❌";
-    const details = sanitizeText(g.details || (g.passed ? "Passed cleanly" : "Failed"));
-    lines.push(`| Gate ${g.id} | ${g.name} | ${icon} | ${details} |`);
-  }
-
-  if (auditResult) {
-    lines.push("");
-    lines.push("### 🛡️ Dependency Security Audit");
-    lines.push(
-      auditResult.passed
-        ? "✅ No high or critical vulnerabilities found."
-        : `⚠️ Audit reported vulnerabilities: ${sanitizeText(auditResult.summary)}`
-    );
-  }
-
-  lines.push("");
-  lines.push(`*Generated at ${new Date().toISOString()} by Agentic Ship Verification Action*`);
-  return lines.join("\n");
+function runPnpm(args, cwd) {
+  return spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", args, {
+    cwd,
+    encoding: "utf8",
+    stdio: "pipe",
+  });
 }
 
 export function formatGitHubAnnotation(gate) {
   if (gate.passed) return null;
-  const message = sanitizeText(gate.details || `Verification Gate ${gate.id} (${gate.name}) failed.`);
-  return `::error title=Gate ${gate.id} Failed (${gate.name})::${message}`;
+  const title = sanitizeText(gate.name).replace(/[\r\n,]/g, " ");
+  const message = sanitizeText(gate.details || `${gate.name} failed`)
+    .replace(/%/g, "%25")
+    .replace(/\r/g, "%0D")
+    .replace(/\n/g, "%0A");
+  return `::error title=${title}::${message}`;
 }
 
-export async function runVerificationGates(options = {}) {
-  const { audit = false, failOnWarnings = false } = options;
-  const gates = [
-    { id: 1, name: "Lint & Code Quality", command: "pnpm lint", passed: true, details: "" },
-    { id: 2, name: "Typecheck & Schema Validation", command: "pnpm typecheck", passed: true, details: "" },
-    { id: 3, name: "Unit & Integration Tests", command: "pnpm test", passed: true, details: "" },
-    { id: 4, name: "Agent Skills & Contracts", command: "node scripts/verify-skills.mjs", passed: true, details: "" },
-    { id: 5, name: "Connections & Providers", command: "node scripts/verify-connections.mjs", passed: true, details: "" },
-    { id: 6, name: "Work Queue & State Integrity", command: "node scripts/verify-work-queue.mjs", passed: true, details: "" },
+function markdownCell(value) {
+  return sanitizeText(String(value)).replace(/\|/g, "\\|").replace(/[\r\n]+/g, " ");
+}
+
+export function formatStepSummary(gates) {
+  const lines = [
+    "## Agentic Ship verification",
+    "",
+    "| Gate | Result | Details |",
+    "| --- | --- | --- |",
+  ];
+  for (const gate of gates) {
+    lines.push(`| ${markdownCell(gate.name)} | ${gate.passed ? "Passed" : "Failed"} | ${markdownCell(gate.details)} |`);
+  }
+  return lines.join("\n");
+}
+
+export function runVerificationGates({ audit = false, cwd = process.cwd(), runner = runPnpm } = {}) {
+  const definitions = [
+    { name: "Offline verification", args: ["verify"] },
+    ...(audit ? [{ name: "Supply-chain audit", args: ["audit:supply-chain"] }] : []),
   ];
 
-  let allPassed = true;
-
-  for (const gate of gates) {
-    try {
-      execSync(gate.command, { stdio: "pipe", encoding: "utf8" });
-      gate.passed = true;
-      gate.details = "Gate passed cleanly";
-    } catch (err) {
-      gate.passed = false;
-      const stderr = err.stderr || err.stdout || err.message || "Execution error";
-      gate.details = stderr.trim().split("\n")[0] || "Command failed with non-zero exit code";
-      allPassed = false;
-    }
-  }
-
-  let auditResult = null;
-  if (audit) {
-    try {
-      execSync("pnpm audit --prod", { stdio: "pipe", encoding: "utf8" });
-      auditResult = { passed: true, summary: "No production vulnerabilities" };
-    } catch (err) {
-      const summary = err.stdout || err.stderr || "Vulnerabilities detected";
-      auditResult = { passed: false, summary: summary.trim().split("\n")[0] };
-      if (failOnWarnings) {
-        allPassed = false;
-      }
-    }
-  }
-
-  return { gates, allPassed, auditResult };
+  const gates = definitions.map((definition) => {
+    const result = runner(definition.args, cwd);
+    const passed = result.status === 0 && !result.error;
+    return {
+      name: definition.name,
+      passed,
+      details: passed ? "Passed" : conciseOutput(result) || sanitizeText(result.error?.message) || "Command failed",
+    };
+  });
+  return { gates, allPassed: gates.every((gate) => gate.passed) };
 }
 
-export async function main() {
+export function main() {
   const audit = process.env.INPUT_AUDIT === "true";
-  const failOnWarnings = process.env.INPUT_FAIL_ON_WARNINGS === "true";
-
-  console.log("🚢 Running Agentic Ship Verification Gates...");
-  const { gates, allPassed, auditResult } = await runVerificationGates({ audit, failOnWarnings });
+  const { gates, allPassed } = runVerificationGates({ audit });
 
   for (const gate of gates) {
-    if (!gate.passed) {
-      const ann = formatGitHubAnnotation(gate);
-      if (ann) console.log(ann);
-    }
+    const annotation = formatGitHubAnnotation(gate);
+    if (annotation) process.stdout.write(`${annotation}\n`);
   }
-
-  const summaryMarkdown = formatStepSummary(gates, auditResult);
 
   if (process.env.GITHUB_STEP_SUMMARY) {
-    appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryMarkdown + "\n", "utf8");
+    appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${formatStepSummary(gates)}\n`, "utf8");
   }
 
-  const passedCount = gates.filter((g) => g.passed).length;
-  const totalCount = gates.length;
-
+  const passedCount = gates.filter((gate) => gate.passed).length;
   if (process.env.GITHUB_OUTPUT) {
-    const outputLines = [
-      `passed=${allPassed ? "true" : "false"}`,
-      `gates-passed=${passedCount}`,
-      `gates-total=${totalCount}`,
-    ].join("\n");
-    appendFileSync(process.env.GITHUB_OUTPUT, outputLines + "\n", "utf8");
+    appendFileSync(
+      process.env.GITHUB_OUTPUT,
+      `passed=${allPassed}\ngates-passed=${passedCount}\ngates-total=${gates.length}\n`,
+      "utf8",
+    );
   }
 
-  console.log(`\nVerification Result: ${passedCount}/${totalCount} gates passed.`);
-
-  if (!allPassed) {
-    console.error("❌ Agentic Ship Verification Failed.");
-    process.exit(1);
-  }
-
-  console.log("✅ All Agentic Ship Verification Gates Passed!");
+  process.stdout.write(`Agentic Ship verification: ${passedCount}/${gates.length} gates passed.\n`);
+  if (!allPassed) process.exitCode = 1;
 }
 
-if (process.argv[1] && process.argv[1].endsWith("action-verify-runner.mjs")) {
-  main().catch((err) => {
-    console.error("Fatal action error:", err);
-    process.exit(1);
-  });
-}
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) main();

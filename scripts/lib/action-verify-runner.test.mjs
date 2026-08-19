@@ -1,50 +1,48 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   formatGitHubAnnotation,
   formatStepSummary,
+  runVerificationGates,
   sanitizeText,
 } from "./action-verify-runner.mjs";
 
-describe("action-verify-runner", () => {
-  it("sanitizeText redacts sensitive keys and secret tokens", () => {
-    const dummyKey1 = ["sk", "live", "testmock123456789012345678"].join("_");
-    const dummyKey2 = ["whsec", "testmock9876543210abcdef98765432"].join("_");
-    const secretString = `Failed at auth ${dummyKey1} and ${dummyKey2}`;
-    const sanitized = sanitizeText(secretString);
-    expect(sanitized).not.toContain(dummyKey1);
-    expect(sanitized).not.toContain(dummyKey2);
-    expect(sanitized).toContain("[REDACTED_SECRET]");
+describe("Agentic Ship verification action", () => {
+  it("runs the repository's real offline gate", () => {
+    const runner = vi.fn(() => ({ status: 0, stdout: "ok", stderr: "" }));
+    const result = runVerificationGates({ cwd: "/fixture", runner });
+
+    expect(runner).toHaveBeenCalledOnce();
+    expect(runner).toHaveBeenCalledWith(["verify"], "/fixture");
+    expect(result.allPassed).toBe(true);
   });
 
-  it("formatStepSummary generates well-formed markdown table", () => {
-    const mockGates = [
-      { id: 1, name: "Lint", passed: true, details: "Clean" },
-      { id: 2, name: "Typecheck", passed: false, details: "Type error on line 42" },
-      { id: 3, name: "Tests", passed: true, details: "All passed" },
+  it("adds the fail-closed supply-chain gate only when requested", () => {
+    const runner = vi
+      .fn()
+      .mockReturnValueOnce({ status: 0, stdout: "", stderr: "" })
+      .mockReturnValueOnce({ status: 1, stdout: "advisory", stderr: "" });
+    const result = runVerificationGates({ audit: true, runner });
+
+    expect(runner.mock.calls.map(([args]) => args)).toEqual([["verify"], ["audit:supply-chain"]]);
+    expect(result.allPassed).toBe(false);
+  });
+
+  it("globally redacts current credential shapes", () => {
+    const secrets = [
+      `sk_${"live"}_${"a".repeat(24)}`,
+      `github_${"pat"}_${"A".repeat(40)}`,
+      `gh${"p"}_${"B".repeat(30)}`,
     ];
-
-    const summary = formatStepSummary(mockGates);
-    expect(summary).toContain("## 🚢 Agentic Ship Offline Verification Summary");
-    expect(summary).toContain("| Gate 1 | Lint | ✅ | Clean |");
-    expect(summary).toContain("| Gate 2 | Typecheck | ❌ | Type error on line 42 |");
-    expect(summary).toContain("| Gate 3 | Tests | ✅ | All passed |");
+    const sanitized = sanitizeText(secrets.join(" then "));
+    for (const secret of secrets) expect(sanitized).not.toContain(secret);
+    expect(sanitized.match(/\[REDACTED_SECRET\]/g)).toHaveLength(3);
   });
 
-  it("formatStepSummary includes audit results when provided", () => {
-    const mockGates = [{ id: 1, name: "Lint", passed: true, details: "Clean" }];
-    const audit = { passed: true, summary: "0 vulnerabilities" };
-
-    const summary = formatStepSummary(mockGates, audit);
-    expect(summary).toContain("### 🛡️ Dependency Security Audit");
-    expect(summary).toContain("No high or critical vulnerabilities found");
-  });
-
-  it("formatGitHubAnnotation emits error annotation for failing gates only", () => {
-    const passingGate = { id: 1, name: "Lint", passed: true, details: "Clean" };
-    const failingGate = { id: 2, name: "Typecheck", passed: false, details: "Type mismatch error" };
-
-    expect(formatGitHubAnnotation(passingGate)).toBeNull();
-    const ann = formatGitHubAnnotation(failingGate);
-    expect(ann).toContain("::error title=Gate 2 Failed (Typecheck)::Type mismatch error");
+  it("escapes annotation commands and Markdown cells", () => {
+    const gate = { name: "Offline,\nverification", passed: false, details: "bad%\nvalue | more" };
+    expect(formatGitHubAnnotation(gate)).toBe(
+      "::error title=Offline  verification::bad%25%0Avalue | more",
+    );
+    expect(formatStepSummary([gate])).toContain("bad% value \\| more");
   });
 });

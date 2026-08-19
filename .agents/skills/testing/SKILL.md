@@ -25,6 +25,10 @@ cannot return.
 A gate runs only when the ones above it are green. `pnpm verify` is the definition of
 done for every completion; `verify:full` is for PRs and before a deploy.
 
+GitHub consumers can run the same gate through the pinned reusable action. Installation,
+permissions, audit opt-in, updates, and removal are documented in
+[`references/github-action.md`](references/github-action.md).
+
 In the downstream product workspace the same gate names extend: CI there splits G0–G2
 plus the product build across macOS, Linux and Windows, and G3 on Linux. Every gate runs
 with no network beyond the install — fonts are committed rather than fetched, which is

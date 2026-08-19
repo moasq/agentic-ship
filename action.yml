@@ -10,7 +10,7 @@ inputs:
   pnpm-version:
     description: "pnpm version to install"
     required: false
-    default: "9"
+    default: "10.32.1"
   working-directory:
     description: "Working directory relative to repository root"
     required: false
@@ -19,11 +19,6 @@ inputs:
     description: "Whether to run an explicit opt-in dependency security audit"
     required: false
     default: "false"
-  fail-on-warnings:
-    description: "Whether warnings should fail the step"
-    required: false
-    default: "false"
-
 outputs:
   passed:
     description: "Whether all verification gates passed ('true' or 'false')"
@@ -39,7 +34,7 @@ runs:
   using: "composite"
   steps:
     - name: Setup pnpm
-      uses: pnpm/action-setup@a3252b78c470c02df07e9d792d4e7f4c51480f2d # v3.0.0
+      uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
       with:
         version: ${{ inputs.pnpm-version }}
         run_install: false
@@ -63,6 +58,6 @@ runs:
       working-directory: ${{ inputs.working-directory }}
       env:
         INPUT_AUDIT: ${{ inputs.audit }}
-        INPUT_FAIL_ON_WARNINGS: ${{ inputs.fail-on-warnings }}
+        AGENTIC_SHIP_ACTION_PATH: ${{ github.action_path }}
       run: |
-        node scripts/lib/action-verify-runner.mjs
+        node "$AGENTIC_SHIP_ACTION_PATH/scripts/lib/action-verify-runner.mjs"

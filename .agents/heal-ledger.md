@@ -733,3 +733,19 @@ Format:
   mapping, revoked access, and live-lock refusal. The product-lifecycle declaration and
   reference now own the procedure.
 - status: open
+
+## 2026-08-19 reusable-action-called-nonexistent-gates
+
+- cause: the first reusable verification action reported six friendly gate names but
+  invoked four scripts and two package commands the repository does not provide. Its
+  tests exercised Markdown formatting only, so the action stayed green while every
+  real consumer would fail.
+- fix: the action now invokes the canonical `pnpm verify` command and, only when
+  requested, the existing fail-closed `pnpm audit:supply-chain` command. The runner
+  resolves from the action directory while executing in the consumer workspace,
+  escapes GitHub annotations and Markdown, and globally redacts current credential
+  shapes.
+- prevention: contract tests assert the exact pnpm commands, opt-in audit behavior,
+  failure propagation, output escaping, and multi-secret redaction. Documentation now
+  requires immutable consumer pins and read-only permissions.
+- status: open

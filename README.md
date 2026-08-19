@@ -82,6 +82,14 @@ Stack marks are vendored, not hotlinked — provenance in
 [.github/assets/stack/credits.md](.github/assets/stack/credits.md). Zustand and
 Playwright ship no mark in that set, so their rows stay text-only.
 
+### Run the same gate in GitHub Actions
+
+Downstream repositories can pin this repository as a composite action and run the same
+offline `pnpm verify` gate used locally. The action requests only read access, uploads no
+artifacts, writes a concise job summary, and keeps the networked supply-chain audit
+opt-in. See the [GitHub action guide](.agents/skills/testing/references/github-action.md)
+for the pinned workflow example and update procedure.
+
 - ✅ **Pinned** — every version, registry, and MCP server locked in [skills.lock.json](skills.lock.json)
 - ✅ **Gated** — `pnpm verify` is the definition of done on every completion, not a release ritual
 - ✅ **Consent-first** — services connect through the vendor's own OAuth, and every connection is revocable
