@@ -1,0 +1,63 @@
+name: "Agentic Ship Verification"
+description: "Runs deterministic offline verification gates, emits GitHub annotations, and generates job summaries."
+author: "moasq & contributors"
+
+inputs:
+  node-version:
+    description: "Node.js version to install"
+    required: false
+    default: "22"
+  pnpm-version:
+    description: "pnpm version to install"
+    required: false
+    default: "10.32.1"
+  working-directory:
+    description: "Working directory relative to repository root"
+    required: false
+    default: "."
+  audit:
+    description: "Whether to run an explicit opt-in dependency security audit"
+    required: false
+    default: "false"
+outputs:
+  passed:
+    description: "Whether all verification gates passed ('true' or 'false')"
+    value: ${{ steps.run-verify.outputs.passed }}
+  gates-passed:
+    description: "Count of passing gates"
+    value: ${{ steps.run-verify.outputs.gates-passed }}
+  gates-total:
+    description: "Total count of evaluated gates"
+    value: ${{ steps.run-verify.outputs.gates-total }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      with:
+        version: ${{ inputs.pnpm-version }}
+        run_install: false
+
+    - name: Setup Node.js
+      uses: actions/setup-node@60edb5dd545a775178f525247059d61022244261 # v4.0.2
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: "pnpm"
+        cache-dependency-path: "${{ inputs.working-directory }}/pnpm-lock.yaml"
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        pnpm install --frozen-lockfile
+
+    - name: Run Agentic Ship Verification
+      id: run-verify
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        INPUT_AUDIT: ${{ inputs.audit }}
+        AGENTIC_SHIP_ACTION_PATH: ${{ github.action_path }}
+      run: |
+        node "$AGENTIC_SHIP_ACTION_PATH/scripts/lib/action-verify-runner.mjs"
