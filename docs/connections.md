@@ -18,7 +18,9 @@ way to revoke it.
 | GitHub | Repository, PRs, CI | `gh` device flow via `pnpm provider:login github` |
 | Linear | Development tracking | Hosted MCP OAuth in the AI host |
 | Resend | Email | Hosted MCP OAuth, keys via hidden input |
-| PostHog | Analytics | Hosted MCP OAuth, public `phc_` key only |
+| PostHog | Analytics (default) | Hosted MCP OAuth, public `phc_` key only |
+| Plausible | Analytics (alternative) | Public domain `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` |
+| Umami | Analytics (alternative) | Public `NEXT_PUBLIC_UMAMI_WEBSITE_ID` and host URL |
 | Netlify | Deploy | `netlify login` browser flow |
 | Vercel | Deploy (alternative) | `vercel login` device flow via `pnpm provider:login vercel` |
 | Sentry | Observability (optional) | Public `NEXT_PUBLIC_SENTRY_DSN`, build token via `pnpm secret:set` |
