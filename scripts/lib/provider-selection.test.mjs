@@ -96,3 +96,13 @@ test("vercel can be selected as alternative deployment provider", () => {
     tracking: "linear",
   });
 });
+
+test("postmark can be selected as alternative email provider", () => {
+  expect(resolveProviderSelection({ email: "postmark" })).toEqual({
+    billing: "stripe",
+    email: "postmark",
+    analytics: "posthog",
+    deployment: "netlify",
+    tracking: "linear",
+  });
+});
