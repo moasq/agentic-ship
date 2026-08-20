@@ -67,7 +67,7 @@ reasoning behind each pick lives in [docs/stack.md](docs/stack.md).
 | Auth | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/betterauth-dark.svg"><img alt="" src=".github/assets/stack/betterauth-light.svg" height="14"></picture> Better Auth (exact-pinned) through the Convex adapter |
 | Billing | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/stripe-dark.svg"><img alt="" src=".github/assets/stack/stripe-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/polar-dark.svg"><img alt="" src=".github/assets/stack/polar-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/lemonsqueezy-dark.svg"><img alt="" src=".github/assets/stack/lemonsqueezy-light.svg" height="14"></picture> Stripe by default, with Polar and Lemon Squeezy adapters; hosted checkout and webhook-backed entitlement |
 | Email | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/resend-dark.svg"><img alt="" src=".github/assets/stack/resend-light.svg" height="14"></picture> Resend through `@convex-dev/resend` — test-mode by default |
-| Analytics | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/posthog-dark.svg"><img alt="" src=".github/assets/stack/posthog-light.svg" height="14"></picture> PostHog behind a first-party `/ingest` proxy; the CSP stays closed |
+| Analytics | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/posthog-dark.svg"><img alt="" src=".github/assets/stack/posthog-light.svg" height="14"></picture> PostHog by default, with Plausible and Umami adapters; privacy-first, cookieless or proxied |
 | Fonts | Self-hosted OFL faces, fetched by `pnpm font`, committed |
 | Gates | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/vitest-dark.svg"><img alt="" src=".github/assets/stack/vitest-light.svg" height="14"></picture> Vitest contracts · Playwright capture · deterministic Node checks — `pnpm verify` on every completion, `pnpm verify:full` before a release |
 | UI gates | `pnpm ui:plan` direction contract · `pnpm ui:review` visual evidence · `pnpm check:ui` component boundaries |
@@ -160,7 +160,7 @@ honest question is not "is it supported" but how much code a swap touches:
 | Want instead | Wired today | Swap cost |
 | --- | --- | --- |
 | Cloudflare | Netlify, Vercel | small — add one committed deployment adapter and its connection and preflight contracts; product code never names the host |
-| Plausible, Umami | PostHog | small — `src/lib/analytics.ts` is the only file that imports the SDK |
+| Mixpanel, Amplitude | PostHog, Plausible, Umami | small — `src/lib/analytics.ts` is the only file that imports the SDK |
 | Postmark, SendGrid | Resend | medium — `convex/email.ts` is the only sender, but the Convex component and its webhook go with it |
 | Paddle | Stripe, Polar, Lemon Squeezy | medium: add one provider-owned adapter, connection entry, lifecycle fixture, and production check |
 | Clerk, Auth.js | Better Auth | medium — session truth is one query behind `requireUser`, but the Convex adapter is load-bearing |

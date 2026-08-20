@@ -20,6 +20,8 @@ import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inspectProductionBillingEnvironment } from "./lib/billing-coherence.mjs";
 import { inspectDeploymentBlueprint } from "./lib/deployment-coherence.mjs";
+import { inspectProductionObservabilityEnvironment } from "./lib/observability/sentry.mjs";
+import { inspectProductionAnalyticsEnvironment } from "./lib/analytics/index.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => (existsSync(join(root, p)) ? readFileSync(join(root, p), "utf8") : "");
@@ -104,6 +106,18 @@ add(
   localBillingSecret ? "FAIL" : "PASS",
   localBillingSecret ? "production billing secrets belong in the production Convex deployment environment" : "",
 );
+const localSentryAuthSecret = /^NEXT_PUBLIC_SENTRY_AUTH_TOKEN=/m.test(envLocal);
+add(
+  "no sensitive Sentry auth token in client env",
+  localSentryAuthSecret ? "FAIL" : "PASS",
+  localSentryAuthSecret ? "NEXT_PUBLIC_SENTRY_AUTH_TOKEN leaks Sentry auth token to the browser bundle — use SENTRY_AUTH_TOKEN in CI/build only" : "",
+);
+const localPosthogPersonalKey = /^NEXT_PUBLIC_POSTHOG_KEY=phx_/m.test(envLocal);
+add(
+  "no personal PostHog key in client env",
+  localPosthogPersonalKey ? "FAIL" : "PASS",
+  localPosthogPersonalKey ? "NEXT_PUBLIC_POSTHOG_KEY contains a personal phx_ key — use a public phc_ project key" : "",
+);
 
 /* ---------- the full local gate ---------- */
 
@@ -131,6 +145,14 @@ if (withProd) {
     add("prod EMAIL_FROM on a verified domain", has("EMAIL_FROM") && !/resend\.dev/.test(val("EMAIL_FROM")) ? "PASS" : "FAIL", "EMAIL_FROM missing or still the onboarding fallback — verify a sending domain and set it");
     add("prod SITE_URL is https and not localhost", /^https:\/\//.test(val("SITE_URL")) && !/localhost/.test(val("SITE_URL")) ? "PASS" : "FAIL", "auth callbacks and emails will point at the wrong host");
     add("prod auth secret set", has("BETTER_AUTH_SECRET") ? "PASS" : "FAIL", "pnpm secret, then npx convex env set --prod BETTER_AUTH_SECRET ...");
+    const observability = inspectProductionObservabilityEnvironment(env);
+    if (observability.status !== "SKIP") {
+      add("prod Sentry observability is valid", observability.status === "PASS" ? "PASS" : "FAIL", observability.status === "PASS" ? "" : observability.detail);
+    }
+    const analytics = inspectProductionAnalyticsEnvironment(env);
+    if (analytics.status !== "SKIP") {
+      add(`prod ${analytics.providerDisplayName || analytics.provider} analytics is valid`, analytics.status === "PASS" ? "PASS" : "FAIL", analytics.status === "PASS" ? "" : analytics.detail);
+    }
     add("NO test-seed backdoor in prod", has("ALLOW_TEST_SEED") ? "FAIL" : "PASS", "ALLOW_TEST_SEED is set on PROD — anyone-callable seeding of production data. Remove it: `npx convex env remove --prod ALLOW_TEST_SEED`");
     add("NO extra trusted auth origin in prod", has("E2E_ORIGIN") ? "FAIL" : "PASS", "E2E_ORIGIN is set on PROD — it adds a trusted origin to Better Auth, which is a CSRF hole outside the browser gate. Remove it: `npx convex env remove --prod E2E_ORIGIN`");
   }
