@@ -21,6 +21,7 @@ way to revoke it.
 | PostHog | Analytics | Hosted MCP OAuth, public `phc_` key only |
 | Netlify | Deploy | `netlify login` browser flow |
 | Vercel | Deploy (alternative) | `vercel login` device flow via `pnpm provider:login vercel` |
+| Sentry | Observability (optional) | Public `NEXT_PUBLIC_SENTRY_DSN`, build token via `pnpm secret:set` |
 
 The catalog behind this table is
 [.agents/connections/providers.json](../.agents/connections/providers.json): probes,
