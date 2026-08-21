@@ -749,6 +749,114 @@
         }
       ]
     },
+    "cloudflare": {
+      "displayName": "Cloudflare",
+      "capability": "deployment",
+      "defaultForCapability": false,
+      "docsUrl": "https://developers.cloudflare.com/workers/wrangler/",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "agentTool": {
+        "authFlow": "cli_browser_login",
+        "mcpServer": "cloudflare",
+        "setupUrl": "https://dash.cloudflare.com/",
+        "instructions": [
+          "Cloudflare's validated authorization for tooling is the official CLI: `wrangler login` opens a browser authorization page and approving it is the whole consent.",
+          "The manual equivalent is installing the Wrangler CLI (developers.cloudflare.com/workers/wrangler/) and running `wrangler login` yourself.",
+          "The credential lands in Wrangler's global machine-local configuration outside this repository. In headless CI/CD environments, use OS-keychain backed auth or set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`."
+        ],
+        "configurationProbe": {
+          "id": "cloudflare-cli-paired",
+          "label": "Wrangler CLI is authenticated",
+          "type": "command_succeeds",
+          "command": "wrangler",
+          "args": ["whoami"],
+          "required": true
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm provider:login cloudflare",
+              "opensBrowser": true,
+              "why": "Install the official Wrangler CLI if missing, then authenticate via browser."
+            }
+          ]
+        }
+      },
+      "projectProvisioning": {
+        "setupUrl": "https://dash.cloudflare.com/",
+        "instructions": [
+          "Choose an existing Cloudflare Worker project or create a new one before configuring deployment.",
+          "Commit `wrangler.json` (or `wrangler.jsonc` / `wrangler.toml`) with `npx convex deploy --cmd 'pnpm build'` or OpenNext / Next-on-Pages build flow so Convex deploys before Next.js.",
+          "Cloudflare Workers hold `CONVEX_DEPLOY_KEY` and required public browser variables as Worker secrets/vars. Backend secrets remain in the production Convex environment."
+        ],
+        "verification": {
+          "policy": "probe_and_attestation",
+          "probes": [
+            {
+              "id": "cloudflare-config",
+              "label": "Cloudflare deployment config exists",
+              "type": "any_file_exists",
+              "paths": [
+                "wrangler.json",
+                "wrangler.jsonc",
+                "wrangler.toml"
+              ],
+              "required": true
+            },
+            {
+              "id": "atomic-deploy",
+              "label": "Cloudflare deploys Convex and Next.js together",
+              "type": "file_contains",
+              "file": "package.json",
+              "text": "convex deploy",
+              "required": true
+            }
+          ]
+        },
+        "automation": {
+          "decision": {
+            "id": "cloudflare-project",
+            "question": "Should this workspace use an existing Cloudflare Worker project or create a new one?",
+            "options": [
+              {
+                "value": "existing",
+                "label": "Link an existing project",
+                "placeholders": ["project-name"],
+                "run": [
+                  {
+                    "command": "wrangler deployments list --name {project-name}",
+                    "opensBrowser": false,
+                    "why": "Verify access to the selected Cloudflare project."
+                  }
+                ]
+              },
+              {
+                "value": "new",
+                "label": "Create a new project",
+                "placeholders": ["project-name"],
+                "run": [
+                  {
+                    "command": "wrangler secret put CONVEX_DEPLOY_KEY --name {project-name}",
+                    "opensBrowser": false,
+                    "why": "Set the deploy key secret for the new Cloudflare Worker."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "revocation": [
+        {
+          "command": "wrangler logout",
+          "why": "Remove the Wrangler CLI credential from this machine."
+        },
+        {
+          "text": "Revoke API tokens in Cloudflare Dashboard under My Profile → API Tokens, and delete the Worker or Pages project if it should no longer exist."
+        }
+      ]
+    },
     "polar": {
       "displayName": "Polar",
       "capability": "billing",

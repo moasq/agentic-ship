@@ -21,7 +21,7 @@ const required = [
 ];
 const missing = required.filter((path) => !existsSync(resolve(root, path)));
 const agents = existsSync(resolve(root, "AGENTS.md")) ? readFileSync(resolve(root, "AGENTS.md"), "utf8") : "";
-const appPaths = ["src", "convex", "public", "e2e", "next.config.ts", "netlify.toml", "vercel.json"];
+const appPaths = ["src", "convex", "public", "e2e", "next.config.ts", "netlify.toml", "vercel.json", "wrangler.json", "wrangler.jsonc", "wrangler.toml"];
 const remainingApp = appPaths.filter((path) => existsSync(resolve(root, path)));
 const nodeMajor = Number(process.versions.node.split(".")[0]);
 const failures = [

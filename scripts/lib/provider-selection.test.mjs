@@ -97,6 +97,23 @@ test("vercel can be selected as alternative deployment provider", () => {
   });
 });
 
+test("cloudflare can be selected as alternative deployment provider while preserving netlify default", () => {
+  expect(resolveProviderSelection({ deployment: "cloudflare" })).toEqual({
+    billing: "stripe",
+    email: "resend",
+    analytics: "posthog",
+    deployment: "cloudflare",
+    tracking: "linear",
+  });
+  expect(resolveProviderSelection({})).toEqual({
+    billing: "stripe",
+    email: "resend",
+    analytics: "posthog",
+    deployment: "netlify",
+    tracking: "linear",
+  });
+});
+
 test("plausible can be selected as alternative analytics provider", () => {
   expect(resolveProviderSelection({ analytics: "plausible" })).toEqual({
     billing: "stripe",
