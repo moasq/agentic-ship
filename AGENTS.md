@@ -79,6 +79,7 @@ Windows. The buyer may be on any of the three.
 | `pnpm ui:review capture --base-url <local-url>` | capture the declared route/state/theme/viewport matrix with browser audits |
 | `pnpm ui:review <accept\|check>` | record named visual-review responsibility or prove the accepted evidence is current |
 | `pnpm check:ui` | component direction, purity, fixtures, naming, tokens, effect budget, and fail-closed visual evidence |
+| `pnpm check:backend` | statically prove downstream entitlement authority and per-document ownership boundaries; not applicable in this plain engine |
 | `pnpm font` · `pnpm asset` | fetch a licensed font / an allowlisted image, cross-platform |
 | `pnpm setup:env` | create `.env.local` from `.env.example` |
 | `pnpm link:skills` | make `.claude/skills` resolve to `.agents/skills` (junction on Windows) |

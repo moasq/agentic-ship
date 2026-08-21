@@ -16,7 +16,7 @@ cannot return.
 | Gate | Command | Proves |
 | --- | --- | --- |
 | G0 | `pnpm health` | required tool assets present, no bundled application residue, Node 20+ (in the downstream product: also SSOT, pins, secrets, mirrors) |
-| G1 | `pnpm verify` | the offline definition of done — G0 plus the generated host adapters (`check:agents`), the pinned MCP mirror (`check:mcp`), the UI tooling (`check:ui`), and the unit contracts (`pnpm test`). No lint and no product build run in this tool repo, because neither exists here |
+| G1 | `pnpm verify` | the offline definition of done — G0 plus the generated host adapters (`check:agents`), the pinned MCP mirror (`check:mcp`), the UI tooling (`check:ui`), downstream backend postconditions (`check:backend`), and the unit contracts (`pnpm test`). No lint and no product build run in this tool repo, because neither exists here |
 | G2 | `pnpm test` | deterministic tool contracts (vitest), in memory, no network |
 | G3 | `pnpm test:e2e` | **downstream product only** — the app in a real browser: pages, headers, SEO surface. There is no Playwright config or product build in this tool repo, so this gate runs in the product workspace |
 | all | `pnpm verify:full` | verify + the fail-closed production dependency audit (`pnpm audit:supply-chain`) |

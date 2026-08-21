@@ -79,7 +79,8 @@ add("selected deploy blueprint intact", deployment.status, deployment.detail);
 
 /* ---------- the CSP that actually ships ---------- */
 
-// React's dev build needs eval(), so `next.config.ts` allows it under a NODE_ENV guard.
+// React's dev build needs dynamic code evaluation, so `next.config.ts` allows it
+// under a NODE_ENV guard.
 // The guard is the entire safety property: `unsafe-eval` in a production policy is what
 // lets an injected string become executable code. Assert it is still conditional — an
 // unguarded occurrence would be trivially easy to introduce while silencing a console

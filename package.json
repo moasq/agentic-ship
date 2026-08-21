@@ -16,6 +16,7 @@
     "ui:plan": "node scripts/ui-plan.mjs",
     "ui:review": "node scripts/ui-review.mjs",
     "check:ui": "node scripts/check-ui.mjs",
+    "check:backend": "node scripts/check-backend-contract.mjs",
     "check:commands": "node scripts/check-commands.mjs",
     "audit:supply-chain": "node scripts/audit-supply-chain.mjs",
     "agent:work": "node scripts/agent-work.mjs",

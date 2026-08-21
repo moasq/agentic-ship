@@ -1,0 +1,11 @@
+.agent-state/
+.env*
+.git/
+.next/
+.netlify/
+build/
+coverage/
+node_modules/
+out/
+playwright-report/
+test-results/

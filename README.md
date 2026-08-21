@@ -1,6 +1,7 @@
 # Agentic Ship
 
 [![CI](https://github.com/moasq/agentic-ship/actions/workflows/ci.yml/badge.svg)](https://github.com/moasq/agentic-ship/actions/workflows/ci.yml)
+[![Plugin Security Scan](https://github.com/moasq/agentic-ship/actions/workflows/plugin-scanner.yml/badge.svg)](https://github.com/moasq/agentic-ship/actions/workflows/plugin-scanner.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 <p align="center">
@@ -69,7 +70,7 @@ reasoning behind each pick lives in [docs/stack.md](docs/stack.md).
 | Email | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/resend-dark.svg"><img alt="" src=".github/assets/stack/resend-light.svg" height="14"></picture> Resend through `@convex-dev/resend` — test-mode by default |
 | Analytics | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/posthog-dark.svg"><img alt="" src=".github/assets/stack/posthog-light.svg" height="14"></picture> PostHog behind a first-party `/ingest` proxy; the CSP stays closed |
 | Fonts | Self-hosted OFL faces, fetched by `pnpm font`, committed |
-| Gates | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/vitest-dark.svg"><img alt="" src=".github/assets/stack/vitest-light.svg" height="14"></picture> Vitest contracts · Playwright capture · deterministic Node checks — `pnpm verify` on every completion, `pnpm verify:full` before a release |
+| Gates | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/vitest-dark.svg"><img alt="" src=".github/assets/stack/vitest-light.svg" height="14"></picture> Vitest contracts · backend authorization postconditions · Playwright capture · deterministic Node checks — `pnpm verify` on every completion, `pnpm verify:full` before a release |
 | UI gates | `pnpm ui:plan` direction contract · `pnpm ui:review` visual evidence · `pnpm check:ui` component boundaries |
 | Deploy | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/netlify-dark.svg"><img alt="" src=".github/assets/stack/netlify-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/vercel-dark.svg"><img alt="" src=".github/assets/stack/vercel-light.svg" height="14"></picture> Netlify by default, or Vercel; each uses one committed adapter and deploys Convex before Next.js |
 | Delivery | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/github-dark.svg"><img alt="" src=".github/assets/stack/github-light.svg" height="14"></picture> GitHub — `gh` CLI device-flow OAuth for repo, PRs, and CI |
@@ -126,6 +127,12 @@ Product briefs select one billing provider through `providerSelection.billing`. 
 | [Lemon Squeezy](.agents/skills/convex-structure/references/lemon-squeezy-billing.md) | `lemonsqueezy` | `@lemonsqueezy/lemonsqueezy.js` | Requires an API key, webhook secret, store and product IDs, variant mappings, `SITE_URL`, and `LEMON_SQUEEZY_MODE=live` |
 
 The shared adapter contract keeps checkout identity server-owned and entitlement webhook-owned. It rejects unsupported selections, configuration from another billing provider, and deployments with multiple active provider secrets. Missing billing credentials remain a warning during development. `pnpm preflight --prod` fails on incomplete or test-mode production configuration.
+
+`pnpm check:backend` makes those authority rules executable once a downstream
+`convex/` backend exists. It rejects client-facing entitlement writers, client-supplied
+billing identity, unverified webhook paths, a no-op ownership helper, cross-owner reads
+or writes without both guards, and writes that run before ownership authorization. The
+plain engine reports the check as not applicable because it has no product backend.
 
 Start the selected provider's resumable setup from the project directory:
 
