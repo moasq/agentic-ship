@@ -74,6 +74,8 @@ add(
 const deployment = inspectDeploymentBlueprint({
   netlifySource: read("netlify.toml"),
   vercelSource: read("vercel.json"),
+  cloudflareSource: read("wrangler.json") || read("wrangler.jsonc") || read("wrangler.toml"),
+  packageJsonSource: read("package.json"),
 });
 add("selected deploy blueprint intact", deployment.status, deployment.detail);
 
