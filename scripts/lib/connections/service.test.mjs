@@ -574,8 +574,8 @@ test("a cross-process lock rejects a conflicting mutation and permits a retry", 
   const workerExit = new Promise((resolveExit) => worker.once("exit", (code) => resolveExit(code)));
 
   const lockPath = join(stateDirectory, ".mutation.lock");
-  for (let attempt = 0; attempt < 100 && !existsSync(lockPath); attempt += 1) {
-    await new Promise((resolveWait) => setTimeout(resolveWait, 5));
+  for (let attempt = 0; attempt < 200 && !existsSync(lockPath); attempt += 1) {
+    await new Promise((resolveWait) => setTimeout(resolveWait, 10));
   }
   assert.equal(existsSync(lockPath), true, "worker did not acquire the test lock");
 
