@@ -14,8 +14,25 @@ describe("deployment blueprint coherence", () => {
     ).toBe("PASS");
   });
 
-  it("rejects a stale Vercel build and two active adapters", () => {
+  it("accepts the Cloudflare alternative", () => {
+    expect(
+      inspectDeploymentBlueprint({
+        cloudflareSource: JSON.stringify({ name: "my-worker", main: "src/index.ts" }),
+        packageJsonSource: JSON.stringify({ scripts: { build: "npx convex deploy --cmd 'pnpm build'" } }),
+      }).status,
+    ).toBe("PASS");
+    expect(
+      inspectDeploymentBlueprint({
+        cloudflareSource: 'name = "my-worker"\n# npx convex deploy --cmd \'pnpm build\'\n',
+      }).status,
+    ).toBe("PASS");
+  });
+
+  it("rejects a stale Vercel build and multiple active adapters", () => {
     expect(inspectDeploymentBlueprint({ vercelSource: '{"buildCommand":"pnpm build"}' }).status).toBe("FAIL");
     expect(inspectDeploymentBlueprint({ netlifySource: "x", vercelSource: "{}" }).status).toBe("FAIL");
+    expect(inspectDeploymentBlueprint({ netlifySource: "x", cloudflareSource: "x" }).status).toBe("FAIL");
+    expect(inspectDeploymentBlueprint({ vercelSource: "{}", cloudflareSource: "x" }).status).toBe("FAIL");
+    expect(inspectDeploymentBlueprint({ cloudflareSource: 'name = "test"' }).status).toBe("FAIL");
   });
 });

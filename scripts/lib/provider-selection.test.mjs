@@ -96,3 +96,44 @@ test("vercel can be selected as alternative deployment provider", () => {
     tracking: "linear",
   });
 });
+
+test("cloudflare can be selected as alternative deployment provider while preserving netlify default", () => {
+  expect(resolveProviderSelection({ deployment: "cloudflare" })).toEqual({
+    billing: "stripe",
+    email: "resend",
+    analytics: "posthog",
+    deployment: "cloudflare",
+    tracking: "linear",
+  });
+  expect(resolveProviderSelection({})).toEqual({
+    billing: "stripe",
+    email: "resend",
+    analytics: "posthog",
+    deployment: "netlify",
+    tracking: "linear",
+  });
+});
+
+test("plausible can be selected as alternative analytics provider", () => {
+  expect(resolveProviderSelection({ analytics: "plausible" })).toEqual({
+    billing: "stripe",
+    email: "resend",
+    analytics: "plausible",
+    deployment: "netlify",
+    tracking: "linear",
+  });
+});
+
+test("umami can be selected as alternative analytics provider", () => {
+  expect(resolveProviderSelection({ analytics: "umami" })).toEqual({
+    billing: "stripe",
+    email: "resend",
+    analytics: "umami",
+    deployment: "netlify",
+    tracking: "linear",
+  });
+});
+
+test("an invalid analytics provider is rejected", () => {
+  expect(() => resolveProviderSelection({ analytics: "google-analytics" })).toThrow(/Unsupported analytics provider/);
+});
