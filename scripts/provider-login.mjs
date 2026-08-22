@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * pnpm provider:login <stripe|netlify|vercel|github|21st>
+ * pnpm provider:login <stripe|netlify|vercel|cloudflare|github|21st>
  *
  * One journey per provider: install the official CLI if it is missing, then run its
  * browser OAuth login and wait for consent. The terminal never carries a credential —
@@ -72,6 +72,17 @@ const PROVIDERS = {
     },
     login: ["vercel", "login"],
     verify: ["vercel", "whoami"],
+  },
+  cloudflare: {
+    binary: "wrangler",
+    docs: "https://developers.cloudflare.com/workers/wrangler/",
+    install: {
+      darwin: [["pnpm", "add", "--global", "wrangler"]],
+      linux: [["pnpm", "add", "--global", "wrangler"]],
+      win32: [["pnpm", "add", "--global", "wrangler"]],
+    },
+    login: ["wrangler", "login"],
+    verify: ["wrangler", "whoami"],
   },
   github: {
     binary: "gh",

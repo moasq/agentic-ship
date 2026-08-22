@@ -749,6 +749,114 @@
         }
       ]
     },
+    "cloudflare": {
+      "displayName": "Cloudflare",
+      "capability": "deployment",
+      "defaultForCapability": false,
+      "docsUrl": "https://developers.cloudflare.com/workers/wrangler/",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "agentTool": {
+        "authFlow": "cli_browser_login",
+        "mcpServer": "cloudflare",
+        "setupUrl": "https://dash.cloudflare.com/",
+        "instructions": [
+          "Cloudflare's validated authorization for tooling is the official CLI: `wrangler login` opens a browser authorization page and approving it is the whole consent.",
+          "The manual equivalent is installing the Wrangler CLI (developers.cloudflare.com/workers/wrangler/) and running `wrangler login` yourself.",
+          "The credential lands in Wrangler's global machine-local configuration outside this repository. In headless CI/CD environments, use OS-keychain backed auth or set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`."
+        ],
+        "configurationProbe": {
+          "id": "cloudflare-cli-paired",
+          "label": "Wrangler CLI is authenticated",
+          "type": "command_succeeds",
+          "command": "wrangler",
+          "args": ["whoami"],
+          "required": true
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm provider:login cloudflare",
+              "opensBrowser": true,
+              "why": "Install the official Wrangler CLI if missing, then authenticate via browser."
+            }
+          ]
+        }
+      },
+      "projectProvisioning": {
+        "setupUrl": "https://dash.cloudflare.com/",
+        "instructions": [
+          "Choose an existing Cloudflare Worker project or create a new one before configuring deployment.",
+          "Commit `wrangler.json` (or `wrangler.jsonc` / `wrangler.toml`) with `npx convex deploy --cmd 'pnpm build'` or OpenNext / Next-on-Pages build flow so Convex deploys before Next.js.",
+          "Cloudflare Workers hold `CONVEX_DEPLOY_KEY` and required public browser variables as Worker secrets/vars. Backend secrets remain in the production Convex environment."
+        ],
+        "verification": {
+          "policy": "probe_and_attestation",
+          "probes": [
+            {
+              "id": "cloudflare-config",
+              "label": "Cloudflare deployment config exists",
+              "type": "any_file_exists",
+              "paths": [
+                "wrangler.json",
+                "wrangler.jsonc",
+                "wrangler.toml"
+              ],
+              "required": true
+            },
+            {
+              "id": "atomic-deploy",
+              "label": "Cloudflare deploys Convex and Next.js together",
+              "type": "file_contains",
+              "file": "package.json",
+              "text": "convex deploy",
+              "required": true
+            }
+          ]
+        },
+        "automation": {
+          "decision": {
+            "id": "cloudflare-project",
+            "question": "Should this workspace use an existing Cloudflare Worker project or create a new one?",
+            "options": [
+              {
+                "value": "existing",
+                "label": "Link an existing project",
+                "placeholders": ["project-name"],
+                "run": [
+                  {
+                    "command": "wrangler deployments list --name {project-name}",
+                    "opensBrowser": false,
+                    "why": "Verify access to the selected Cloudflare project."
+                  }
+                ]
+              },
+              {
+                "value": "new",
+                "label": "Create a new project",
+                "placeholders": ["project-name"],
+                "run": [
+                  {
+                    "command": "wrangler secret put CONVEX_DEPLOY_KEY --name {project-name}",
+                    "opensBrowser": false,
+                    "why": "Set the deploy key secret for the new Cloudflare Worker."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "revocation": [
+        {
+          "command": "wrangler logout",
+          "why": "Remove the Wrangler CLI credential from this machine."
+        },
+        {
+          "text": "Revoke API tokens in Cloudflare Dashboard under My Profile → API Tokens, and delete the Worker or Pages project if it should no longer exist."
+        }
+      ]
+    },
     "polar": {
       "displayName": "Polar",
       "capability": "billing",
@@ -899,6 +1007,192 @@
         },
         {
           "text": "Delete the /lemonsqueezy/webhook endpoint under Lemon Squeezy Settings → Webhooks."
+        }
+      ]
+    },
+    "sentry": {
+      "displayName": "Sentry",
+      "capability": "observability",
+      "defaultForCapability": true,
+      "docsUrl": "https://docs.sentry.io/",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "projectProvisioning": {
+        "setupUrl": "https://sentry.io/settings/projects/",
+        "instructions": [
+          "Create or select your Sentry project in the Sentry dashboard.",
+          "Copy the public Client Keys (DSN) into NEXT_PUBLIC_SENTRY_DSN in `.env.local` — public DSNs are safe for client bundles and contain no secret tokens.",
+          "Store sensitive upload credentials like SENTRY_AUTH_TOKEN in your deployment provider or CI secret store with `pnpm secret:set`, never in git or `.env.local`.",
+          "Verify that the Sentry data scrubber and beforeSend filter redact PII, tokens, headers, and prompts before errors leave the environment."
+        ],
+        "verification": {
+          "policy": "machine",
+          "probes": [
+            {
+              "id": "public-dsn",
+              "label": "Public Sentry DSN exists",
+              "type": "env_file_key",
+              "file": ".env.local",
+              "key": "NEXT_PUBLIC_SENTRY_DSN",
+              "allowPrefixes": [
+                "https://"
+              ],
+              "required": true
+            },
+            {
+              "id": "observability-seam",
+              "label": "Sentry observability seam exists",
+              "type": "any_file_exists",
+              "paths": [
+                "src/lib/observability.ts",
+                "sentry.client.config.ts",
+                "sentry.client.config.js"
+              ],
+              "required": true
+            }
+          ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://sentry.io/settings/projects/",
+              "opensBrowser": true,
+              "why": "Open Sentry project settings to copy the public Client Keys (DSN) — safe for client-side error reporting."
+            }
+          ]
+        }
+      },
+      "revocation": [
+        {
+          "text": "Revoke or rotate SENTRY_AUTH_TOKEN in Sentry under Settings → Developer Settings → Auth Tokens."
+        },
+        {
+          "text": "Disable or remove the project DSN in Sentry under Project Settings → Client Keys (DSN) to halt error ingestion."
+        }
+      ]
+    },
+    "plausible": {
+      "displayName": "Plausible",
+      "capability": "analytics",
+      "defaultForCapability": false,
+      "docsUrl": "https://plausible.io/docs",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "projectProvisioning": {
+        "setupUrl": "https://plausible.io/sites",
+        "instructions": [
+          "Create or select your site domain in the Plausible dashboard under Sites.",
+          "Set NEXT_PUBLIC_PLAUSIBLE_DOMAIN in .env.local to your configured domain (e.g. example.com).",
+          "Optionally configure NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL if using a custom proxy or self-hosted instance.",
+          "Verify that the analytics seam (src/lib/analytics.ts) uses privacy-first Plausible tracking without cookies."
+        ],
+        "verification": {
+          "policy": "machine",
+          "probes": [
+            {
+              "id": "plausible-domain",
+              "label": "Plausible domain is configured",
+              "type": "env_file_key",
+              "file": ".env.local",
+              "key": "NEXT_PUBLIC_PLAUSIBLE_DOMAIN",
+              "required": true
+            },
+            {
+              "id": "analytics-seam",
+              "label": "Plausible analytics seam exists",
+              "type": "any_file_exists",
+              "paths": [
+                "src/lib/analytics.ts",
+                "src/lib/analytics/plausible.ts"
+              ],
+              "required": true
+            }
+          ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://plausible.io/sites",
+              "opensBrowser": true,
+              "why": "Open Plausible sites dashboard to register your site domain."
+            }
+          ]
+        }
+      },
+      "revocation": [
+        {
+          "text": "Remove the site domain in the Plausible dashboard under Site Settings."
+        },
+        {
+          "text": "Remove NEXT_PUBLIC_PLAUSIBLE_DOMAIN and NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL from .env.local and your deployment environment."
+        }
+      ]
+    },
+    "umami": {
+      "displayName": "Umami",
+      "capability": "analytics",
+      "defaultForCapability": false,
+      "docsUrl": "https://umami.is/docs",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "projectProvisioning": {
+        "setupUrl": "https://cloud.umami.is/settings/websites",
+        "instructions": [
+          "Create a website in Umami Cloud or your self-hosted Umami dashboard.",
+          "Copy the Website ID into NEXT_PUBLIC_UMAMI_WEBSITE_ID in .env.local.",
+          "Set NEXT_PUBLIC_UMAMI_HOST_URL in .env.local to your Umami instance endpoint (e.g. https://cloud.umami.is).",
+          "Verify that the analytics seam (src/lib/analytics.ts) tracks events via Umami without collecting PII."
+        ],
+        "verification": {
+          "policy": "machine",
+          "probes": [
+            {
+              "id": "umami-website-id",
+              "label": "Umami Website ID is configured",
+              "type": "env_file_key",
+              "file": ".env.local",
+              "key": "NEXT_PUBLIC_UMAMI_WEBSITE_ID",
+              "required": true
+            },
+            {
+              "id": "umami-host-url",
+              "label": "Umami Host URL is configured",
+              "type": "env_file_key",
+              "file": ".env.local",
+              "key": "NEXT_PUBLIC_UMAMI_HOST_URL",
+              "allowPrefixes": [
+                "https://"
+              ],
+              "required": true
+            },
+            {
+              "id": "analytics-seam",
+              "label": "Umami analytics seam exists",
+              "type": "any_file_exists",
+              "paths": [
+                "src/lib/analytics.ts",
+                "src/lib/analytics/umami.ts"
+              ],
+              "required": true
+            }
+          ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://cloud.umami.is/settings/websites",
+              "opensBrowser": true,
+              "why": "Open Umami dashboard to create a website and copy its Website ID and Host URL."
+            }
+          ]
+        }
+      },
+      "revocation": [
+        {
+          "text": "Delete or disable the website in the Umami dashboard under Settings → Websites."
+        },
+        {
+          "text": "Remove NEXT_PUBLIC_UMAMI_WEBSITE_ID and NEXT_PUBLIC_UMAMI_HOST_URL from .env.local and your deployment environment."
         }
       ]
     }

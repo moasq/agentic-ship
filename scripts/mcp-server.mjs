@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import readline from "node:readline";
-import { createAgenticShipMcpServer } from "./lib/mcp-server.mjs";
+import { createAgenticShipMcpServer } from "./lib/mcp/server.mjs";
 
 const server = createAgenticShipMcpServer(process.cwd(), {
   allowMutations: process.argv.includes("--allow-mutations"),
