@@ -16,17 +16,92 @@ const CREDENTIALS = [
   /github_pat_[A-Za-z0-9_]+/g,
   /gh[pousr]_[A-Za-z0-9_]{20,}/g,
   /bearer\s+[A-Za-z0-9._-]{20,}/gi,
-  /(?:api[_-]?key|secret|token|password|auth(?:orization)?[_-]?code)\s*[=:]\s*\S+/gi,
+  /((?:api[_-]?key|api[_-]?token|access[_-]?token|refresh[_-]?token|id[_-]?token|client[_-]?secret|webhook[_-]?secret|signing[_-]?secret|private[_-]?key|deploy[_-]?key|password|passphrase|secret|token|auth(?:orization)?[_-]?code)\b\s*["']?\s*[=:]\s*)(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,}\]]+)/gi,
 ];
 const PERSONAL_DATA = [
   /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
-  /(?:\+?\d[\d ().-]{8,}\d)/g,
+  /(?!\d{4}-\d{2}-\d{2}(?:T|\b))(?:\+?\d[\d ().-]{8,}\d)/g,
   /\b(?:\d[ -]*?){13,19}\b/g,
 ];
-const PRIVATE_KEYS = /prompt|transcript|providerPayload|authorizationCode/i;
+
+// Normalize key spelling before classifying it so `accessToken`, `access_token`, and
+// `access-token` share one rule. Match suffixes rather than substrings: status metadata
+// such as `tokenConfigured`, `secretName`, and `authorizationStatus` is safe and useful,
+// while values held directly under a token/secret/password key are never safe to emit.
+const PRIVATE_KEY_SUFFIXES = [
+  "token",
+  "secret",
+  "password",
+  "passphrase",
+  "apikey",
+  "privatekey",
+  "deploykey",
+  "signingkey",
+  "encryptionkey",
+  "authorization",
+  "authorizationcode",
+  "authcode",
+  "credential",
+  "credentials",
+  "cookie",
+  "cookies",
+  "prompt",
+  "prompts",
+  "prompttext",
+  "transcript",
+  "transcripts",
+  "transcripttext",
+  "providerpayload",
+  "providerpayloads",
+];
+const SAFE_PRIVATE_KEY_METADATA_SUFFIXES = [
+  "available",
+  "budget",
+  "configured",
+  "count",
+  "enabled",
+  "expiresat",
+  "expiration",
+  "expiry",
+  "hint",
+  "lastfour",
+  "limit",
+  "name",
+  "present",
+  "provider",
+  "remaining",
+  "source",
+  "state",
+  "status",
+  "type",
+  "usage",
+  "used",
+];
+
+function isPrivateKey(key) {
+  const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (PRIVATE_KEY_SUFFIXES.some((suffix) => normalized.endsWith(suffix))) return true;
+  const containsPrivateMarker = PRIVATE_KEY_SUFFIXES.some((suffix) => normalized.includes(suffix));
+  if (!containsPrivateMarker) return false;
+  return !SAFE_PRIVATE_KEY_METADATA_SUFFIXES.some((suffix) => normalized.endsWith(suffix));
+}
 
 function sanitizeString(value) {
+  const trimmed = value.trim();
   let result = value;
+  if (
+    (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+    (trimmed.startsWith("[") && trimmed.endsWith("]"))
+  ) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const offset = value.indexOf(trimmed);
+      return `${value.slice(0, offset)}${JSON.stringify(sanitize(parsed))}${value.slice(offset + trimmed.length)}`;
+    } catch {
+      // A log line can resemble JSON without being a complete document. The credential
+      // patterns below still redact recognized values without trusting or repairing it.
+    }
+  }
   for (const pattern of [...CREDENTIALS, ...PERSONAL_DATA]) result = result.replace(pattern, "[REDACTED]");
   return result;
 }
@@ -36,7 +111,7 @@ function sanitize(value) {
   if (Array.isArray(value)) return value.map(sanitize);
   if (!value || typeof value !== "object") return value;
   return Object.fromEntries(
-    Object.entries(value).map(([key, item]) => [key, PRIVATE_KEYS.test(key) ? "[REDACTED]" : sanitize(item)]),
+    Object.entries(value).map(([key, item]) => [key, isPrivateKey(key) ? "[REDACTED]" : sanitize(item)]),
   );
 }
 
