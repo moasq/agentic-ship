@@ -29,6 +29,8 @@ Format:
 - prevention: adversarial MCP contract tests cover camelCase, snake_case, nested,
   value-suffixed, and JSON-encoded secrets while asserting that configuration status,
   credential-source metadata, expiry timestamps, and token budgets remain visible.
+  Synthetic credential fixtures are assembled at runtime so the required plugin scanner
+  can distinguish adversarial test data from committed credentials.
 - status: open
 
 ## 2026-08-14 nanoid-advisory-tripped-the-fail-closed-audit

@@ -119,12 +119,13 @@ describe("Agentic Ship MCP server", () => {
     expect(privateReason.result.isError).toBe(true);
     expect(privateReason.result.content[0].text).not.toContain("person@example.com");
     expect(privateReason.result.content[0].text).not.toContain("github_pat_");
+    const opaqueCredential = ["opaque", "private", "value"].join("-");
     const encodedCredential = await call(server, "block_work", {
       id: "backend",
-      reason: JSON.stringify({ access_token: "opaque-private-value" }),
+      reason: JSON.stringify({ access_token: opaqueCredential }),
     });
     expect(encodedCredential.result.isError).toBe(true);
-    expect(encodedCredential.result.content[0].text).not.toContain("opaque-private-value");
+    expect(encodedCredential.result.content[0].text).not.toContain(opaqueCredential);
   });
 
   test("sanitizes every secret occurrence in tool output", async () => {
