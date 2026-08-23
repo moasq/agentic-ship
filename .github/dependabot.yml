@@ -4,7 +4,19 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # These majors must move with the repository's Node/runtime and parser
+      # contracts, not as isolated lockfile bumps.
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "@types/node"
+        update-types:
+          - version-update:semver-major
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # The official gh-aw compiler owns these generated workflow lock files.
+      - dependency-name: github/gh-aw-actions/setup
