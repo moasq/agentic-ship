@@ -17,6 +17,22 @@ Format:
 
 ---
 
+## 2026-08-23 mcp-sanitizer-trusted-secret-key-spelling
+
+- cause: MCP output redaction matched only a small set of camelCase keys, so common
+  variants such as `token`, `api_key`, `clientSecret`, `authorization_code`, and
+  `provider_payload` could expose opaque credentials or provider data. JSON encoded
+  inside a string bypassed recursive object sanitization as well.
+- fix: normalize key spelling, fail closed on secret-bearing key families while
+  preserving explicitly safe status metadata, sanitize complete JSON strings
+  recursively, and expand labeled credential matching.
+- prevention: adversarial MCP contract tests cover camelCase, snake_case, nested,
+  value-suffixed, and JSON-encoded secrets while asserting that configuration status,
+  credential-source metadata, expiry timestamps, and token budgets remain visible.
+  Synthetic credential fixtures are assembled at runtime so the required plugin scanner
+  can distinguish adversarial test data from committed credentials.
+- status: open
+
 ## 2026-08-14 nanoid-advisory-tripped-the-fail-closed-audit
 - cause: GHSA-2v37-7h3g-55p8 (nanoid < 3.3.18, custom generators loop forever on
   size 0) was published after the last dependency change, and the transitive

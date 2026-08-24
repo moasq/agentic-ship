@@ -172,6 +172,13 @@ describe("Agentic Ship MCP server", () => {
     expect(privateReason.result.isError).toBe(true);
     expect(privateReason.result.content[0].text).not.toContain("person@example.com");
     expect(privateReason.result.content[0].text).not.toContain("github_pat_");
+    const opaqueCredential = ["opaque", "private", "value"].join("-");
+    const encodedCredential = await call(server, "block_work", {
+      id: "backend",
+      reason: JSON.stringify({ access_token: opaqueCredential }),
+    });
+    expect(encodedCredential.result.isError).toBe(true);
+    expect(encodedCredential.result.content[0].text).not.toContain(opaqueCredential);
   });
 
   test("sanitizes every secret occurrence in tool output", async () => {
@@ -184,6 +191,75 @@ describe("Agentic Ship MCP server", () => {
     const serialized = JSON.stringify(response);
     for (const secret of secrets) expect(serialized).not.toContain(secret);
     expect(serialized.match(/\[REDACTED\]/g).length).toBeGreaterThan(1);
+  });
+
+  test("redacts secret-bearing keys and encoded JSON without hiding safe status metadata", async () => {
+    const secrets = Array.from({ length: 15 }, (_, index) => `private-value-${index + 1}`);
+    const connectionService = {
+      status: () => ({
+        type: "connection_status",
+        status: "ready",
+        tokenConfigured: true,
+        secretConfigured: false,
+        tokenType: "oauth",
+        tokenBudget: 1200,
+        tokenUsage: 300,
+        accessTokenExpiresAt: "2026-08-23T00:00:00.000Z",
+        apiKeyName: "deployment key",
+        secretName: "CONVEX_DEPLOY_KEY",
+        authorizationStatus: "verified",
+        credentialSource: "cli",
+        providers: [],
+        actions: [],
+        nested: {
+          token: secrets[0],
+          api_key: secrets[1],
+          accessToken: secrets[2],
+          refresh_token: secrets[3],
+          clientSecret: secrets[4],
+          webhook_secret: secrets[5],
+          password: secrets[6],
+          passphrase: secrets[7],
+          private_key: secrets[8],
+          provider_payload: { value: secrets[9] },
+          token_value: secrets[12],
+          apiKeyValue: secrets[13],
+          credential_data: secrets[14],
+        },
+        encoded: JSON.stringify({
+          status: "pending",
+          authorization_code: secrets[10],
+          nested: { deployKey: secrets[11] },
+        }),
+      }),
+    };
+    const server = createAgenticShipMcpServer(fixture(), { connectionService });
+    await initialize(server);
+
+    const response = await call(server, "get_connections");
+    const data = response.result.structuredContent.data;
+    expect(data).toMatchObject({
+      type: "connection_status",
+      status: "ready",
+      tokenConfigured: true,
+      secretConfigured: false,
+      tokenType: "oauth",
+      tokenBudget: 1200,
+      tokenUsage: 300,
+      accessTokenExpiresAt: "2026-08-23T00:00:00.000Z",
+      apiKeyName: "deployment key",
+      secretName: "CONVEX_DEPLOY_KEY",
+      authorizationStatus: "verified",
+      credentialSource: "cli",
+    });
+    expect(Object.values(data.nested)).toEqual(Array(13).fill("[REDACTED]"));
+    expect(JSON.parse(data.encoded)).toEqual({
+      status: "pending",
+      authorization_code: "[REDACTED]",
+      nested: { deployKey: "[REDACTED]" },
+    });
+    const serialized = JSON.stringify(response);
+    for (const secret of secrets) expect(serialized).not.toContain(secret);
   });
 
   test("returns protocol errors for malformed lifecycle and unknown calls", async () => {
