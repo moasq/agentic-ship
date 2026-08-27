@@ -154,7 +154,7 @@ export function discoverCloudflareCredentials({ env = process.env, homeDirectory
     return {
       authenticated: true,
       method: "env_token",
-      apiToken: token,
+      credentialRef: "CLOUDFLARE_API_TOKEN",
       accountId: accountId ?? null,
       accounts: accountId ? [{ id: accountId, name: "Environment Account" }] : [],
     };

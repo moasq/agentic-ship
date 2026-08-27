@@ -147,8 +147,9 @@ describe("Account Discovery & Wrangler CLI Parsing", () => {
     const creds = discoverCloudflareCredentials({ env });
     expect(creds.authenticated).toBe(true);
     expect(creds.method).toBe("env_token");
-    expect(creds.apiToken).toBe(env.CLOUDFLARE_API_TOKEN);
+    expect(creds.credentialRef).toBe("CLOUDFLARE_API_TOKEN");
     expect(creds.accountId).toBe(env.CLOUDFLARE_ACCOUNT_ID);
+    expect(JSON.stringify(creds)).not.toContain(env.CLOUDFLARE_API_TOKEN);
   });
 
   it("rejects discovering credentials from environment variables when token is a placeholder", () => {
