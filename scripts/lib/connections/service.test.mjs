@@ -78,7 +78,7 @@ test("catalog exposes every supported provider and host", (t) => {
   assert.equal(result.type, "connection_status");
   assert.deepEqual(
     result.providers.map((provider) => provider.id),
-    ["convex", "stripe", "github", "linear", "resend", "posthog", "netlify", "vercel", "polar", "lemonsqueezy"],
+    ["convex", "stripe", "github", "linear", "resend", "posthog", "netlify", "vercel", "cloudflare", "polar", "lemonsqueezy"],
   );
   assert.deepEqual(result.supportedHosts, ["claude", "codex", "cursor", "hermes", "openclaw"]);
   assert.equal(result.providers.find((provider) => provider.id === "polar").agentToolConfiguration, null);
@@ -105,6 +105,69 @@ test("Vercel uses a read-only CLI auth probe and explicit project choice", (t) =
     vercel.projectProvisioning.automation.decision.options.map((option) => option.value),
     ["existing", "new"],
   );
+});
+
+test("Cloudflare uses a read-only Wrangler CLI auth probe and project choice", (t) => {
+  const { projectRoot, homeDirectory } = fixture(t);
+  const catalog = loadConnectionCatalog({ projectRoot, catalogDirectory });
+  const cloudflare = catalog.providers.cloudflare;
+  const calls = [];
+  const result = runConnectionProbe(cloudflare.agentTool.configurationProbe, {
+    projectRoot,
+    homeDirectory,
+    commandRunner(command, args) {
+      calls.push([command, args]);
+      return { status: 0 };
+    },
+  });
+
+  assert.equal(result.passed, true);
+  assert.deepEqual(calls, [["node", ["scripts/check-cloudflare-auth.mjs"]]]);
+  assert.deepEqual(
+    cloudflare.projectProvisioning.automation.decision.options.map((option) => option.value),
+    ["existing", "new"],
+  );
+  for (const option of cloudflare.projectProvisioning.automation.decision.options) {
+    assert.deepEqual(option.placeholders, ["account-id", "project-name"]);
+  }
+});
+
+test("Cloudflare project verification requires the complete strict blueprint", (t) => {
+  const { projectRoot, homeDirectory } = fixture(t);
+  const cloudflare = loadConnectionCatalog({ projectRoot, catalogDirectory }).providers.cloudflare;
+
+  const missing = cloudflare.projectProvisioning.verification.probes.map((probe) =>
+    runConnectionProbe(probe, { projectRoot, homeDirectory }),
+  );
+  assert.equal(missing.every((probe) => !probe.passed), true);
+
+  write(projectRoot, "wrangler.json", '{"name":"my-worker"}');
+  const halfReady = cloudflare.projectProvisioning.verification.probes.map((probe) =>
+    runConnectionProbe(probe, { projectRoot, homeDirectory }),
+  );
+  assert.equal(halfReady.every((probe) => !probe.passed), true);
+
+  write(projectRoot, "wrangler.json", JSON.stringify({
+    name: "my-worker",
+    account_id: "0123456789abcdef0123456789abcdef",
+    main: "dist/server/index.js",
+    compatibility_date: "2026-08-29",
+    compatibility_flags: ["nodejs_compat"],
+  }));
+  write(projectRoot, "package.json", JSON.stringify({
+    dependencies: { vinext: "1.0.0-beta.8", "@vinext/cloudflare": "1.0.0-beta.6" },
+    scripts: {
+      "build:vinext": "vinext build",
+      "build:cloudflare": "node scripts/build-cloudflare.mjs",
+      "check:cloudflare-build": "node scripts/build-cloudflare.mjs --dry-run",
+      "deploy:cloudflare": "vinext-cloudflare deploy --skip-build --config dist/server/wrangler.json",
+      "preview:cloudflare": "wrangler versions upload --config dist/server/wrangler.json",
+    },
+  }));
+  const ready = cloudflare.projectProvisioning.verification.probes.map((probe) =>
+    runConnectionProbe(probe, { projectRoot, homeDirectory }),
+  );
+  assert.equal(ready.every((probe) => probe.passed), true);
 });
 
 test("Vercel project verification requires the link and atomic build config", (t) => {
@@ -559,6 +622,6 @@ test("CLI status emits machine-readable JSON in an isolated state directory", (t
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.equal(output.type, "connection_status");
-  assert.equal(output.providers.length, 10);
+  assert.equal(output.providers.length, 11);
   assert.deepEqual(readdirSync(temporaryRoot), []);
 });

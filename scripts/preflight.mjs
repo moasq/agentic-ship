@@ -74,8 +74,18 @@ add(
 const deployment = inspectDeploymentBlueprint({
   netlifySource: read("netlify.toml"),
   vercelSource: read("vercel.json"),
+  cloudflareSources: [
+    { path: "wrangler.json", source: read("wrangler.json") },
+    { path: "wrangler.jsonc", source: read("wrangler.jsonc") },
+    { path: "wrangler.toml", source: read("wrangler.toml") },
+  ],
+  packageJsonSource: read("package.json"),
 });
 add("selected deploy blueprint intact", deployment.status, deployment.detail);
+
+const cloudflareConfigs = ["wrangler.json", "wrangler.jsonc"]
+  .map((path) => ({ path, source: read(path) }))
+  .filter((entry) => entry.source.trim());
 
 /* ---------- the CSP that actually ships ---------- */
 
@@ -118,6 +128,20 @@ add(
 /* ---------- prod deployment audit (needs login) ---------- */
 
 if (withProd) {
+  if (cloudflareConfigs.length === 1) {
+    const live = spawnSync(process.execPath, [join(root, "scripts/verify-cloudflare-live.mjs")], {
+      cwd: root,
+      encoding: "utf8",
+      shell: process.platform === "win32",
+    });
+    const liveError = (live.stderr ?? "").trim().split(/\r?\n/).filter(Boolean).at(-1) ?? "";
+    add(
+      "prod Cloudflare deployment is live",
+      live.status === 0 ? "PASS" : "FAIL",
+      live.status === 0 ? "" : (liveError || "run the Cloudflare live verifier after configuring production, preview, auth, Convex, and webhook checks"),
+    );
+  }
+
   const list = spawnSync("npx convex env list --prod", { cwd: root, shell: true, encoding: "utf8" });
   if (list.status !== 0) {
     add("prod convex env readable", "FAIL", "`npx convex env list --prod` failed — connect first (pnpm onboard)");

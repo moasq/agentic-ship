@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { homedir } from "node:os";
 import { isAbsolute, relative, resolve } from "node:path";
+import { inspectCloudflareBlueprint } from "./cloudflare.mjs";
 
 function projectPath(projectRoot, candidate) {
   const root = resolve(projectRoot);
@@ -79,6 +80,17 @@ export function runConnectionProbe(probe, { projectRoot, homeDirectory, commandR
     const result = commandRunner(probe.command, probe.args);
     const passed = result.status === 0 && !result.error;
     return probeResult(probe, passed, passed ? "authenticated read-only call passed" : "authenticated read-only call failed");
+  }
+
+  if (probe.type === "cloudflare_blueprint") {
+    const result = inspectCloudflareBlueprint({
+      configSources: ["wrangler.json", "wrangler.jsonc", "wrangler.toml"].map((path) => ({
+        path,
+        source: read(projectPath(projectRoot, path)) ?? "",
+      })),
+      packageJsonSource: read(projectPath(projectRoot, "package.json")) ?? "",
+    });
+    return probeResult(probe, result.status === "PASS", result.detail);
   }
 
   if (probe.type === "any_file_exists") {

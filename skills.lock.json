@@ -633,6 +633,8 @@
   "pins": {
     "$comment": "The recorded version pins for the downstream product stack. 'N.x' pins the major; a full 'x.y.z' means EXACT. The upstream-sync skill verifies these against upstream — no gate in this tool repo enforces them, because the packages they name live in the product workspace, not in this repo's dependency-free package.json. better-auth's exact patched pin and its adapter-only type bridge are verified downstream by src/lib/auth-client.test.ts and recorded in heal-ledger.md. The narrative for backend pins lives in backend.auth.pins.",
     "next": "16.x",
+    "vinext": "1.0.0-beta.8",
+    "@vinext/cloudflare": "1.0.0-beta.6",
     "react": "19.x",
     "tailwindcss": "4.x",
     "zustand": "5.x",

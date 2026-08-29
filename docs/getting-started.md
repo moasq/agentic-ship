@@ -111,8 +111,10 @@ pnpm preflight --prod
 It fails when the selected billing provider uses its test environment. It also fails
 when email remains in test mode without verification, when the seed backdoor flag
 exists, or when `src/lib/site.ts` still carries placeholders. Deploy through the
-provider selected in the product brief: Netlify by default, or Vercel. Its committed
-`netlify.toml` or `vercel.json` is the authoritative deployment description. If
+provider selected in the product brief: Netlify by default, or Vercel or Cloudflare
+Workers as an alternative. Its committed `netlify.toml`, `vercel.json`, or Wrangler
+JSON file is the authoritative deployment description. Cloudflare also requires its
+branch-aware Convex build wrapper and live production verification. If
 production misbehaves, roll back to the last green deploy first and diagnose locally
 second.
 

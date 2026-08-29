@@ -813,3 +813,24 @@ Format:
   failure propagation, output escaping, and multi-secret redaction. Documentation now
   requires immutable consumer pins and read-only permissions.
 - status: open
+
+## 2026-08-29 cloudflare-provider-green-tests-encoded-invalid-deploy
+
+- cause: the first Cloudflare provider tests repeated permissive implementation
+  checks instead of proving a deployable downstream contract. Comments and recursive
+  build commands could satisfy the gate, plaintext Wrangler OAuth state counted as
+  protected authentication, and revocation reported success without checking the
+  command result.
+- fix: the provider now pins one documented Next.js adapter, records an explicit
+  account and Worker, requires keyring-backed OAuth or a remotely verified scoped
+  environment token, and selects separate production and preview Convex deploy keys.
+  It validates the complete generated blueprint, uploads previews without promoting
+  them, and fails production preflight unless the Worker, origins, auth routes, Convex
+  health query, and webhook routes answer live checks.
+- prevention: boundary tests now use downstream fixture files and cover recursive
+  scripts, comments, malformed and duplicate configs, adapter drift, plaintext OAuth,
+  invalid and wrong-account API tokens, missing account selection, leaked runtime
+  secrets, preview key selection, live endpoint failures, and failed revocation. The
+  README sync gate prevents a supported deployment provider from remaining in the
+  reader-facing "not wired" list.
+- status: open

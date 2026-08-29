@@ -749,6 +749,137 @@
         }
       ]
     },
+    "cloudflare": {
+      "displayName": "Cloudflare",
+      "capability": "deployment",
+      "defaultForCapability": false,
+      "docsUrl": "https://developers.cloudflare.com/workers/wrangler/",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "agentTool": {
+        "authFlow": "cli_browser_login",
+        "mcpServer": "cloudflare",
+        "setupUrl": "https://dash.cloudflare.com/",
+        "instructions": [
+          "Cloudflare authorization uses the official Wrangler CLI. `pnpm provider:login cloudflare` runs browser OAuth with OS-keychain protection and fails if protected storage is unavailable.",
+          "The manual equivalent is `wrangler login --use-keyring`. Verify that `wrangler whoami` reports encrypted storage before continuing.",
+          "In non-interactive builds, set both `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in Cloudflare Workers Builds. Do not store them in repository files."
+        ],
+        "configurationProbe": {
+          "id": "cloudflare-cli-paired",
+          "label": "Wrangler CLI is authenticated",
+          "type": "command_succeeds",
+          "command": "node",
+          "args": ["scripts/check-cloudflare-auth.mjs"],
+          "required": true
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm provider:login cloudflare",
+              "opensBrowser": true,
+              "why": "Install the official Wrangler CLI if missing, then authenticate via browser."
+            }
+          ]
+        }
+      },
+      "projectProvisioning": {
+        "setupUrl": "https://dash.cloudflare.com/",
+        "instructions": [
+          "Choose the Cloudflare account ID and Worker name explicitly. The setup command records both in one Wrangler JSON or JSONC file.",
+          "The supported Next.js 16 adapter is vinext 1.0.0-beta.8 with @vinext/cloudflare 1.0.0-beta.6. Run its compatibility check before initialization.",
+          "Store separate `CONVEX_PROD_DEPLOY_KEY` and `CONVEX_PREVIEW_DEPLOY_KEY` secrets in Workers Builds, plus the explicit `CLOUDFLARE_PRODUCTION_BRANCH` variable. Keep runtime backend secrets in Convex, not in Worker variables.",
+          "Before launch, set the live-verification URLs and health query described in the Cloudflare deployment guide, then run `pnpm preflight --prod`."
+        ],
+        "verification": {
+          "policy": "probe_and_attestation",
+          "probes": [
+            {
+              "id": "cloudflare-blueprint",
+              "label": "Cloudflare deployment blueprint is valid",
+              "type": "cloudflare_blueprint",
+              "required": true
+            }
+          ]
+        },
+        "automation": {
+          "decision": {
+            "id": "cloudflare-project",
+            "question": "Should this workspace target an existing Cloudflare Worker or a new Worker name?",
+            "options": [
+              {
+                "value": "existing",
+                "label": "Link an existing project",
+                "placeholders": ["account-id", "project-name"],
+                "run": [
+                  {
+                    "command": "npx vinext@1.0.0-beta.8 check",
+                    "opensBrowser": false,
+                    "why": "Check the Next.js 16 workspace against the pinned adapter before changing files."
+                  },
+                  {
+                    "command": "npx vinext@1.0.0-beta.8 init --platform=cloudflare",
+                    "opensBrowser": false,
+                    "why": "Install the pinned Cloudflare adapter configuration without changing the existing Next.js path."
+                  },
+                  {
+                    "command": "pnpm setup:cloudflare --account-id {account-id} --project-name {project-name}",
+                    "opensBrowser": false,
+                    "why": "Record the selected account and Worker name and add non-recursive build, deploy, and preview scripts."
+                  },
+                  {
+                    "command": "pnpm install",
+                    "opensBrowser": false,
+                    "why": "Install the exact adapter versions recorded by the setup command."
+                  },
+                  {
+                    "command": "wrangler deployments list --name {project-name}",
+                    "opensBrowser": false,
+                    "why": "Verify access to the selected Cloudflare project."
+                  }
+                ]
+              },
+              {
+                "value": "new",
+                "label": "Create a new project",
+                "placeholders": ["account-id", "project-name"],
+                "run": [
+                  {
+                    "command": "npx vinext@1.0.0-beta.8 check",
+                    "opensBrowser": false,
+                    "why": "Check the Next.js 16 workspace against the pinned adapter before changing files."
+                  },
+                  {
+                    "command": "npx vinext@1.0.0-beta.8 init --platform=cloudflare",
+                    "opensBrowser": false,
+                    "why": "Install the pinned Cloudflare adapter configuration without deploying a Worker."
+                  },
+                  {
+                    "command": "pnpm setup:cloudflare --account-id {account-id} --project-name {project-name}",
+                    "opensBrowser": false,
+                    "why": "Record the selected account and new Worker name and add non-recursive build, deploy, and preview scripts."
+                  },
+                  {
+                    "command": "pnpm install",
+                    "opensBrowser": false,
+                    "why": "Install the exact adapter versions recorded by the setup command."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "revocation": [
+        {
+          "command": "wrangler logout",
+          "why": "Remove the encrypted Wrangler CLI credential and its keychain entry from this machine."
+        },
+        {
+          "text": "Revoke API tokens in the Cloudflare dashboard, remove Workers Builds access, and delete the Worker if it should no longer exist."
+        }
+      ]
+    },
     "polar": {
       "displayName": "Polar",
       "capability": "billing",

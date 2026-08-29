@@ -18,7 +18,7 @@
  * This file uses (1). Mechanism (2) is rejected because it suppresses *every*
  * command in those blocks — including a genuinely missing repo script — which is a
  * false negative, exactly the silent drift this gate exists to prevent. The named
- * allowlist excuses only the four product-workspace commands and nothing else, so a
+ * allowlist excuses only the named product-workspace commands and nothing else, so a
  * real stale reference in a marked skill still fails the gate.
  *
  * Extraction is raw-text (not code-span-only) on purpose: it flags a `pnpm <name>`
@@ -50,6 +50,11 @@ export const DOWNSTREAM_ONLY = [
   { name: "build", reason: "product workspace: Next.js production build (also `npx convex deploy --cmd 'pnpm build'`)" },
   { name: "start", reason: "product workspace: Next.js production server" },
   { name: "test:e2e", reason: "product workspace: gate G3 (Playwright against the product build)" },
+  { name: "build:vinext", reason: "Cloudflare product workspace: vinext production build" },
+  { name: "build:cloudflare", reason: "Cloudflare product workspace: Convex-first vinext build" },
+  { name: "deploy:cloudflare", reason: "Cloudflare product workspace: deploy the generated Worker" },
+  { name: "preview:cloudflare", reason: "Cloudflare product workspace: upload an unpromoted Worker version" },
+  { name: "check:cloudflare-build", reason: "Cloudflare product workspace: dry-run the selected Convex build" },
 ];
 
 const DOWNSTREAM_NAMES = new Set(DOWNSTREAM_ONLY.map((d) => d.name));

@@ -38,7 +38,8 @@ Exit 1 on any FAIL. Run `--prod` before every launch; the plain form on every de
 | prod `BETTER_AUTH_SECRET` set | sessions cannot be issued |
 | **`ALLOW_TEST_SEED` absent from prod** | anyone-callable seeding of production data |
 | no live key in `.env.local` | a live credential one `git add` from public |
-| the selected Netlify or Vercel adapter runs `npx convex deploy --cmd 'pnpm build'`, with no second adapter active | frontend ships against a stale backend or the wrong host |
+| the selected Netlify or Vercel adapter runs the atomic Convex build, or Cloudflare uses its branch-aware production/preview wrapper, with no second adapter active | frontend ships against a stale backend or the wrong host |
+| selected Cloudflare Worker, custom production origin, preview origin, auth routes, Convex health query, and webhook routes answer the live probes | a green local build hides a broken production or preview deployment |
 | `pnpm verify` + `pnpm test` green | launching a build that does not build |
 
 ## The judgment half (yours, or the agent's — not scriptable)
@@ -69,6 +70,6 @@ Same order as the selected deployment guide's go-live checklist:
 5. `pnpm preflight --prod` → all green
 6. Deploy, then the acceptance tests above
 
-Deep references, all under `convex-structure/references/`: `deploy-netlify.md` and
-`deploy-vercel.md` (env matrices and go-live checklists), `email-resend.md` (the 3-step email flip),
+Deep references, all under `convex-structure/references/`: `deploy-netlify.md`,
+`deploy-vercel.md`, and `deployment-cloudflare.md` (env matrices and go-live checklists), `email-resend.md` (the 3-step email flip),
 `stripe-billing.md`, `polar-billing.md`, and `lemon-squeezy-billing.md`.
