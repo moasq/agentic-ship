@@ -13,6 +13,7 @@ ignore_paths = [
   ".github/workflows/upstream-review.lock.yml",
   "scripts/lib/billing-providers/lemon-squeezy.test.mjs",
   "scripts/lib/connections/probes.mjs",
+  "scripts/lib/deployment/cloudflare.test.mjs",
   "scripts/lib/email-coherence.mjs",
   "scripts/lib/work-state-github.test.mjs",
   "scripts/lib/work-state.test.mjs",
