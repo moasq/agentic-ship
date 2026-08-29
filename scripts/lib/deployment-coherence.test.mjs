@@ -19,7 +19,8 @@ describe("deployment blueprint coherence", () => {
       dependencies: { vinext: "1.0.0-beta.8", "@vinext/cloudflare": "1.0.0-beta.6" },
       scripts: {
         "build:vinext": "vinext build",
-        "build:cloudflare": "npx convex deploy --cmd 'pnpm build:vinext'",
+        "build:cloudflare": "node scripts/build-cloudflare.mjs",
+        "check:cloudflare-build": "node scripts/build-cloudflare.mjs --dry-run",
         "deploy:cloudflare": "vinext-cloudflare deploy --skip-build --config dist/server/wrangler.json",
         "preview:cloudflare": "wrangler versions upload --config dist/server/wrangler.json",
       },

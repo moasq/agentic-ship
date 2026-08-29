@@ -822,11 +822,15 @@ Format:
   protected authentication, and revocation reported success without checking the
   command result.
 - fix: the provider now pins one documented Next.js adapter, records an explicit
-  account and Worker, requires keyring-backed OAuth or a scoped environment token,
-  separates the Convex and frontend builds, validates the generated Wrangler config,
-  uploads previews without promoting them, and fails production preflight when the
-  selected Worker or authorization cannot be read.
+  account and Worker, requires keyring-backed OAuth or a remotely verified scoped
+  environment token, and selects separate production and preview Convex deploy keys.
+  It validates the complete generated blueprint, uploads previews without promoting
+  them, and fails production preflight unless the Worker, origins, auth routes, Convex
+  health query, and webhook routes answer live checks.
 - prevention: boundary tests now use downstream fixture files and cover recursive
   scripts, comments, malformed and duplicate configs, adapter drift, plaintext OAuth,
-  missing account selection, leaked runtime secrets, and failed revocation.
+  invalid and wrong-account API tokens, missing account selection, leaked runtime
+  secrets, preview key selection, live endpoint failures, and failed revocation. The
+  README sync gate prevents a supported deployment provider from remaining in the
+  reader-facing "not wired" list.
 - status: open

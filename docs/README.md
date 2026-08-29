@@ -14,8 +14,8 @@ move.
 - [How is the toolkit put together?](architecture.md): the one-rule-one-home design,
   the generated adapters, and the provenance lockfile.
 - [How do service connections work?](connections.md): consent-gated, receipt-backed,
-  revocable connections to Convex, Stripe, GitHub, Linear, Resend, PostHog, and
-  Netlify, and Vercel.
+  revocable connections to Convex, Stripe, GitHub, Linear, Resend, PostHog,
+  Netlify, Vercel, and Cloudflare.
 - [How do I see what the agents are doing?](tracking.md): the durable work queue, the
   Linear mirror, and the GitHub delivery seam.
 - [How are these docs written?](writing.md): the vendored writing skills and the gate

@@ -3,8 +3,12 @@ import { spawnSync } from "node:child_process";
 import { discoverCloudflareCredentials } from "./lib/connections/cloudflare.mjs";
 
 const result = discoverCloudflareCredentials({
-  commandRunner(command, args) {
-    return spawnSync(command, args, { encoding: "utf8", shell: process.platform === "win32" });
+  commandRunner(command, args, options = {}) {
+    return spawnSync(command, args, {
+      encoding: "utf8",
+      shell: process.platform === "win32",
+      env: { ...process.env, ...(options.env ?? {}) },
+    });
   },
 });
 

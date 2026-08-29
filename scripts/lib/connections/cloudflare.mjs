@@ -10,6 +10,14 @@ export const CLOUDFLARE_ADAPTER = Object.freeze({
 export const CLOUDFLARE_LOGIN_ARGS = Object.freeze(["login", "--use-keyring"]);
 export const CLOUDFLARE_AUTH_ENV = Object.freeze({ CLOUDFLARE_AUTH_USE_KEYRING: "true" });
 
+export function cloudflareCommandExecution(platform = process.platform) {
+  return {
+    login: ["wrangler", ...CLOUDFLARE_LOGIN_ARGS],
+    environment: CLOUDFLARE_AUTH_ENV,
+    shell: platform === "win32",
+  };
+}
+
 // Cloudflare tokens are opaque. Validate only the safety properties we can know
 // locally instead of rejecting future token formats that Cloudflare may issue.
 const TOKEN_PATTERN = /^\S{20,512}$/;
@@ -29,6 +37,8 @@ const FORBIDDEN_VAR_KEYS = new Set([
   "LEMON_SQUEEZY_WEBHOOK_SECRET",
   "SENTRY_AUTH_TOKEN",
   "CONVEX_DEPLOY_KEY",
+  "CONVEX_PROD_DEPLOY_KEY",
+  "CONVEX_PREVIEW_DEPLOY_KEY",
 ]);
 
 function invalid(error) {
@@ -88,17 +98,29 @@ export function discoverCloudflareCredentials({ env = process.env, commandRunner
     if (!token.valid || !account.valid) {
       return { authenticated: false, method: "env_token", error: token.error ?? account.error, accounts: [] };
     }
-    return {
-      authenticated: true,
-      method: "env_token",
-      credentialRef: "CLOUDFLARE_API_TOKEN",
-      accountId: env.CLOUDFLARE_ACCOUNT_ID,
-      accounts: [{ id: env.CLOUDFLARE_ACCOUNT_ID, name: "Selected account" }],
-    };
+    if (!commandRunner) return { authenticated: false, method: "env_token", error: "Cloudflare API token has not passed a remote probe", accounts: [] };
+    try {
+      const result = commandRunner("wrangler", ["whoami"], { env });
+      if (result?.status !== 0) return { authenticated: false, method: "env_token", error: "Cloudflare API token failed the remote probe", accounts: [] };
+      const parsed = parseWranglerWhoami(`${result.stdout ?? ""}\n${result.stderr ?? ""}`);
+      const selected = parsed.accounts.find((candidate) => candidate.id.toLowerCase() === env.CLOUDFLARE_ACCOUNT_ID.toLowerCase());
+      if (!parsed.authenticated || !selected) {
+        return { authenticated: false, method: "env_token", error: "Cloudflare API token cannot access the selected account", accounts: parsed.accounts };
+      }
+      return {
+        authenticated: true,
+        method: "env_token",
+        credentialRef: "CLOUDFLARE_API_TOKEN",
+        accountId: selected.id,
+        accounts: parsed.accounts,
+      };
+    } catch {
+      return { authenticated: false, method: "env_token", error: "Cloudflare API token failed the remote probe", accounts: [] };
+    }
   }
   if (!commandRunner) return { authenticated: false, method: "none", accounts: [] };
   try {
-    const result = commandRunner("wrangler", ["whoami"]);
+    const result = commandRunner("wrangler", ["whoami"], { env: { ...env, ...CLOUDFLARE_AUTH_ENV } });
     if (result?.status !== 0) return { authenticated: false, method: "cli_login", accounts: [] };
     const parsed = parseWranglerWhoami(`${result.stdout ?? ""}\n${result.stderr ?? ""}`);
     if (!parsed.authenticated || !parsed.encryptedStorage) {
@@ -217,8 +239,11 @@ export function inspectCloudflareBlueprint({ configSources = [], packageJsonSour
   }
   const scripts = pkg.scripts ?? {};
   if (scripts["build:vinext"] !== "vinext build") return { status: "FAIL", detail: "build:vinext must run vinext build" };
-  if (scripts["build:cloudflare"] !== "npx convex deploy --cmd 'pnpm build:vinext'") {
-    return { status: "FAIL", detail: "build:cloudflare must wrap the separate vinext build with Convex deploy" };
+  if (scripts["build:cloudflare"] !== "node scripts/build-cloudflare.mjs") {
+    return { status: "FAIL", detail: "build:cloudflare must select the production or preview Convex deployment through the portable build wrapper" };
+  }
+  if (scripts["check:cloudflare-build"] !== "node scripts/build-cloudflare.mjs --dry-run") {
+    return { status: "FAIL", detail: "check:cloudflare-build must run the Convex deployment dry run through the portable build wrapper" };
   }
   const deploy = scripts["deploy:cloudflare"] ?? "";
   if (!/\bvinext-cloudflare deploy\b/.test(deploy) || !deploy.includes("--skip-build") || !deploy.includes("dist/server/wrangler.json")) {

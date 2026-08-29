@@ -132,7 +132,7 @@ test("Cloudflare uses a read-only Wrangler CLI auth probe and project choice", (
   }
 });
 
-test("Cloudflare project verification requires deployment config and atomic build", (t) => {
+test("Cloudflare project verification requires the complete strict blueprint", (t) => {
   const { projectRoot, homeDirectory } = fixture(t);
   const cloudflare = loadConnectionCatalog({ projectRoot, catalogDirectory }).providers.cloudflare;
 
@@ -145,10 +145,25 @@ test("Cloudflare project verification requires deployment config and atomic buil
   const halfReady = cloudflare.projectProvisioning.verification.probes.map((probe) =>
     runConnectionProbe(probe, { projectRoot, homeDirectory }),
   );
-  assert.equal(halfReady.find((p) => p.id === "cloudflare-config").passed, true);
-  assert.equal(halfReady.find((p) => p.id === "atomic-deploy").passed, false);
+  assert.equal(halfReady.every((probe) => !probe.passed), true);
 
-  write(projectRoot, "package.json", JSON.stringify({ scripts: { "build:cloudflare": "npx convex deploy --cmd 'pnpm build:vinext'" } }));
+  write(projectRoot, "wrangler.json", JSON.stringify({
+    name: "my-worker",
+    account_id: "0123456789abcdef0123456789abcdef",
+    main: "dist/server/index.js",
+    compatibility_date: "2026-08-29",
+    compatibility_flags: ["nodejs_compat"],
+  }));
+  write(projectRoot, "package.json", JSON.stringify({
+    dependencies: { vinext: "1.0.0-beta.8", "@vinext/cloudflare": "1.0.0-beta.6" },
+    scripts: {
+      "build:vinext": "vinext build",
+      "build:cloudflare": "node scripts/build-cloudflare.mjs",
+      "check:cloudflare-build": "node scripts/build-cloudflare.mjs --dry-run",
+      "deploy:cloudflare": "vinext-cloudflare deploy --skip-build --config dist/server/wrangler.json",
+      "preview:cloudflare": "wrangler versions upload --config dist/server/wrangler.json",
+    },
+  }));
   const ready = cloudflare.projectProvisioning.verification.probes.map((probe) =>
     runConnectionProbe(probe, { projectRoot, homeDirectory }),
   );

@@ -72,7 +72,7 @@ reasoning behind each pick lives in [docs/stack.md](docs/stack.md).
 | Fonts | Self-hosted OFL faces, fetched by `pnpm font`, committed |
 | Gates | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/vitest-dark.svg"><img alt="" src=".github/assets/stack/vitest-light.svg" height="14"></picture> Vitest contracts · backend authorization postconditions · Playwright capture · deterministic Node checks — `pnpm verify` on every completion, `pnpm verify:full` before a release |
 | UI gates | `pnpm ui:plan` direction contract · `pnpm ui:review` visual evidence · `pnpm check:ui` component boundaries |
-| Deploy | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/netlify-dark.svg"><img alt="" src=".github/assets/stack/netlify-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/vercel-dark.svg"><img alt="" src=".github/assets/stack/vercel-light.svg" height="14"></picture> Netlify by default, or Vercel; each uses one committed adapter and deploys Convex before Next.js |
+| Deploy | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/netlify-dark.svg"><img alt="" src=".github/assets/stack/netlify-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/vercel-dark.svg"><img alt="" src=".github/assets/stack/vercel-light.svg" height="14"></picture> Netlify by default, with Vercel and Cloudflare Workers adapters; each deploys Convex before the selected frontend |
 | Delivery | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/github-dark.svg"><img alt="" src=".github/assets/stack/github-light.svg" height="14"></picture> GitHub — `gh` CLI device-flow OAuth for repo, PRs, and CI |
 | Tracking | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/github-dark.svg"><img alt="" src=".github/assets/stack/github-light.svg" height="14"></picture> GitHub Issues and Projects through `gh`, or <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/linear-dark.svg"><img alt="" src=".github/assets/stack/linear-light.svg" height="14"></picture> Linear through its hosted MCP; both mirror the local queue |
 | AI hosts | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/claude-code-dark.svg"><img alt="" src=".github/assets/hosts/claude-code-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/codex-dark.svg"><img alt="" src=".github/assets/hosts/codex-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/cursor-dark.svg"><img alt="" src=".github/assets/hosts/cursor-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/hermes-dark.svg"><img alt="" src=".github/assets/hosts/hermes-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/hosts/openclaw-dark.svg"><img alt="" src=".github/assets/hosts/openclaw-light.svg" height="14"></picture> Claude Code · Codex · Cursor · Windsurf · Cline · Copilot · Gemini CLI · Hermes · OpenClaw |
@@ -145,19 +145,26 @@ pnpm onboard lemonsqueezy --host codex
 ### Choose a deployment provider
 
 Product briefs select one deployment provider through `providerSelection.deployment`.
-Netlify is the default; Vercel is the supported alternative. Both use the provider's
-official browser login, keep backend secrets in Convex, and require an atomic
-`npx convex deploy --cmd 'pnpm build'` build.
+Netlify is the default. Vercel and Cloudflare Workers are supported alternatives. Each
+uses the provider's official browser login and keeps backend secrets in Convex. Netlify
+and Vercel use an atomic `npx convex deploy --cmd 'pnpm build'` build. Cloudflare uses
+the pinned vinext adapter and selects separate production or preview Convex deploy keys
+from the Workers Builds branch.
 
 ```bash
 pnpm onboard netlify --host codex
 pnpm onboard vercel --host codex
+pnpm onboard cloudflare --host codex
 ```
 
-Read the [Netlify guide](.agents/skills/convex-structure/references/deploy-netlify.md)
-or [Vercel guide](.agents/skills/convex-structure/references/deploy-vercel.md) before
-production. `pnpm preflight` rejects a stale build command or two active deployment
-adapters.
+Read the [Netlify guide](.agents/skills/convex-structure/references/deploy-netlify.md),
+the [Vercel guide](.agents/skills/convex-structure/references/deploy-vercel.md), or the
+[Cloudflare Workers guide](.agents/skills/convex-structure/references/deployment-cloudflare.md)
+before production. `pnpm preflight` rejects a stale build command or multiple active
+deployment adapters. Cloudflare production preflight also requires live proof for the
+deployed Worker, custom domain, preview, auth, Convex query, and webhook routes.
+`pnpm check:readme` keeps this supported-provider list synchronized with the connection
+catalog so a newly wired deployment provider cannot remain in the "not wired" table.
 
 ### Not wired yet, and what a swap costs
 
@@ -166,7 +173,6 @@ honest question is not "is it supported" but how much code a swap touches:
 
 | Want instead | Wired today | Swap cost |
 | --- | --- | --- |
-| Cloudflare | Netlify, Vercel | small — add one committed deployment adapter and its connection and preflight contracts; product code never names the host |
 | Plausible, Umami | PostHog | small — `src/lib/analytics.ts` is the only file that imports the SDK |
 | Postmark, SendGrid | Resend | medium — `convex/email.ts` is the only sender, but the Convex component and its webhook go with it |
 | Paddle | Stripe, Polar, Lemon Squeezy | medium: add one provider-owned adapter, connection entry, lifecycle fixture, and production check |

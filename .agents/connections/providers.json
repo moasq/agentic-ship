@@ -788,27 +788,16 @@
         "instructions": [
           "Choose the Cloudflare account ID and Worker name explicitly. The setup command records both in one Wrangler JSON or JSONC file.",
           "The supported Next.js 16 adapter is vinext 1.0.0-beta.8 with @vinext/cloudflare 1.0.0-beta.6. Run its compatibility check before initialization.",
-          "Store `CONVEX_DEPLOY_KEY` in Workers Builds under Build Variables and Secrets. Keep runtime backend secrets in Convex, not in Worker variables."
+          "Store separate `CONVEX_PROD_DEPLOY_KEY` and `CONVEX_PREVIEW_DEPLOY_KEY` secrets in Workers Builds, plus the explicit `CLOUDFLARE_PRODUCTION_BRANCH` variable. Keep runtime backend secrets in Convex, not in Worker variables.",
+          "Before launch, set the live-verification URLs and health query described in the Cloudflare deployment guide, then run `pnpm preflight --prod`."
         ],
         "verification": {
           "policy": "probe_and_attestation",
           "probes": [
             {
-              "id": "cloudflare-config",
-              "label": "Cloudflare deployment config exists",
-              "type": "any_file_exists",
-              "paths": [
-                "wrangler.json",
-                "wrangler.jsonc"
-              ],
-              "required": true
-            },
-            {
-              "id": "atomic-deploy",
-              "label": "Cloudflare deploys Convex and Next.js together",
-              "type": "file_contains",
-              "file": "package.json",
-              "text": "build:cloudflare",
+              "id": "cloudflare-blueprint",
+              "label": "Cloudflare deployment blueprint is valid",
+              "type": "cloudflare_blueprint",
               "required": true
             }
           ]

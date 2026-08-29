@@ -54,6 +54,7 @@ export const DOWNSTREAM_ONLY = [
   { name: "build:cloudflare", reason: "Cloudflare product workspace: Convex-first vinext build" },
   { name: "deploy:cloudflare", reason: "Cloudflare product workspace: deploy the generated Worker" },
   { name: "preview:cloudflare", reason: "Cloudflare product workspace: upload an unpromoted Worker version" },
+  { name: "check:cloudflare-build", reason: "Cloudflare product workspace: dry-run the selected Convex build" },
 ];
 
 const DOWNSTREAM_NAMES = new Set(DOWNSTREAM_ONLY.map((d) => d.name));

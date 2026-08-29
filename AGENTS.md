@@ -69,7 +69,7 @@ Windows. The buyer may be on any of the three.
 | `pnpm health` | offline tool-repo health — required skill/contract/adapter/MCP assets present, no bundled application residue, Node 20+ runtime. (Product-workspace checks — pins, SSOT, tokens, env leaks, backend status — run downstream where `src/`/`convex/` exist) |
 | `pnpm onboard [provider] --host <host>` | provider-selective status or the next resumable human step |
 | `pnpm connect` | begin, inspect, resume, or cancel safe service-connection receipts |
-| `pnpm provider:login <cli>` | install + browser-OAuth pair a vendor's official CLI (stripe, netlify, vercel, github, 21st) |
+| `pnpm provider:login <cli>` | install + browser-OAuth pair a vendor's official CLI (stripe, netlify, vercel, cloudflare, github, 21st) |
 | `pnpm stripe:provision` | webhook endpoint and plan prices through the paired CLI; secrets flow straight into Convex env, never printed. `--test-key` copies the CLI's TEST key so a sandbox can take a 4242 payment; it refuses anything that is not `sk_test`/`rk_test`, and refuses `--prod` |
 | `pnpm secret:set NAME` | hidden-input prompt in the user's terminal, piped into Convex env — no chat, no history, no files |
 | `pnpm setup:auth [site-url]` | generate `BETTER_AUTH_SECRET` and set it plus `SITE_URL` straight into a downstream Convex env; the secret is never printed |
@@ -86,6 +86,7 @@ Windows. The buyer may be on any of the three.
 | `pnpm sync:mcp` · `pnpm check:mcp` | write / verify the `.cursor/mcp.json` mirror |
 | `pnpm sync:agents` · `pnpm check:agents` | write / verify native Claude plugin, Codex, Cursor, Hermes, and OpenClaw role adapters |
 | `pnpm check:commands` | every `pnpm` name in prose resolves to a real script, and `skills.lock.json` matches disk |
+| `pnpm check:readme` | verify that the README's supported deployment providers match the connection catalog |
 | `pnpm secret` | print one random base64 secret |
 
 `pnpm install` runs the link, MCP, and agent-adapter synchronizers through `postinstall`.
@@ -588,28 +589,35 @@ Detail: `.agents/skills/frontend-security/references/analytics-posthog.md`.
 - `autocapture` is off and inputs are masked in replay. Turning either on is a
   `frontend-security` decision, not a convenience.
 
-## Deploy rules (Netlify or Vercel)
+## Deploy rules (Netlify, Vercel, or Cloudflare)
 
 Details: `.agents/skills/convex-structure/references/deploy-netlify.md` and
-`.agents/skills/convex-structure/references/deploy-vercel.md`.
+`.agents/skills/convex-structure/references/deploy-vercel.md`, plus
+`.agents/skills/convex-structure/references/deployment-cloudflare.md`.
 
 - The product brief selects one deployment provider. Netlify remains the default;
-  Vercel is the supported alternative. Commit exactly one adapter: `netlify.toml` or
-  `vercel.json`. Preflight fails when both exist.
+  Vercel and Cloudflare Workers are supported alternatives. Commit exactly one adapter:
+  `netlify.toml`, `vercel.json`, or one Wrangler JSON or JSONC file. Preflight fails
+  when more than one exists.
 - Change deployment topology in that adapter, in a reviewable diff. Dashboard settings
   must not silently replace the committed build contract.
-- The build command must run `npx convex deploy --cmd 'pnpm build'`, so backend and
-  frontend ship together. `pnpm build` alone ships a frontend against a stale backend.
-- The web host holds `CONVEX_DEPLOY_KEY` and public keys only. Every backend secret lives in
-  the **prod Convex deployment's** env, which is what keeps live Stripe keys off dev
-  machines.
+- Netlify and Vercel must run `npx convex deploy --cmd 'pnpm build'`, so backend and
+  frontend ship together. Cloudflare Workers Builds must use the committed branch-aware
+  wrapper with separate production and preview Convex deploy keys. A plain frontend
+  build ships against a stale or wrong backend.
+- The web host holds only the Convex build keys and public values. Cloudflare keeps
+  separate production and preview deploy keys in Workers Builds. Every runtime backend
+  secret lives in the **prod Convex deployment's** env, which keeps live billing keys
+  off development machines and Worker runtime variables.
 - Secret **values** never appear in the committed deployment adapter. Set them through
   the selected provider's hidden-input environment command.
-- **The whole path is the terminal**, which is why these hosts and not another.
+- **The runnable path is the agent's.** Vercel and Netlify can complete through their
+  CLIs. Cloudflare authorization uses Wrangler, while Workers Builds settings that the
+  CLI does not expose remain a provider-dashboard step recorded by the connection flow.
   Vercel uses `vercel project add`, `vercel link`, `vercel env add`, and
   `vercel deploy --prod`. Netlify uses `netlify init` to create and link the site,
   `netlify env:set` to configure it, and
-  `netlify deploy --prod` ships. Nothing here needs a dashboard. Render was replaced for
+  `netlify deploy --prod` ships. Render was replaced for
   exactly this reason — `render deploys create` requires a `serviceID` that only the
   dashboard can mint, and `render blueprints` can validate a blueprint but never apply
   one, so the first deploy could not be reached from a terminal at all.

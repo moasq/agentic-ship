@@ -80,14 +80,15 @@ describe("matchesScript", () => {
 });
 
 describe("downstream escape hatch", () => {
-  test("the four product-workspace commands are excused", () => {
-    for (const name of ["dev", "build", "start", "test:e2e", "build:vinext", "build:cloudflare", "deploy:cloudflare", "preview:cloudflare"]) {
+  test("the named product-workspace commands are excused", () => {
+    for (const name of ["dev", "build", "start", "test:e2e", "build:vinext", "build:cloudflare", "check:cloudflare-build", "deploy:cloudflare", "preview:cloudflare"]) {
       expect(isDownstream(name)).toBe(true);
     }
     expect(DOWNSTREAM_ONLY.map((d) => d.name).sort()).toEqual([
       "build",
       "build:cloudflare",
       "build:vinext",
+      "check:cloudflare-build",
       "deploy:cloudflare",
       "dev",
       "preview:cloudflare",

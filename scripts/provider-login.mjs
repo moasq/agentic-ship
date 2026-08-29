@@ -15,7 +15,7 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { CLOUDFLARE_AUTH_ENV, CLOUDFLARE_LOGIN_ARGS } from "./lib/connections/cloudflare.mjs";
+import { cloudflareCommandExecution } from "./lib/connections/cloudflare.mjs";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -26,6 +26,7 @@ const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 // use here is safe (same pattern as scripts/probe-mcp.mjs). Never add shell:true to a
 // call whose args carry caller-supplied text.
 const WIN = process.platform === "win32";
+const cloudflareExecution = cloudflareCommandExecution();
 
 const PROVIDERS = {
   stripe: {
@@ -82,8 +83,9 @@ const PROVIDERS = {
       linux: [["pnpm", "add", "--global", "wrangler"]],
       win32: [["pnpm", "add", "--global", "wrangler"]],
     },
-    login: ["wrangler", ...CLOUDFLARE_LOGIN_ARGS],
-    environment: CLOUDFLARE_AUTH_ENV,
+    login: cloudflareExecution.login,
+    environment: cloudflareExecution.environment,
+    shell: cloudflareExecution.shell,
     verify: [process.execPath, join(projectRoot, "scripts", "check-cloudflare-auth.mjs")],
   },
   github: {
@@ -125,7 +127,7 @@ function verified(provider) {
   if (!provider.verify) return existsSync(join(homedir(), provider.pairedFile));
   const result = spawnSync(provider.verify[0], provider.verify.slice(1), {
     stdio: "ignore",
-    shell: WIN,
+    shell: provider.shell ?? WIN,
     env: { ...process.env, ...(provider.environment ?? {}) },
   });
   return result.status === 0;
@@ -157,13 +159,13 @@ function completeHeadlessPairing(loginOutput) {
   return false;
 }
 
-function run(argv, { input, environment } = {}) {
+function run(argv, { input, environment, shell = WIN } = {}) {
   const [command, ...args] = argv;
   return spawnSync(command, args, {
     stdio: [input === undefined ? "inherit" : "pipe", "inherit", "inherit"],
     input,
     encoding: "utf8",
-    shell: WIN,
+    shell,
     env: { ...process.env, ...(environment ?? {}) },
   });
 }
@@ -219,6 +221,7 @@ if (provider.captureAndComplete) {
   const login = run(provider.login, {
     ...(provider.feedEnter ? { input: "\n" } : {}),
     environment: provider.environment,
+    shell: provider.shell,
   });
   if (login.status !== 0) {
     fail(`${providerId} login did not complete (exit ${login.status}). Rerun when ready, or follow ${provider.docs}.`);

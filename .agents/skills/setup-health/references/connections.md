@@ -10,7 +10,7 @@ Load its protocol reference plus the selected records in:
 - `.agents/connections/hosts.json` for Claude Code, Codex, Cursor, Hermes, and OpenClaw consent
   instructions and read-only verification handoffs.
 
-Use the resumable connection workflow for Convex, Stripe, Resend, PostHog, Netlify, and Vercel.
+Use the resumable connection workflow for Convex, Stripe, Resend, PostHog, Netlify, Vercel, and Cloudflare.
 Keep these distinctions explicit:
 
 1. Host authorization grants the active AI tool access to a provider MCP or CLI.

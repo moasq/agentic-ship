@@ -47,6 +47,7 @@ const steps = [
   { name: "UI tooling", cmd: "pnpm check:ui", why: "visual-plan tooling remains valid with no bundled UI" },
   { name: "backend contracts", cmd: "pnpm check:backend", why: "billing authority and owned-document boundaries" },
   { name: "commands", cmd: "pnpm check:commands", why: "documented pnpm commands and skill/MCP lock entries match reality" },
+  { name: "README sync", cmd: "pnpm check:readme", why: "supported deployment providers match the reader-facing catalog" },
   { name: "unit", cmd: "pnpm test", why: "deterministic tool contracts" },
 ];
 

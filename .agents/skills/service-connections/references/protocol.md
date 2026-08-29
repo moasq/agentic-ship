@@ -53,7 +53,7 @@ collection. `input_required` additionally carries:
 - `agentRuns`: catalog `automation.run` steps the agent executes on the user's behalf —
   `command`, `why`, and `opensBrowser` when the command blocks on browser consent.
   `pnpm provider:login <cli>` steps install the vendor's official CLI when missing and
-  wait on its browser OAuth (Stripe pairing, Netlify or Vercel login, GitHub device flow)
+  wait on its browser OAuth (Stripe pairing, Netlify, Vercel, or Cloudflare login, GitHub device flow)
 - `instructions`: the manual equivalent, safe actions with no credential values
 - `verification`: boolean probe results and safe summaries only
 - `sensitiveInputAllowed`: always `false`
@@ -82,6 +82,8 @@ Providers without one start at project provisioning. Use only the supported loca
 types:
 
 - `mcp_server`
+- `cloudflare_blueprint` — parsed, fail-closed validation of the single Wrangler file,
+  pinned adapter, branch-aware build, deploy, preview, and secret ownership contract
 - `file_exists`
 - `any_file_exists`
 - `file_contains`

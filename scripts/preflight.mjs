@@ -20,7 +20,6 @@ import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inspectProductionBillingEnvironment } from "./lib/billing-coherence.mjs";
 import { inspectDeploymentBlueprint } from "./lib/deployment-coherence.mjs";
-import { parseWranglerConfig, validateCloudflareProjectName } from "./lib/connections/cloudflare.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => (existsSync(join(root, p)) ? readFileSync(join(root, p), "utf8") : "");
@@ -130,34 +129,17 @@ add(
 
 if (withProd) {
   if (cloudflareConfigs.length === 1) {
-    const auth = spawnSync(process.execPath, [join(root, "scripts/check-cloudflare-auth.mjs")], {
+    const live = spawnSync(process.execPath, [join(root, "scripts/verify-cloudflare-live.mjs")], {
       cwd: root,
       encoding: "utf8",
       shell: process.platform === "win32",
     });
+    const liveError = (live.stderr ?? "").trim().split(/\r?\n/).filter(Boolean).at(-1) ?? "";
     add(
-      "prod Cloudflare auth is protected",
-      auth.status === 0 ? "PASS" : "FAIL",
-      auth.status === 0 ? "" : "authorize Wrangler with `pnpm provider:login cloudflare` or set a scoped API token and account ID",
+      "prod Cloudflare deployment is live",
+      live.status === 0 ? "PASS" : "FAIL",
+      live.status === 0 ? "" : (liveError || "run the Cloudflare live verifier after configuring production, preview, auth, Convex, and webhook checks"),
     );
-
-    try {
-      const config = parseWranglerConfig(cloudflareConfigs[0].source, cloudflareConfigs[0].path);
-      const name = validateCloudflareProjectName(config.name);
-      if (!name.valid) throw new Error(name.error);
-      const deployments = spawnSync("pnpm", ["exec", "wrangler", "deployments", "list", "--name", config.name, "--config", cloudflareConfigs[0].path], {
-        cwd: root,
-        shell: process.platform === "win32",
-        encoding: "utf8",
-      });
-      add(
-        "prod Cloudflare Worker is readable",
-        deployments.status === 0 ? "PASS" : "FAIL",
-        deployments.status === 0 ? "" : "the selected account and Worker could not be read; verify account_id, name, and Cloudflare access",
-      );
-    } catch (error) {
-      add("prod Cloudflare Worker is readable", "FAIL", error.message);
-    }
   }
 
   const list = spawnSync("npx convex env list --prod", { cwd: root, shell: true, encoding: "utf8" });

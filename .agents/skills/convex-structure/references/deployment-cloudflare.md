@@ -14,7 +14,9 @@ For Cloudflare Workers Builds, use a scoped API token instead of interactive OAu
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
-- `CONVEX_DEPLOY_KEY`
+- `CONVEX_PROD_DEPLOY_KEY`
+- `CONVEX_PREVIEW_DEPLOY_KEY`
+- `CLOUDFLARE_PRODUCTION_BRANCH` as a non-secret variable
 
 The deploy key is a build secret. Do not create it as a Worker runtime secret. The build process needs it to build against and deploy the selected Convex backend.
 
@@ -33,6 +35,8 @@ pnpm install
 
 The setup command records `account_id` and `name` in the single Wrangler JSON or JSONC file. It also pins both adapter packages and adds separate build and deploy scripts. Review compatibility findings before continuing.
 
+Set the production and preview deploy keys in a safe CI fixture, then run `pnpm check:cloudflare-build`. This calls `convex deploy --dry-run` through the same branch-aware wrapper used by Workers Builds, so a missing branch, wrong key class, or invalid Convex build fails before a live deploy.
+
 ## Build Convex before deploying the Worker
 
 Cloudflare Workers Builds uses separate build and deploy commands. Configure these values:
@@ -43,7 +47,7 @@ Cloudflare Workers Builds uses separate build and deploy commands. Configure the
 | Deploy command | `pnpm deploy:cloudflare` |
 | Non-production deploy command | `pnpm preview:cloudflare` |
 
-`build:cloudflare` runs `npx convex deploy --cmd 'pnpm build:vinext'`. The nested command is a separate vinext build, so it does not call itself. Convex supplies `NEXT_PUBLIC_CONVEX_URL` during that build and deploys the backend after the build succeeds.
+`build:cloudflare` runs the portable `scripts/build-cloudflare.mjs` wrapper. The wrapper compares `WORKERS_CI_BRANCH` with `CLOUDFLARE_PRODUCTION_BRANCH`. It uses `CONVEX_PROD_DEPLOY_KEY` for the production branch and `CONVEX_PREVIEW_DEPLOY_KEY` with `convex deploy --preview-name` for every other branch. Only the selected key is forwarded to the Convex command. Both paths run the separate `pnpm build:vinext` command, so the build cannot call itself. Convex supplies `NEXT_PUBLIC_CONVEX_URL` during the build and deploys the selected backend after the build succeeds.
 
 `deploy:cloudflare` uses `--skip-build` to deploy the existing vinext output. `preview:cloudflare` runs `wrangler versions upload` against the generated `dist/server/wrangler.json` without promoting that version to production.
 
@@ -55,7 +59,9 @@ Configure values according to their owner:
 
 | Value | Location |
 | --- | --- |
-| `CONVEX_DEPLOY_KEY` | Workers Builds secret |
+| `CONVEX_PROD_DEPLOY_KEY` | Workers Builds secret for the production Convex deployment |
+| `CONVEX_PREVIEW_DEPLOY_KEY` | Workers Builds secret for Convex preview deployments |
+| `CLOUDFLARE_PRODUCTION_BRANCH` | Workers Builds variable matching the selected production branch |
 | `CLOUDFLARE_API_TOKEN` | Workers Builds secret |
 | `CLOUDFLARE_ACCOUNT_ID` | Workers Builds variable |
 | `NEXT_PUBLIC_CONVEX_URL` | Injected by `convex deploy --cmd` during build |
@@ -86,15 +92,25 @@ Run background processing in Convex scheduled functions or jobs. Use `ctx.waitUn
 
 ## Verify preview and production
 
-Before production, verify all of these outcomes:
+Before production, configure these non-secret live-verification values in the environment that runs preflight:
 
-1. `pnpm preflight` passes with one Wrangler config and the pinned adapter versions.
+- `CLOUDFLARE_PRODUCTION_URL`: the custom production origin, not a `workers.dev` URL
+- `CLOUDFLARE_PREVIEW_URL`: a deployed `<version-or-alias>-<worker>.<subdomain>.workers.dev` preview URL for the selected Worker
+- `CLOUDFLARE_AUTH_CALLBACK_URL`: a configured callback on the production origin
+- `NEXT_PUBLIC_CONVEX_URL`: the production Convex deployment URL
+- `CLOUDFLARE_CONVEX_HEALTH_QUERY`: a public no-argument query such as `health:check`
+- `CLOUDFLARE_WEBHOOK_URLS`: comma-separated billing and email webhook endpoints that answer `OPTIONS`
+
+Then verify all of these outcomes:
+
+1. `pnpm preflight` passes with one Wrangler config and the pinned adapter versions, and `pnpm check:cloudflare-build` passes for production and preview fixture environments.
 2. `pnpm preview:cloudflare` creates a preview version and its HTTPS URL responds.
-3. The preview uses a Convex preview deployment key, not the production key.
+3. The preview build uses `CONVEX_PREVIEW_DEPLOY_KEY`, while the production branch uses `CONVEX_PROD_DEPLOY_KEY`.
 4. Better Auth accepts the preview and production origins.
 5. Convex queries, mutations, and WebSocket updates work from both origins.
 6. Billing and email webhooks still reach their Convex endpoints.
-7. `pnpm preflight --prod` passes after the live service checks are available.
+7. `pnpm verify:cloudflare` passes its current-deployment, production URL, preview URL, auth session, callback, Convex query, and webhook probes.
+8. `pnpm preflight --prod` passes, including the same fail-closed live Cloudflare verification and the production Convex environment audit.
 
 ## Roll back or revoke access
 

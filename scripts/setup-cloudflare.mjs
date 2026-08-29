@@ -59,7 +59,8 @@ pkg.dependencies = {
 pkg.scripts = {
   ...(pkg.scripts ?? {}),
   "build:vinext": "vinext build",
-  "build:cloudflare": "npx convex deploy --cmd 'pnpm build:vinext'",
+  "build:cloudflare": "node scripts/build-cloudflare.mjs",
+  "check:cloudflare-build": "node scripts/build-cloudflare.mjs --dry-run",
   "deploy:cloudflare": "vinext-cloudflare deploy --skip-build --config dist/server/wrangler.json",
   "preview:cloudflare": "wrangler versions upload --config dist/server/wrangler.json",
 };
