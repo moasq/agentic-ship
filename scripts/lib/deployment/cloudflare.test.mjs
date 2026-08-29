@@ -1,340 +1,222 @@
-// @vitest-environment node
-import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { resolveProviderSelection } from "../provider-selection.mjs";
 import { loadConnectionCatalog } from "../connections/catalog.mjs";
+import { resolveProviderSelection } from "../provider-selection.mjs";
 import {
   bindCloudflareEnvironmentVariables,
+  CLOUDFLARE_ADAPTER,
+  CLOUDFLARE_AUTH_ENV,
+  CLOUDFLARE_LOGIN_ARGS,
   discoverCloudflareCredentials,
   generateWranglerConfig,
-  inspectProductionCloudflareEnvironment,
+  inspectCloudflareBlueprint,
   parseWranglerWhoami,
   resolveBetterAuthCloudflareOrigins,
   revokeCloudflareCredentials,
   validateCloudflareAccountId,
   validateCloudflareProjectName,
-  validateCloudflareToken,
   verifyConvexCloudflareConnectivity,
 } from "./cloudflare.mjs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+const accountId = "0123456789abcdef0123456789abcdef";
 
-describe("Cloudflare Deployment Provider - Contract and Selection", () => {
-  it("resolves cloudflare as deployment provider while keeping netlify as default", () => {
-    const selected = resolveProviderSelection({ deployment: "cloudflare" });
-    expect(selected.deployment).toBe("cloudflare");
-    expect(selected.billing).toBe("stripe");
-    expect(selected.email).toBe("resend");
-    expect(selected.analytics).toBe("posthog");
-    expect(selected.tracking).toBe("linear");
+function fixturePackage(overrides = {}) {
+  return JSON.stringify({
+    dependencies: {
+      vinext: CLOUDFLARE_ADAPTER.frameworkVersion,
+      "@vinext/cloudflare": CLOUDFLARE_ADAPTER.deploymentVersion,
+    },
+    scripts: {
+      "build:vinext": "vinext build",
+      "build:cloudflare": "npx convex deploy --cmd 'pnpm build:vinext'",
+      "deploy:cloudflare": "vinext-cloudflare deploy --skip-build --config dist/server/wrangler.json",
+      "preview:cloudflare": "wrangler versions upload --config dist/server/wrangler.json",
+    },
+    ...overrides,
+  });
+}
 
-    const defaultSelection = resolveProviderSelection({});
-    expect(defaultSelection.deployment).toBe("netlify");
+function fixtureConfig(overrides = {}) {
+  return JSON.stringify({
+    name: "agentic-app",
+    account_id: accountId,
+    main: "dist/server/index.js",
+    compatibility_date: "2026-08-29",
+    compatibility_flags: ["nodejs_compat"],
+    ...overrides,
+  });
+}
+
+function inspect(config = fixtureConfig(), pkg = fixturePackage(), path = "wrangler.jsonc") {
+  return inspectCloudflareBlueprint({ configSources: [{ path, source: config }], packageJsonSource: pkg });
+}
+
+describe("Cloudflare provider selection", () => {
+  it("keeps Netlify as default and selects Cloudflare explicitly", () => {
+    expect(resolveProviderSelection({}).deployment).toBe("netlify");
+    expect(resolveProviderSelection({ deployment: "cloudflare" }).deployment).toBe("cloudflare");
   });
 
-  it("registers cloudflare in connection catalog under deployment capability with wrangler CLI", () => {
-    const catalog = loadConnectionCatalog({ projectRoot: repositoryRoot });
-    const cloudflare = catalog.providers.cloudflare;
-    expect(cloudflare).toBeDefined();
-    expect(cloudflare.displayName).toBe("Cloudflare");
-    expect(cloudflare.capability).toBe("deployment");
-    expect(cloudflare.defaultForCapability).toBe(false);
-    expect(cloudflare.agentTool.authFlow).toBe("cli_browser_login");
-    expect(cloudflare.agentTool.configurationProbe.command).toBe("wrangler");
-    expect(cloudflare.agentTool.configurationProbe.args).toEqual(["whoami"]);
-    expect(cloudflare.projectProvisioning.verification.policy).toBe("probe_and_attestation");
-    expect(cloudflare.projectProvisioning.verification.probes.some((p) => p.id === "cloudflare-config")).toBe(true);
-    expect(cloudflare.projectProvisioning.verification.probes.some((p) => p.id === "atomic-deploy")).toBe(true);
-  });
-});
-
-describe("Cloudflare Credential & Token Validation", () => {
-  it("accepts valid Cloudflare API tokens", () => {
-    const validToken = "v4k9_abcdef1234567890ABCDEF123456789012";
-    expect(validateCloudflareToken(validToken).valid).toBe(true);
-
-    const longToken = "A".repeat(80);
-    expect(validateCloudflareToken(longToken).valid).toBe(true);
-  });
-
-  it("rejects unencrypted plaintext placeholder tokens", () => {
-    const placeholders = [
-      "your_api_token_here",
-      "your-api-token",
-      "YOUR_API_TOKEN",
-      "placeholder_token_1234567890123456",
-      "test_token_1234567890123456789012",
-      "example_token_abcdef1234567890123",
-      "bearer secret_token_value_here_now",
-      "1234567890123456789012345678901234",
-      "xxxx_1234567890123456789012345678",
-      "my_secret_token_123456789012345678",
-    ];
-
-    for (const placeholder of placeholders) {
-      const result = validateCloudflareToken(placeholder);
-      expect(result.valid).toBe(false);
-      expect(result.error).toMatch(/unencrypted plaintext placeholder/i);
+  it("registers protected auth, exact adapter pins, and account-aware decisions", () => {
+    const cloudflare = loadConnectionCatalog({ projectRoot: repositoryRoot }).providers.cloudflare;
+    expect(cloudflare.agentTool.configurationProbe).toEqual({
+      id: "cloudflare-cli-paired",
+      label: "Wrangler CLI is authenticated",
+      type: "command_succeeds",
+      command: "node",
+      args: ["scripts/check-cloudflare-auth.mjs"],
+      required: true,
+    });
+    for (const option of cloudflare.projectProvisioning.automation.decision.options) {
+      expect(option.placeholders).toEqual(["account-id", "project-name"]);
+      expect(option.run.some((step) => step.command.includes(`vinext@${CLOUDFLARE_ADAPTER.frameworkVersion} check`))).toBe(true);
+      expect(option.run.some((step) => step.command.includes("pnpm setup:cloudflare --account-id {account-id}"))).toBe(true);
     }
   });
-
-  it("rejects invalid token formats and whitespace", () => {
-    expect(validateCloudflareToken("").valid).toBe(false);
-    expect(validateCloudflareToken(null).valid).toBe(false);
-    expect(validateCloudflareToken(12345).valid).toBe(false);
-    expect(validateCloudflareToken("token with space 12345678901234567890").valid).toBe(false);
-    expect(validateCloudflareToken("short").valid).toBe(false);
-  });
-
-  it("validates 32-character hexadecimal Cloudflare account IDs", () => {
-    expect(validateCloudflareAccountId("0123456789abcdef0123456789abcdef").valid).toBe(true);
-    expect(validateCloudflareAccountId("ABCDEF0123456789abcdef0123456789").valid).toBe(true);
-
-    expect(validateCloudflareAccountId("").valid).toBe(false);
-    expect(validateCloudflareAccountId("not-a-hex-id").valid).toBe(false);
-    expect(validateCloudflareAccountId("0123456789abcdef").valid).toBe(false); // only 16 chars
-    expect(validateCloudflareAccountId("0123456789abcdef0123456789abcdef0").valid).toBe(false); // 33 chars
-  });
-
-  it("validates Cloudflare Worker project names", () => {
-    expect(validateCloudflareProjectName("my-worker").valid).toBe(true);
-    expect(validateCloudflareProjectName("app_frontend-2026").valid).toBe(true);
-
-    expect(validateCloudflareProjectName("").valid).toBe(false);
-    expect(validateCloudflareProjectName("-invalid-start").valid).toBe(false);
-    expect(validateCloudflareProjectName("a".repeat(64)).valid).toBe(false);
-  });
 });
 
-describe("Account Discovery & Wrangler CLI Parsing", () => {
-  it("parses wrangler whoami CLI output into accounts and user email", () => {
-    const tableOutput = `
-      Getting User settings...
-      👋 You are logged in with an OAuth Token, associated with the email user@example.com!
-      ┌──────────────────────────────────┬──────────────────────────────────┐
-      │ Account Name                     │ Account ID                       │
-      ├──────────────────────────────────┼──────────────────────────────────┤
-      │ Production Team                  │ 0123456789abcdef0123456789abcdef │
-      │ Staging Team                     │ fedcba9876543210fedcba9876543210 │
-      └──────────────────────────────────┴──────────────────────────────────┘
+describe("Wrangler authentication", () => {
+  it("forces keyring storage on every platform", () => {
+    expect(CLOUDFLARE_LOGIN_ARGS).toEqual(["login", "--use-keyring"]);
+    expect(CLOUDFLARE_AUTH_ENV).toEqual({ CLOUDFLARE_AUTH_USE_KEYRING: "true" });
+    const source = readFileSync(resolve(repositoryRoot, "scripts/provider-login.mjs"), "utf8");
+    expect(source).toContain("environment: CLOUDFLARE_AUTH_ENV");
+    expect(source).toContain("env: { ...process.env, ...(provider.environment ?? {}) }");
+  });
+
+  it("accepts encrypted OAuth output and parses all accounts", () => {
+    const output = `
+      You are logged in with an OAuth Token, associated with the email user@example.com.
+      Credentials are stored in: Encrypted file (~/.config/.wrangler/config/default.enc) with key in macOS Keychain
+      │ Production │ ${accountId} │
+      │ Staging │ fedcba9876543210fedcba9876543210 │
     `;
-    const parsed = parseWranglerWhoami(tableOutput);
+    const parsed = parseWranglerWhoami(output);
     expect(parsed.authenticated).toBe(true);
-    expect(parsed.email).toBe("user@example.com");
-    expect(parsed.accounts.length).toBe(2);
-    expect(parsed.accounts[0]).toEqual({ name: "Production Team", id: "0123456789abcdef0123456789abcdef" });
-    expect(parsed.primaryAccount.id).toBe("0123456789abcdef0123456789abcdef");
+    expect(parsed.encryptedStorage).toBe(true);
+    expect(parsed.accounts).toHaveLength(2);
   });
 
-  it("parses token-associated account from wrangler whoami output", () => {
-    const tokenOutput = `
-      Getting User settings...
-      ✨ You are logged in with an API Token, associated with the account 'Personal Team' (abcdef0123456789abcdef0123456789).
-    `;
-    const parsed = parseWranglerWhoami(tokenOutput);
-    expect(parsed.authenticated).toBe(true);
-    expect(parsed.accounts.length).toBe(1);
-    expect(parsed.accounts[0]).toEqual({ name: "Personal Team", id: "abcdef0123456789abcdef0123456789" });
-  });
-
-  it("discovers credentials from environment variables when valid", () => {
-    const env = {
-      CLOUDFLARE_API_TOKEN: "v4k9_abcdef1234567890ABCDEF123456789012",
-      CLOUDFLARE_ACCOUNT_ID: "0123456789abcdef0123456789abcdef",
-    };
-    const creds = discoverCloudflareCredentials({ env });
-    expect(creds.authenticated).toBe(true);
-    expect(creds.method).toBe("env_token");
-    expect(creds.credentialRef).toBe("CLOUDFLARE_API_TOKEN");
-    expect(creds.accountId).toBe(env.CLOUDFLARE_ACCOUNT_ID);
-    expect(JSON.stringify(creds)).not.toContain(env.CLOUDFLARE_API_TOKEN);
-  });
-
-  it("rejects discovering credentials from environment variables when token is a placeholder", () => {
-    const env = {
-      CLOUDFLARE_API_TOKEN: "your_api_token_here",
-    };
-    const creds = discoverCloudflareCredentials({ env });
-    expect(creds.authenticated).toBe(false);
-    expect(creds.error).toMatch(/unencrypted plaintext placeholder/i);
-  });
-
-  it("discovers credentials via Wrangler CLI command runner", () => {
-    const creds = discoverCloudflareCredentials({
+  it("rejects plaintext OAuth storage and an API token without an account", () => {
+    const plaintext = discoverCloudflareCredentials({
       env: {},
-      commandRunner(cmd, args) {
-        if (cmd === "wrangler" && args[0] === "whoami") {
-          return {
-            status: 0,
-            stdout: "✨ You are logged in with an API Token, associated with the account 'CI Org' (0123456789abcdef0123456789abcdef).",
-          };
-        }
-        return { status: 1 };
-      },
+      commandRunner: () => ({ status: 0, stdout: `You are logged in\n│ Team │ ${accountId} │` }),
     });
-    expect(creds.authenticated).toBe(true);
-    expect(creds.method).toBe("cli_login");
-    expect(creds.primaryAccount.name).toBe("CI Org");
+    expect(plaintext.authenticated).toBe(false);
+    expect(plaintext.error).toMatch(/not protected/);
+
+    const incompleteToken = discoverCloudflareCredentials({ env: { CLOUDFLARE_API_TOKEN: "A".repeat(40) } });
+    expect(incompleteToken.authenticated).toBe(false);
+    expect(incompleteToken.error).toMatch(/account ID/);
+  });
+
+  it("never returns the API token", () => {
+    const token = "A".repeat(40);
+    const result = discoverCloudflareCredentials({ env: { CLOUDFLARE_API_TOKEN: token, CLOUDFLARE_ACCOUNT_ID: accountId } });
+    expect(result.authenticated).toBe(true);
+    expect(JSON.stringify(result)).not.toContain(token);
+  });
+
+  it("reports a failed logout as not revoked", () => {
+    expect(revokeCloudflareCredentials({ commandRunner: () => ({ status: 1 }) }).revoked).toBe(false);
+    expect(revokeCloudflareCredentials({ commandRunner: () => ({ status: 0 }) }).revoked).toBe(true);
   });
 });
 
-describe("Environment Variables Binding & Secret Isolation", () => {
-  it("binds public variables and separates secret keys", () => {
-    const bound = bindCloudflareEnvironmentVariables({
-      publicVars: {
-        NEXT_PUBLIC_CONVEX_URL: "https://my-app.convex.cloud",
-        NEXT_PUBLIC_SITE_URL: "https://my-app.workers.dev",
-      },
-      secretKeys: ["CONVEX_DEPLOY_KEY"],
-    });
-
-    expect(bound.vars).toEqual({
-      NEXT_PUBLIC_CONVEX_URL: "https://my-app.convex.cloud",
-      NEXT_PUBLIC_SITE_URL: "https://my-app.workers.dev",
-    });
-    expect(bound.secrets).toEqual(["CONVEX_DEPLOY_KEY"]);
-  });
-
-  it("throws when forbidden backend secrets are passed to public variables", () => {
-    const forbiddenKeys = [
-      "BETTER_AUTH_SECRET",
-      "STRIPE_SECRET_KEY",
-      "RESEND_API_KEY",
-      "POLAR_ACCESS_TOKEN",
-      "LEMON_SQUEEZY_API_KEY",
-    ];
-
-    for (const key of forbiddenKeys) {
-      expect(() =>
-        bindCloudflareEnvironmentVariables({
-          publicVars: { [key]: "super-secret-value" },
-        }),
-      ).toThrow(/Forbidden backend secret/);
+describe("Cloudflare account and project configuration", () => {
+  it("rejects ambiguous Worker names and invalid account IDs", () => {
+    for (const name of ["app_frontend", "app-", "-app", "UPPERCASE", "a".repeat(64)]) {
+      expect(validateCloudflareProjectName(name).valid).toBe(false);
     }
+    expect(validateCloudflareProjectName("app-frontend").valid).toBe(true);
+    expect(validateCloudflareAccountId(accountId).valid).toBe(true);
+    expect(validateCloudflareAccountId("abc").valid).toBe(false);
   });
 
-  it("generates valid OpenNext / Wrangler configuration", () => {
-    const config = generateWranglerConfig({
-      projectName: "agentic-app",
-      vars: { NEXT_PUBLIC_SITE_URL: "https://agentic-app.workers.dev" },
-    });
-
+  it("generates a config with explicit account and project selection", () => {
+    const config = generateWranglerConfig({ projectName: "agentic-app", accountId, compatibilityDate: "2026-08-29" });
     expect(config.name).toBe("agentic-app");
-    expect(config.main).toBe(".open-next/worker.js");
+    expect(config.account_id).toBe(accountId);
     expect(config.compatibility_flags).toContain("nodejs_compat");
-    expect(config.vars.NEXT_PUBLIC_SITE_URL).toBe("https://agentic-app.workers.dev");
+  });
+
+  it("updates a downstream JSONC fixture without recursive scripts", () => {
+    const root = mkdtempSync(join(tmpdir(), "agentic-ship-cloudflare-"));
+    writeFileSync(join(root, "wrangler.jsonc"), '{\n// generated by vinext\n"name":"old","main":"dist/server/index.js","compatibility_date":"2026-08-29"\n}\n');
+    writeFileSync(join(root, "package.json"), JSON.stringify({ dependencies: { next: "16.1.0" }, scripts: { "build:vinext": "vinext build" } }));
+    const run = spawnSync(
+      process.execPath,
+      [resolve(repositoryRoot, "scripts/setup-cloudflare.mjs"), "--account-id", accountId, "--project-name", "agentic-app"],
+      { cwd: root, encoding: "utf8" },
+    );
+    expect(run.status, run.stderr).toBe(0);
+    const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+    const config = JSON.parse(readFileSync(join(root, "wrangler.jsonc"), "utf8"));
+    expect(config).toMatchObject({ name: "agentic-app", account_id: accountId });
+    expect(pkg.dependencies.vinext).toBe(CLOUDFLARE_ADAPTER.frameworkVersion);
+    expect(pkg.dependencies["@vinext/cloudflare"]).toBe(CLOUDFLARE_ADAPTER.deploymentVersion);
+    expect(pkg.scripts["build:cloudflare"]).toBe("npx convex deploy --cmd 'pnpm build:vinext'");
+    expect(pkg.scripts["build:cloudflare"]).not.toContain("pnpm build'");
   });
 });
 
-describe("Better Auth Origins and Convex Connectivity", () => {
-  it("resolves workers.dev and custom domain origins for Better Auth", () => {
-    const origins = resolveBetterAuthCloudflareOrigins({
-      workerName: "ship-app",
-      accountSubdomain: "my-team",
-      customDomain: "https://shipapp.com",
-      production: true,
-    });
-
-    expect(origins.siteUrl).toBe("https://shipapp.com");
-    expect(origins.trustedOrigins).toContain("https://shipapp.com");
-    expect(origins.trustedOrigins).toContain("https://ship-app.my-team.workers.dev");
-    expect(origins.callbackUrl).toBe("https://shipapp.com/api/auth/callback");
-    expect(origins.authEndpoint).toBe("https://shipapp.com/api/auth");
+describe("Cloudflare preflight", () => {
+  it("passes an explicit, pinned, Convex-first vinext fixture", () => {
+    expect(inspect().status).toBe("PASS");
   });
 
-  it("includes localhost origins only in non-production mode", () => {
-    const devOrigins = resolveBetterAuthCloudflareOrigins({
-      workerName: "ship-app",
-      production: false,
-    });
-    expect(devOrigins.trustedOrigins).toContain("http://localhost:3000");
-
-    const prodOrigins = resolveBetterAuthCloudflareOrigins({
-      workerName: "ship-app",
-      production: true,
-    });
-    expect(prodOrigins.trustedOrigins).not.toContain("http://localhost:3000");
+  it("rejects comments, unrelated fields, recursive scripts, and malformed data", () => {
+    expect(inspect("# convex deploy", fixturePackage(), "wrangler.toml").status).toBe("FAIL");
+    expect(inspect(fixtureConfig(), JSON.stringify({ description: "convex deploy" })).status).toBe("FAIL");
+    const recursive = JSON.parse(fixturePackage());
+    recursive.scripts["build:cloudflare"] = "npx convex deploy --cmd 'pnpm build:cloudflare'";
+    expect(inspect(fixtureConfig(), JSON.stringify(recursive)).status).toBe("FAIL");
+    expect(inspect("{", fixturePackage()).status).toBe("FAIL");
+    expect(inspect(fixtureConfig(), "{").status).toBe("FAIL");
   });
 
-  it("verifies Convex URL and deploy key formats", () => {
-    expect(
-      verifyConvexCloudflareConnectivity({
-        convexUrl: "https://happy-otter-123.convex.cloud",
-        deployKey: "prod:happy-otter-123|abcdef",
-      }).valid,
-    ).toBe(true);
+  it("rejects missing pins, account selection, and adapter drift", () => {
+    expect(inspect(fixtureConfig({ account_id: undefined })).status).toBe("FAIL");
+    const unpinned = JSON.parse(fixturePackage());
+    unpinned.dependencies.vinext = "^1.0.0-beta.8";
+    expect(inspect(fixtureConfig(), JSON.stringify(unpinned)).status).toBe("FAIL");
+    const wrongDeploy = JSON.parse(fixturePackage());
+    wrongDeploy.scripts["deploy:cloudflare"] = "wrangler deploy";
+    expect(inspect(fixtureConfig(), JSON.stringify(wrongDeploy)).status).toBe("FAIL");
+  });
 
-    expect(
-      verifyConvexCloudflareConnectivity({
-        convexUrl: "http://insecure-convex.com",
-      }).valid,
-    ).toBe(false);
-
-    expect(
-      verifyConvexCloudflareConnectivity({
-        convexUrl: "https://happy-otter-123.convex.cloud",
-        deployKey: "invalid-key-prefix",
-      }).valid,
-    ).toBe(false);
+  it("rejects duplicate Wrangler files and runtime backend secrets", () => {
+    const duplicate = inspectCloudflareBlueprint({
+      configSources: [
+        { path: "wrangler.json", source: fixtureConfig() },
+        { path: "wrangler.jsonc", source: fixtureConfig() },
+      ],
+      packageJsonSource: fixturePackage(),
+    });
+    expect(duplicate.status).toBe("FAIL");
+    expect(inspect(fixtureConfig({ vars: { CONVEX_DEPLOY_KEY: "not-a-real-key" } })).status).toBe("FAIL");
   });
 });
 
-describe("Production Preflight & Revocation", () => {
-  it("passes preflight when deployment is atomic and secrets are isolated", () => {
-    const result = inspectProductionCloudflareEnvironment({
-      wranglerConfigSource: JSON.stringify({ name: "my-worker" }),
-      packageJsonSource: JSON.stringify({ scripts: { build: "npx convex deploy --cmd 'pnpm build'" } }),
-    });
-    expect(result.status).toBe("PASS");
+describe("Cloudflare runtime seams", () => {
+  it("keeps backend secrets out of Worker vars", () => {
+    expect(() => bindCloudflareEnvironmentVariables({ publicVars: { BETTER_AUTH_SECRET: "not-a-real-secret" } })).toThrow(/runtime variable/);
   });
 
-  it("fails preflight when build does not deploy Convex first", () => {
-    const result = inspectProductionCloudflareEnvironment({
-      wranglerConfigSource: JSON.stringify({ name: "my-worker" }),
-      packageJsonSource: JSON.stringify({ scripts: { build: "next build" } }),
-    });
-    expect(result.status).toBe("FAIL");
-    expect(result.detail).toMatch(/must deploy Convex before Next.js/);
+  it("requires an account subdomain for workers.dev origins", () => {
+    const incomplete = resolveBetterAuthCloudflareOrigins({ workerName: "agentic-app", production: true });
+    expect(incomplete.siteUrl).toBe("");
+    const complete = resolveBetterAuthCloudflareOrigins({ workerName: "agentic-app", accountSubdomain: "team", production: true });
+    expect(complete.siteUrl).toBe("https://agentic-app.team.workers.dev");
   });
 
-  it("fails preflight when backend secrets are leaked into wrangler config", () => {
-    const result = inspectProductionCloudflareEnvironment({
-      wranglerConfigSource: JSON.stringify({
-        name: "my-worker",
-        vars: { BETTER_AUTH_SECRET: "leaked_secret" },
-      }),
-      packageJsonSource: JSON.stringify({ scripts: { build: "npx convex deploy --cmd 'pnpm build'" } }),
-    });
-    expect(result.status).toBe("FAIL");
-    expect(result.detail).toMatch(/Backend secret "BETTER_AUTH_SECRET" must not be placed in Cloudflare Worker/);
-  });
-
-  it("simulates revocation steps cleanly", () => {
-    const ran = [];
-    const result = revokeCloudflareCredentials({
-      commandRunner(cmd, args) {
-        ran.push([cmd, args]);
-        return { status: 0 };
-      },
-    });
-    expect(result.revoked).toBe(true);
-    expect(ran).toEqual([["wrangler", ["logout"]]]);
-    expect(result.steps.length).toBeGreaterThanOrEqual(3);
-  });
-});
-
-describe("Cross-Platform Path & Contract Checks", () => {
-  it("resolves paths and commands consistently across Windows, macOS, and Linux", () => {
-    const platforms = ["win32", "darwin", "linux"];
-    for (const platform of platforms) {
-      const isWin = platform === "win32";
-      const config = generateWranglerConfig({
-        projectName: "cross-platform-worker",
-      });
-      expect(config.name).toBe("cross-platform-worker");
-      expect(config.compatibility_flags).toContain("nodejs_compat");
-    }
+  it("accepts only HTTPS Convex deployment URLs", () => {
+    expect(verifyConvexCloudflareConnectivity({ convexUrl: "https://happy-otter-123.convex.cloud" }).valid).toBe(true);
+    expect(verifyConvexCloudflareConnectivity({ convexUrl: "http://happy-otter-123.convex.cloud" }).valid).toBe(false);
   });
 });

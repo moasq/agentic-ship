@@ -15,6 +15,7 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { CLOUDFLARE_AUTH_ENV, CLOUDFLARE_LOGIN_ARGS } from "./lib/connections/cloudflare.mjs";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -81,8 +82,9 @@ const PROVIDERS = {
       linux: [["pnpm", "add", "--global", "wrangler"]],
       win32: [["pnpm", "add", "--global", "wrangler"]],
     },
-    login: ["wrangler", "login"],
-    verify: ["wrangler", "whoami"],
+    login: ["wrangler", ...CLOUDFLARE_LOGIN_ARGS],
+    environment: CLOUDFLARE_AUTH_ENV,
+    verify: [process.execPath, join(projectRoot, "scripts", "check-cloudflare-auth.mjs")],
   },
   github: {
     binary: "gh",
@@ -121,7 +123,11 @@ function pause(milliseconds) {
 
 function verified(provider) {
   if (!provider.verify) return existsSync(join(homedir(), provider.pairedFile));
-  const result = spawnSync(provider.verify[0], provider.verify.slice(1), { stdio: "ignore", shell: WIN });
+  const result = spawnSync(provider.verify[0], provider.verify.slice(1), {
+    stdio: "ignore",
+    shell: WIN,
+    env: { ...process.env, ...(provider.environment ?? {}) },
+  });
   return result.status === 0;
 }
 
@@ -151,13 +157,14 @@ function completeHeadlessPairing(loginOutput) {
   return false;
 }
 
-function run(argv, { input } = {}) {
+function run(argv, { input, environment } = {}) {
   const [command, ...args] = argv;
   return spawnSync(command, args, {
     stdio: [input === undefined ? "inherit" : "pipe", "inherit", "inherit"],
     input,
     encoding: "utf8",
     shell: WIN,
+    env: { ...process.env, ...(environment ?? {}) },
   });
 }
 
@@ -209,7 +216,10 @@ if (provider.captureAndComplete) {
 } else {
   // Some CLIs gate the browser open behind a "Press Enter" prompt; a fed newline accepts
   // that prompt and nothing else — the actual consent always happens in the browser.
-  const login = run(provider.login, provider.feedEnter ? { input: "\n" } : {});
+  const login = run(provider.login, {
+    ...(provider.feedEnter ? { input: "\n" } : {}),
+    environment: provider.environment,
+  });
   if (login.status !== 0) {
     fail(`${providerId} login did not complete (exit ${login.status}). Rerun when ready, or follow ${provider.docs}.`);
   }

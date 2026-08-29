@@ -122,11 +122,14 @@ test("Cloudflare uses a read-only Wrangler CLI auth probe and project choice", (
   });
 
   assert.equal(result.passed, true);
-  assert.deepEqual(calls, [["wrangler", ["whoami"]]]);
+  assert.deepEqual(calls, [["node", ["scripts/check-cloudflare-auth.mjs"]]]);
   assert.deepEqual(
     cloudflare.projectProvisioning.automation.decision.options.map((option) => option.value),
     ["existing", "new"],
   );
+  for (const option of cloudflare.projectProvisioning.automation.decision.options) {
+    assert.deepEqual(option.placeholders, ["account-id", "project-name"]);
+  }
 });
 
 test("Cloudflare project verification requires deployment config and atomic build", (t) => {
@@ -145,7 +148,7 @@ test("Cloudflare project verification requires deployment config and atomic buil
   assert.equal(halfReady.find((p) => p.id === "cloudflare-config").passed, true);
   assert.equal(halfReady.find((p) => p.id === "atomic-deploy").passed, false);
 
-  write(projectRoot, "package.json", JSON.stringify({ scripts: { build: "npx convex deploy --cmd 'pnpm build'" } }));
+  write(projectRoot, "package.json", JSON.stringify({ scripts: { "build:cloudflare": "npx convex deploy --cmd 'pnpm build:vinext'" } }));
   const ready = cloudflare.projectProvisioning.verification.probes.map((probe) =>
     runConnectionProbe(probe, { projectRoot, homeDirectory }),
   );

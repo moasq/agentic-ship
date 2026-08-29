@@ -15,15 +15,30 @@ describe("deployment blueprint coherence", () => {
   });
 
   it("accepts the Cloudflare alternative", () => {
+    const packageJsonSource = JSON.stringify({
+      dependencies: { vinext: "1.0.0-beta.8", "@vinext/cloudflare": "1.0.0-beta.6" },
+      scripts: {
+        "build:vinext": "vinext build",
+        "build:cloudflare": "npx convex deploy --cmd 'pnpm build:vinext'",
+        "deploy:cloudflare": "vinext-cloudflare deploy --skip-build --config dist/server/wrangler.json",
+        "preview:cloudflare": "wrangler versions upload --config dist/server/wrangler.json",
+      },
+    });
     expect(
       inspectDeploymentBlueprint({
-        cloudflareSource: JSON.stringify({ name: "my-worker", main: "src/index.ts" }),
-        packageJsonSource: JSON.stringify({ scripts: { build: "npx convex deploy --cmd 'pnpm build'" } }),
-      }).status,
-    ).toBe("PASS");
-    expect(
-      inspectDeploymentBlueprint({
-        cloudflareSource: 'name = "my-worker"\n# npx convex deploy --cmd \'pnpm build\'\n',
+        cloudflareSources: [
+          {
+            path: "wrangler.json",
+            source: JSON.stringify({
+              name: "my-worker",
+              account_id: "0123456789abcdef0123456789abcdef",
+              main: "dist/server/index.js",
+              compatibility_date: "2026-08-29",
+              compatibility_flags: ["nodejs_compat"],
+            }),
+          },
+        ],
+        packageJsonSource,
       }).status,
     ).toBe("PASS");
   });
@@ -31,8 +46,9 @@ describe("deployment blueprint coherence", () => {
   it("rejects a stale Vercel build and multiple active adapters", () => {
     expect(inspectDeploymentBlueprint({ vercelSource: '{"buildCommand":"pnpm build"}' }).status).toBe("FAIL");
     expect(inspectDeploymentBlueprint({ netlifySource: "x", vercelSource: "{}" }).status).toBe("FAIL");
-    expect(inspectDeploymentBlueprint({ netlifySource: "x", cloudflareSource: "x" }).status).toBe("FAIL");
-    expect(inspectDeploymentBlueprint({ vercelSource: "{}", cloudflareSource: "x" }).status).toBe("FAIL");
-    expect(inspectDeploymentBlueprint({ cloudflareSource: 'name = "test"' }).status).toBe("FAIL");
+    const cloudflareSources = [{ path: "wrangler.json", source: "x" }];
+    expect(inspectDeploymentBlueprint({ netlifySource: "x", cloudflareSources }).status).toBe("FAIL");
+    expect(inspectDeploymentBlueprint({ vercelSource: "{}", cloudflareSources }).status).toBe("FAIL");
+    expect(inspectDeploymentBlueprint({ cloudflareSources }).status).toBe("FAIL");
   });
 });

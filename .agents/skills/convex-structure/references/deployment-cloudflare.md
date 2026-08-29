@@ -1,105 +1,105 @@
-# Deploy with Cloudflare
+# Deploy Next.js with Cloudflare Workers
 
-Use Cloudflare Workers / Pages when the product brief selects `providerSelection.deployment: "cloudflare"`.
-Netlify remains the default. Keep one deployment adapter: a workspace with multiple deployment files (`netlify.toml`, `vercel.json`, `wrangler.json`) fails preflight.
+Use this path when the product brief selects `providerSelection.deployment: "cloudflare"`. Agentic Ship keeps Netlify as the default and supports Cloudflare Workers as an alternative.
 
-## Connect and Authenticate
+This guide targets Next.js 16 with `vinext@1.0.0-beta.8` and `@vinext/cloudflare@1.0.0-beta.6`. Cloudflare recommends vinext for new Next.js Workers projects, but vinext is still beta. Run the compatibility check before changing an existing application.
 
-Run `pnpm onboard cloudflare --host <host>`. After consent, the agent installs the official Wrangler CLI if missing, runs `wrangler login` (opening a browser authorization page), and verifies authentication with `wrangler whoami`. The credential remains in Wrangler's machine-local store outside this repository.
+## Authorize Wrangler with protected storage
 
-In headless CI/CD environments, authenticate using OS-keychain backed credentials or environment variables:
-- `CLOUDFLARE_API_TOKEN`: Scoped API token created at `dash.cloudflare.com` → My Profile → API Tokens with `Workers Scripts: Edit` and `Account Settings: Read` permissions.
-- `CLOUDFLARE_ACCOUNT_ID`: 32-character hexadecimal account identifier found in the Cloudflare dashboard sidebar.
+Run `pnpm onboard cloudflare --host host_name`. After consent, the agent runs `pnpm provider:login cloudflare`. The login command opens Wrangler OAuth with `--use-keyring` and fails if the operating system keychain is unavailable.
 
-Plaintext token placeholders and tokens committed to repository files are rejected by connection and preflight gates.
+Run `wrangler whoami` after login. Continue only when its output says the credential uses an encrypted file with a key in the operating system keychain. Wrangler stores OAuth credentials in plaintext by default without this option. See [Wrangler authentication](https://developers.cloudflare.com/workers/wrangler/commands/general/#login).
 
-## Framework Integration (Next.js on Cloudflare)
+For Cloudflare Workers Builds, use a scoped API token instead of interactive OAuth. Set these values under **Settings > Build > Build Variables and Secrets**:
 
-Next.js deploys to Cloudflare Workers via OpenNext (`@opennextjs/cloudflare`) or `@cloudflare/next-on-pages`.
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CONVEX_DEPLOY_KEY`
 
-Commit `wrangler.json` (or `wrangler.jsonc` / `wrangler.toml`) with the atomic build command:
+The deploy key is a build secret. Do not create it as a Worker runtime secret. The build process needs it to build against and deploy the selected Convex backend.
 
-```json
-{
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "my-app",
-  "main": ".open-next/worker.js",
-  "compatibility_date": "2024-09-23",
-  "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  }
-}
+## Configure the selected account and Worker
+
+The connection flow asks for a 32-character account ID and a Worker name. Worker names use lowercase letters, numbers, and internal hyphens.
+
+The agent then runs these project commands:
+
+```text
+npx vinext@1.0.0-beta.8 check
+npx vinext@1.0.0-beta.8 init --platform=cloudflare
+pnpm setup:cloudflare --account-id account_id --project-name worker_name
+pnpm install
 ```
 
-In `package.json`, configure the build script to deploy Convex before Next.js:
+The setup command records `account_id` and `name` in the single Wrangler JSON or JSONC file. It also pins both adapter packages and adds separate build and deploy scripts. Review compatibility findings before continuing.
 
-```json
-{
-  "scripts": {
-    "build": "npx convex deploy --cmd 'pnpm build'",
-    "deploy": "wrangler deploy"
-  }
-}
-```
+## Build Convex before deploying the Worker
 
-The atomic build command deploys production Convex functions before building the Next.js bundle, injecting the production `NEXT_PUBLIC_CONVEX_URL`. Running `pnpm build` alone without Convex deployment risks shipping frontend routes against stale backend schemas.
+Cloudflare Workers Builds uses separate build and deploy commands. Configure these values:
 
-## Next.js Runtime Limits on Cloudflare Workers
+| Setting | Command |
+| --- | --- |
+| Build command | `pnpm build:cloudflare` |
+| Deploy command | `pnpm deploy:cloudflare` |
+| Non-production deploy command | `pnpm preview:cloudflare` |
 
-Cloudflare Workers execute in the V8 isolate runtime. Keep the following platform constraints in mind:
+`build:cloudflare` runs `npx convex deploy --cmd 'pnpm build:vinext'`. The nested command is a separate vinext build, so it does not call itself. Convex supplies `NEXT_PUBLIC_CONVEX_URL` during that build and deploys the backend after the build succeeds.
 
-1. **Node.js Compatibility**: Enable `nodejs_compat` in `compatibility_flags`. Native C++ binary modules (e.g. native `sharp`, `canvas`) are not supported; use pure JavaScript or WebAssembly libraries.
-2. **Payload Size Limits**: Worker request and response body limits are 10MB (Free tier) and 50MB (Standard/Paid tier).
-3. **Execution CPU Time**: Worker CPU time limits apply (50ms on Free tier, up to 30s on Paid tier). Long-running background processing belongs in Convex background jobs or scheduled functions, not within the request worker.
-4. **Lifecycle Constraints**: Un-awaited background promises are terminated when response streaming finishes. Use `ctx.waitUntil()` or Convex background mutations.
-5. **Streaming & Server Actions**: Next.js App Router streaming and Server Actions are supported with OpenNext; WebSocket subscriptions and real-time state are handled directly through Convex.
+`deploy:cloudflare` uses `--skip-build` to deploy the existing vinext output. `preview:cloudflare` runs `wrangler versions upload` against the generated `dist/server/wrangler.json` without promoting that version to production.
 
-## Environment and Secret Ownership
+This sequence is not a distributed transaction. If the Worker deploy fails after Convex succeeds, the previous Worker remains active while the new Convex functions are live. Keep backend changes compatible with the previous frontend until the Worker deployment passes.
 
-| Value | Location | Why |
-| --- | --- | --- |
-| `CONVEX_DEPLOY_KEY` | Cloudflare secret (`wrangler secret put CONVEX_DEPLOY_KEY`) | Authorizes production Convex deployments from CI/CD |
-| `NEXT_PUBLIC_CONVEX_URL` | Cloudflare Worker `vars` / env | Public client connection endpoint |
-| `NEXT_PUBLIC_SITE_URL` | Cloudflare Worker `vars` / env | Public application origin |
-| `NEXT_PUBLIC_POSTHOG_KEY` | Cloudflare Worker `vars` (when analytics selected) | Public analytics project key (`phc_...`) |
-| `BETTER_AUTH_SECRET`, `SITE_URL` | Production Convex environment | Backend authentication signing |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Production Convex environment | Live billing keys must never reach client or edge workers |
-| `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` | Production Convex environment | Email delivery credentials stay in backend environment |
+## Keep build secrets and runtime values separate
 
-Store secrets using `wrangler secret put <NAME>` or `npx convex env set --prod <NAME> <value>`. Never write secret values into `wrangler.json`, `wrangler.toml`, `.env.local`, or commit history.
+Configure values according to their owner:
 
-## Domains and Better Auth
+| Value | Location |
+| --- | --- |
+| `CONVEX_DEPLOY_KEY` | Workers Builds secret |
+| `CLOUDFLARE_API_TOKEN` | Workers Builds secret |
+| `CLOUDFLARE_ACCOUNT_ID` | Workers Builds variable |
+| `NEXT_PUBLIC_CONVEX_URL` | Injected by `convex deploy --cmd` during build |
+| `NEXT_PUBLIC_SITE_URL` | Workers Builds variable when the application needs it during build |
+| `BETTER_AUTH_SECRET`, `SITE_URL` | Production Convex environment |
+| Billing and email secrets | Production Convex environment |
 
-Cloudflare Workers provide a default `https://<worker-name>.<subdomain>.workers.dev` domain. Custom domains are configured under Workers & Pages → Settings → Domains & Routes.
+Do not place backend secrets under Wrangler `vars`. Runtime Worker secrets are visible to Worker code and do not satisfy the build process.
 
-1. **Attach Custom Domain**: In Cloudflare dashboard, add your custom domain or route to the Worker. Cloudflare automatically provisions SSL/TLS certificates with Universal SSL.
-2. **Configure Auth Origins**:
-   ```bash
-   pnpm setup:auth https://yourdomain.com
-   ```
-   Or for `workers.dev`:
-   ```bash
-   pnpm setup:auth https://my-app.my-subdomain.workers.dev
-   ```
-3. **Verify Callback URLs**: Better Auth validates incoming OAuth and session callbacks against `SITE_URL` and trusted origins. Both `*.workers.dev` and custom domains must use HTTPS in production.
-4. **Webhooks Remain on Convex**: Stripe (`https://<prod-deployment>.convex.site/stripe/webhook`) and Resend (`https://<prod-deployment>.convex.site/resend-webhook`) endpoints remain hosted on Convex and do not change when the frontend deployment provider changes.
+## Configure domains and callbacks
 
-## Deploy and Verify
+A Workers development URL includes both the Worker name and the account subdomain: `https://worker_name.account_subdomain.workers.dev`. Do not use `https://worker_name.workers.dev`.
 
-1. Run preview deployments with `wrangler versions deploy` or test locally with `wrangler dev`.
-2. Run production deployment: `wrangler deploy`.
-3. Verify the deployment:
-   - The production URL serves over HTTPS with valid SSL/TLS certificates.
-   - Better Auth sign-in and session cookies operate correctly on the configured domain.
-   - Convex queries and mutations load data seamlessly over WebSockets / HTTPS.
-   - `pnpm preflight --prod` passes with all green checks.
+For production:
 
-## Revoke or Replace
+1. Attach the custom domain under **Workers & Pages > Worker > Settings > Domains & Routes**.
+2. Run `pnpm setup:auth https://product.example`.
+3. Verify sign-in, sign-out, session cookies, and the Better Auth callback on the production origin.
+4. Keep billing and email webhooks on the production Convex HTTP endpoint.
 
-1. `wrangler logout` unlinks the local machine session and removes credentials.
-2. Delete local `.wrangler` build artifacts and state.
-3. Revoke API tokens in Cloudflare Dashboard under My Profile → API Tokens.
-4. Delete or disable the Worker under Workers & Pages if decommissioning.
-5. To switch back to Netlify or Vercel: remove `wrangler.json`, restore `netlify.toml` or `vercel.json`, update `providerSelection.deployment` in the product brief, and run `pnpm preflight`.
+## Check current platform limits
+
+Cloudflare applies Worker limits by account plan. The current request-body limits are 100 MB for Free and Pro, 200 MB for Business, and 500 MB for Enterprise by default. Cloudflare does not enforce a Worker response-body limit.
+
+The current HTTP CPU limit is 10 ms on Workers Free. Workers Paid defaults to 30s and can be configured up to 5 minutes. Check [Cloudflare Workers limits](https://developers.cloudflare.com/workers/platform/limits/) before launch because plan limits can change.
+
+Run background processing in Convex scheduled functions or jobs. Use `ctx.waitUntil()` only for Worker tasks that may continue after the response.
+
+## Verify preview and production
+
+Before production, verify all of these outcomes:
+
+1. `pnpm preflight` passes with one Wrangler config and the pinned adapter versions.
+2. `pnpm preview:cloudflare` creates a preview version and its HTTPS URL responds.
+3. The preview uses a Convex preview deployment key, not the production key.
+4. Better Auth accepts the preview and production origins.
+5. Convex queries, mutations, and WebSocket updates work from both origins.
+6. Billing and email webhooks still reach their Convex endpoints.
+7. `pnpm preflight --prod` passes after the live service checks are available.
+
+## Roll back or revoke access
+
+Use the Cloudflare dashboard under **Worker > Deployments** to roll back to a known version. A rollback changes Worker code and configuration but does not roll back D1, KV, R2, Durable Objects, or Convex data.
+
+Run `wrangler logout` to remove the local OAuth grant and keychain entry. Revoke API tokens and Workers Builds access in the Cloudflare dashboard. Delete the Worker only when the deployment should no longer exist.
+
+To return to Netlify or Vercel, keep only that provider's deployment file, update the product brief, and run `pnpm preflight` again.

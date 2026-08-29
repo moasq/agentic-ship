@@ -27,6 +27,7 @@
     "secret:set": "node scripts/set-secret.mjs",
     "setup:env": "node scripts/init-env.mjs",
     "setup:auth": "node scripts/setup-auth-env.mjs",
+    "setup:cloudflare": "node scripts/setup-cloudflare.mjs",
     "font": "node scripts/fetch-font.mjs",
     "asset": "node scripts/fetch-asset.mjs",
     "component:list": "node scripts/list-components.mjs",

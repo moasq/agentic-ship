@@ -1,7 +1,9 @@
-export function inspectDeploymentBlueprint({ netlifySource = "", vercelSource = "", cloudflareSource = "", packageJsonSource = "" } = {}) {
+import { inspectCloudflareBlueprint } from "./connections/cloudflare.mjs";
+
+export function inspectDeploymentBlueprint({ netlifySource = "", vercelSource = "", cloudflareSources = [], packageJsonSource = "" } = {}) {
   const hasNetlify = Boolean(netlifySource.trim());
   const hasVercel = Boolean(vercelSource.trim());
-  const hasCloudflare = Boolean(cloudflareSource.trim());
+  const hasCloudflare = cloudflareSources.some((entry) => Boolean(entry?.source?.trim()));
   const activeCount = [hasNetlify, hasVercel, hasCloudflare].filter(Boolean).length;
 
   if (activeCount === 0) {
@@ -31,13 +33,5 @@ export function inspectDeploymentBlueprint({ netlifySource = "", vercelSource = 
     };
   }
 
-  const source = cloudflareSource.trim();
-  const passed =
-    source.includes("convex deploy") ||
-    source.includes("npx convex deploy --cmd 'pnpm build'") ||
-    packageJsonSource.includes("convex deploy");
-  return {
-    status: passed ? "PASS" : "FAIL",
-    detail: passed ? "" : "Cloudflare deployment must deploy Convex before the frontend build",
-  };
+  return inspectCloudflareBlueprint({ configSources: cloudflareSources, packageJsonSource });
 }

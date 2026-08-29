@@ -1,22 +1,21 @@
-import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { isAbsolute, join, relative, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
+import { parseConfigFileTextToJson } from "typescript";
 
-const TOKEN_PATTERN = /^[A-Za-z0-9_-]{30,100}$/;
+export const CLOUDFLARE_ADAPTER = Object.freeze({
+  framework: "vinext",
+  frameworkVersion: "1.0.0-beta.8",
+  deploymentPackage: "@vinext/cloudflare",
+  deploymentVersion: "1.0.0-beta.6",
+});
+
+export const CLOUDFLARE_LOGIN_ARGS = Object.freeze(["login", "--use-keyring"]);
+export const CLOUDFLARE_AUTH_ENV = Object.freeze({ CLOUDFLARE_AUTH_USE_KEYRING: "true" });
+
+// Cloudflare tokens are opaque. Validate only the safety properties we can know
+// locally instead of rejecting future token formats that Cloudflare may issue.
+const TOKEN_PATTERN = /^\S{20,512}$/;
 const ACCOUNT_ID_PATTERN = /^[a-f0-9]{32}$/i;
-const WORKER_NAME_PATTERN = /^[a-z0-9][a-z0-9-_]{0,62}$/i;
-
-const FORBIDDEN_TOKEN_PATTERNS = [
-  /^your[_-]?api[_-]?token/i,
-  /^placeholder/i,
-  /^test[_-]?token/i,
-  /^example/i,
-  /^bearer\s/i,
-  /^12345/,
-  /^xxx+/i,
-  /^my[_-]?secret/i,
-];
+const WORKER_NAME_PATTERN = /^[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+const FORBIDDEN_TOKEN_PATTERNS = [/^your[_-]?api[_-]?token/i, /^placeholder/i, /^test[_-]?token/i, /^example/i, /^bearer\s/i];
 
 const FORBIDDEN_VAR_KEYS = new Set([
   "BETTER_AUTH_SECRET",
@@ -32,341 +31,225 @@ const FORBIDDEN_VAR_KEYS = new Set([
   "CONVEX_DEPLOY_KEY",
 ]);
 
-/**
- * Validates a Cloudflare API token.
- * Rejects empty values, invalid lengths, and plaintext placeholders.
- */
+function invalid(error) {
+  return { valid: false, error };
+}
+
 export function validateCloudflareToken(token) {
-  if (typeof token !== "string" || token.trim().length === 0) {
-    return { valid: false, error: "Cloudflare API token must be a non-empty string" };
-  }
+  if (typeof token !== "string" || !token.trim()) return invalid("Cloudflare API token must be a non-empty string");
   const clean = token.trim();
-  for (const pattern of FORBIDDEN_TOKEN_PATTERNS) {
-    if (pattern.test(clean)) {
-      return { valid: false, error: "Cloudflare API token appears to be an unencrypted plaintext placeholder" };
-    }
+  if (FORBIDDEN_TOKEN_PATTERNS.some((pattern) => pattern.test(clean))) {
+    return invalid("Cloudflare API token appears to be a plaintext placeholder");
   }
-  if (clean.includes(" ") || clean.includes("\n") || clean.includes("\r") || clean.includes("\t")) {
-    return { valid: false, error: "Cloudflare API token must not contain whitespace" };
-  }
-  if (!TOKEN_PATTERN.test(clean)) {
-    return { valid: false, error: "Cloudflare API token format is invalid (expected 30-100 alphanumeric/hyphen/underscore characters)" };
-  }
+  if (!TOKEN_PATTERN.test(clean)) return invalid("Cloudflare API token format is invalid");
   return { valid: true };
 }
 
-/**
- * Validates a Cloudflare Account ID (32-character hex).
- */
 export function validateCloudflareAccountId(accountId) {
-  if (typeof accountId !== "string" || accountId.trim().length === 0) {
-    return { valid: false, error: "Cloudflare account ID must be a non-empty string" };
-  }
-  const clean = accountId.trim();
-  if (!ACCOUNT_ID_PATTERN.test(clean)) {
-    return { valid: false, error: "Cloudflare account ID format is invalid (expected 32-character hexadecimal string)" };
+  if (typeof accountId !== "string" || !ACCOUNT_ID_PATTERN.test(accountId.trim())) {
+    return invalid("Cloudflare account ID must be a 32-character hexadecimal string");
   }
   return { valid: true };
 }
 
-/**
- * Validates a Cloudflare Worker/project name.
- */
 export function validateCloudflareProjectName(name) {
-  if (typeof name !== "string" || name.trim().length === 0) {
-    return { valid: false, error: "Cloudflare project name must be a non-empty string" };
-  }
-  const clean = name.trim();
-  if (!WORKER_NAME_PATTERN.test(clean)) {
-    return { valid: false, error: "Cloudflare project name must be 1-63 alphanumeric characters, hyphens, or underscores" };
+  if (typeof name !== "string" || !WORKER_NAME_PATTERN.test(name.trim())) {
+    return invalid("Cloudflare Worker name must use lowercase letters, numbers, or internal hyphens and contain at most 63 characters");
   }
   return { valid: true };
 }
 
-/**
- * Parses `wrangler whoami` stdout into account details.
- */
 export function parseWranglerWhoami(output) {
-  if (typeof output !== "string" || !output.trim()) {
-    return { authenticated: false, accounts: [] };
-  }
-
+  if (typeof output !== "string" || !output.trim()) return { authenticated: false, encryptedStorage: false, accounts: [] };
   const accounts = [];
-  const tokenAccountMatch = output.match(/associated with the account ['"]?([^'"]+)['"]?\s*\(([a-f0-9]{32})\)/i);
-  if (tokenAccountMatch) {
-    accounts.push({ name: tokenAccountMatch[1].trim(), id: tokenAccountMatch[2].trim() });
-  }
-
-  const tableLines = output.split(/\r?\n/);
-  for (const line of tableLines) {
-    const rowMatch = line.match(/[│|]\s*([^│|]+?)\s*[│|]\s*([a-f0-9]{32})\s*[│|]/i);
-    if (rowMatch && !rowMatch[1].toLowerCase().includes("account name")) {
-      const name = rowMatch[1].trim();
-      const id = rowMatch[2].trim();
-      if (!accounts.some((acc) => acc.id === id)) {
-        accounts.push({ name, id });
-      }
+  const tokenAccount = output.match(/associated with the account ['"]?([^'"]+)['"]?\s*\(([a-f0-9]{32})\)/i);
+  if (tokenAccount) accounts.push({ name: tokenAccount[1].trim(), id: tokenAccount[2] });
+  for (const line of output.split(/\r?\n/)) {
+    const row = line.match(/[│|]\s*([^│|]+?)\s*[│|]\s*([a-f0-9]{32})\s*[│|]/i);
+    if (row && !row[1].toLowerCase().includes("account name") && !accounts.some((account) => account.id === row[2])) {
+      accounts.push({ name: row[1].trim(), id: row[2] });
     }
   }
-
-  const emailMatch =
-    output.match(/(?:email|logged in (?:with|as)|associated with(?:\s+the)?\s+email)\s*[:=]?\s*['"]?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})['"]?/i) ||
-    output.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
-  const email = emailMatch ? emailMatch[1] : null;
-
-  const authenticated = accounts.length > 0 || /You are logged in/i.test(output) || /authenticated/i.test(output);
+  const email = output.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/)?.[1] ?? null;
+  const encryptedStorage = /Credentials are stored in:\s*Encrypted file/i.test(output);
   return {
-    authenticated,
+    authenticated: /You are logged in/i.test(output) || accounts.length > 0,
+    encryptedStorage,
     email,
     accounts,
     primaryAccount: accounts[0] ?? null,
   };
 }
 
-/**
- * Discovers Cloudflare credentials from environment variables, OS keychain, or Wrangler CLI.
- */
-export function discoverCloudflareCredentials({ env = process.env, homeDirectory, commandRunner } = {}) {
-  const token = env.CLOUDFLARE_API_TOKEN;
-  const accountId = env.CLOUDFLARE_ACCOUNT_ID;
-
-  if (token) {
-    const tokenValidation = validateCloudflareToken(token);
-    if (!tokenValidation.valid) {
-      return {
-        authenticated: false,
-        method: "env_token",
-        error: tokenValidation.error,
-        accounts: [],
-      };
-    }
-    if (accountId) {
-      const accountValidation = validateCloudflareAccountId(accountId);
-      if (!accountValidation.valid) {
-        return {
-          authenticated: false,
-          method: "env_token",
-          error: accountValidation.error,
-          accounts: [],
-        };
-      }
+export function discoverCloudflareCredentials({ env = process.env, commandRunner } = {}) {
+  if (env.CLOUDFLARE_API_TOKEN) {
+    const token = validateCloudflareToken(env.CLOUDFLARE_API_TOKEN);
+    const account = validateCloudflareAccountId(env.CLOUDFLARE_ACCOUNT_ID);
+    if (!token.valid || !account.valid) {
+      return { authenticated: false, method: "env_token", error: token.error ?? account.error, accounts: [] };
     }
     return {
       authenticated: true,
       method: "env_token",
       credentialRef: "CLOUDFLARE_API_TOKEN",
-      accountId: accountId ?? null,
-      accounts: accountId ? [{ id: accountId, name: "Environment Account" }] : [],
+      accountId: env.CLOUDFLARE_ACCOUNT_ID,
+      accounts: [{ id: env.CLOUDFLARE_ACCOUNT_ID, name: "Selected account" }],
     };
   }
-
-  if (commandRunner) {
-    try {
-      const result = commandRunner("wrangler", ["whoami"]);
-      if (result && result.status === 0) {
-        const parsed = parseWranglerWhoami(result.stdout ?? "");
-        return {
-          authenticated: parsed.authenticated,
-          method: "cli_login",
-          email: parsed.email,
-          accounts: parsed.accounts,
-          primaryAccount: parsed.primaryAccount,
-        };
-      }
-    } catch {
-      // CLI not found or failed
+  if (!commandRunner) return { authenticated: false, method: "none", accounts: [] };
+  try {
+    const result = commandRunner("wrangler", ["whoami"]);
+    if (result?.status !== 0) return { authenticated: false, method: "cli_login", accounts: [] };
+    const parsed = parseWranglerWhoami(`${result.stdout ?? ""}\n${result.stderr ?? ""}`);
+    if (!parsed.authenticated || !parsed.encryptedStorage) {
+      return {
+        authenticated: false,
+        method: "cli_login",
+        error: parsed.authenticated ? "Wrangler OAuth credentials are not protected by the OS keychain" : "Wrangler is not authenticated",
+        accounts: parsed.accounts,
+      };
     }
+    return { ...parsed, method: "cli_login" };
+  } catch {
+    return { authenticated: false, method: "none", accounts: [] };
   }
-
-  const home = resolve(homeDirectory ?? homedir());
-  const configPath = join(home, ".wrangler", "config", "default.toml");
-  if (existsSync(configPath)) {
-    return {
-      authenticated: true,
-      method: "cli_login",
-      accounts: [],
-    };
-  }
-
-  return {
-    authenticated: false,
-    method: "none",
-    accounts: [],
-  };
 }
 
-/**
- * Resolves Better Auth trusted origins and callback URL for Cloudflare Workers / Pages.
- */
-export function resolveBetterAuthCloudflareOrigins({
-  workerName,
-  accountSubdomain,
-  customDomain,
-  production = true,
-} = {}) {
+export function resolveBetterAuthCloudflareOrigins({ workerName, accountSubdomain, customDomain, production = true } = {}) {
   const trustedOrigins = [];
-  let primarySiteUrl = "";
-
+  let siteUrl = "";
   if (customDomain) {
-    const cleanDomain = customDomain.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-    primarySiteUrl = `https://${cleanDomain}`;
-    trustedOrigins.push(primarySiteUrl);
+    const candidate = customDomain.startsWith("http") ? customDomain : `https://${customDomain}`;
+    const url = new URL(candidate);
+    if (production && url.protocol !== "https:") throw new Error("Production Better Auth site URL must use HTTPS");
+    siteUrl = url.origin;
+    trustedOrigins.push(siteUrl);
   }
-
   if (workerName && accountSubdomain) {
     const workerUrl = `https://${workerName}.${accountSubdomain}.workers.dev`;
-    if (!primarySiteUrl) {
-      primarySiteUrl = workerUrl;
-    }
-    if (!trustedOrigins.includes(workerUrl)) {
-      trustedOrigins.push(workerUrl);
-    }
-  } else if (workerName && !primarySiteUrl) {
-    primarySiteUrl = `https://${workerName}.workers.dev`;
-    trustedOrigins.push(primarySiteUrl);
+    if (!siteUrl) siteUrl = workerUrl;
+    if (!trustedOrigins.includes(workerUrl)) trustedOrigins.push(workerUrl);
   }
-
-  if (!production) {
-    trustedOrigins.push("http://localhost:3000", "http://127.0.0.1:3000");
-  }
-
-  if (production && primarySiteUrl && !primarySiteUrl.startsWith("https://")) {
-    throw new Error(`Production Better Auth site URL must use HTTPS: ${primarySiteUrl}`);
-  }
-
+  if (!production) trustedOrigins.push("http://localhost:3000", "http://127.0.0.1:3000");
   return {
-    siteUrl: primarySiteUrl,
+    siteUrl,
     trustedOrigins,
-    callbackUrl: primarySiteUrl ? `${primarySiteUrl}/api/auth/callback` : "",
-    authEndpoint: primarySiteUrl ? `${primarySiteUrl}/api/auth` : "",
+    callbackUrl: siteUrl ? `${siteUrl}/api/auth/callback` : "",
+    authEndpoint: siteUrl ? `${siteUrl}/api/auth` : "",
   };
 }
 
-/**
- * Verifies Convex deployment credentials and URL for Cloudflare integration.
- */
-export function verifyConvexCloudflareConnectivity({ convexUrl, deployKey } = {}) {
-  if (!convexUrl || typeof convexUrl !== "string") {
-    return { valid: false, error: "NEXT_PUBLIC_CONVEX_URL is required" };
-  }
-  if (!/^https:\/\/[a-z0-9-]+\.(?:convex\.cloud|convex\.site)$/i.test(convexUrl.trim())) {
-    return { valid: false, error: "NEXT_PUBLIC_CONVEX_URL must be a valid https://<deployment>.convex.cloud URL" };
-  }
-  if (deployKey) {
-    if (!/^(prod|preview|dev):/i.test(deployKey.trim())) {
-      return { valid: false, error: "CONVEX_DEPLOY_KEY must start with 'prod:', 'preview:', or 'dev:'" };
-    }
+export function verifyConvexCloudflareConnectivity({ convexUrl } = {}) {
+  if (typeof convexUrl !== "string" || !/^https:\/\/[a-z0-9-]+\.convex\.cloud$/i.test(convexUrl.trim())) {
+    return invalid("NEXT_PUBLIC_CONVEX_URL must be an HTTPS convex.cloud deployment URL");
   }
   return { valid: true };
 }
 
-/**
- * Binds public environment variables vs secrets for Cloudflare deployment.
- * Enforces that backend secrets never get placed into client/worker public vars.
- */
 export function bindCloudflareEnvironmentVariables({ publicVars = {}, secretKeys = [] } = {}) {
-  const safeVars = {};
+  const vars = {};
   for (const [key, value] of Object.entries(publicVars)) {
-    if (FORBIDDEN_VAR_KEYS.has(key)) {
-      throw new Error(`Forbidden backend secret "${key}" cannot be bound to Cloudflare Worker public variables`);
-    }
-    safeVars[key] = String(value);
+    if (FORBIDDEN_VAR_KEYS.has(key)) throw new Error(`Forbidden backend secret "${key}" cannot be a Worker runtime variable`);
+    vars[key] = String(value);
   }
-
-  const safeSecrets = [...new Set(secretKeys)];
-  return {
-    vars: safeVars,
-    secrets: safeSecrets,
-  };
+  return { vars, secrets: [...new Set(secretKeys)] };
 }
 
-/**
- * Generates a standard wrangler.json structure for Next.js on Cloudflare.
- */
-export function generateWranglerConfig({
-  projectName,
-  main = ".open-next/worker.js",
-  compatibilityDate = "2024-09-23",
-  compatibilityFlags = ["nodejs_compat"],
-  vars = {},
-  assets = { directory: ".open-next/assets", binding: "ASSETS" },
-} = {}) {
-  const nameValidation = validateCloudflareProjectName(projectName);
-  if (!nameValidation.valid) {
-    throw new Error(nameValidation.error);
-  }
-
-  const bound = bindCloudflareEnvironmentVariables({ publicVars: vars });
-
+export function generateWranglerConfig({ projectName, accountId, compatibilityDate = new Date().toISOString().slice(0, 10), vars = {} } = {}) {
+  const name = validateCloudflareProjectName(projectName);
+  const account = validateCloudflareAccountId(accountId);
+  if (!name.valid) throw new Error(name.error);
+  if (!account.valid) throw new Error(account.error);
   return {
     $schema: "node_modules/wrangler/config-schema.json",
     name: projectName,
-    main,
+    account_id: accountId,
+    main: "dist/server/index.js",
     compatibility_date: compatibilityDate,
-    compatibility_flags: compatibilityFlags,
-    assets,
-    vars: bound.vars,
+    compatibility_flags: ["nodejs_compat"],
+    vars: bindCloudflareEnvironmentVariables({ publicVars: vars }).vars,
   };
 }
 
-/**
- * Preflight check for Cloudflare production deployment environment.
- */
-export function inspectProductionCloudflareEnvironment({
-  env = {},
-  wranglerConfigSource = "",
-  packageJsonSource = "",
-} = {}) {
-  if (!wranglerConfigSource && !packageJsonSource) {
-    return { status: "SKIP", detail: "no Cloudflare deployment configuration detected" };
-  }
-
-  const hasConvexDeploy =
-    wranglerConfigSource.includes("convex deploy") ||
-    packageJsonSource.includes("convex deploy") ||
-    (typeof env.BUILD_COMMAND === "string" && env.BUILD_COMMAND.includes("convex deploy"));
-
-  if (!hasConvexDeploy) {
-    return {
-      status: "FAIL",
-      detail: "Cloudflare build command must deploy Convex before Next.js (npx convex deploy --cmd 'pnpm build')",
-    };
-  }
-
-  for (const forbidden of FORBIDDEN_VAR_KEYS) {
-    if (wranglerConfigSource.includes(`"${forbidden}"`) || wranglerConfigSource.includes(`${forbidden}=`)) {
-      return {
-        status: "FAIL",
-        detail: `Backend secret "${forbidden}" must not be placed in Cloudflare Worker configuration; keep it in Convex environment`,
-      };
-    }
-  }
-
-  return {
-    status: "PASS",
-    detail: "Cloudflare deployment configuration is valid and atomic",
-  };
+export function parseWranglerConfig(source, fileName = "wrangler.jsonc") {
+  const parsed = parseConfigFileTextToJson(fileName, source);
+  if (parsed.error || !parsed.config || typeof parsed.config !== "object") throw new Error(`${fileName} is not valid JSON or JSONC`);
+  return parsed.config;
 }
 
-/**
- * Simulates or performs Cloudflare credential revocation.
- */
+function parsePackage(source) {
+  try {
+    const document = JSON.parse(source);
+    if (!document || typeof document !== "object") throw new Error();
+    return document;
+  } catch {
+    throw new Error("package.json is not valid JSON");
+  }
+}
+
+function hasExactDependency(document, name, version) {
+  return document.dependencies?.[name] === version || document.devDependencies?.[name] === version;
+}
+
+export function inspectCloudflareBlueprint({ configSources = [], packageJsonSource = "" } = {}) {
+  const present = configSources.filter((entry) => entry?.source?.trim());
+  if (present.length === 0) return { status: "SKIP", detail: "no Cloudflare deployment configuration detected" };
+  if (present.length !== 1) return { status: "FAIL", detail: "keep exactly one Wrangler configuration file" };
+  if (present[0].path.endsWith(".toml")) return { status: "FAIL", detail: "the pinned vinext adapter requires wrangler.json or wrangler.jsonc" };
+  let config;
+  let pkg;
+  try {
+    config = parseWranglerConfig(present[0].source, present[0].path);
+    pkg = parsePackage(packageJsonSource);
+  } catch (error) {
+    return { status: "FAIL", detail: error.message };
+  }
+  if (!validateCloudflareProjectName(config.name).valid) return { status: "FAIL", detail: "Wrangler config needs a valid explicit Worker name" };
+  if (!validateCloudflareAccountId(config.account_id).valid) return { status: "FAIL", detail: "Wrangler config needs an explicit account_id" };
+  if (typeof config.main !== "string" || !config.main.trim()) return { status: "FAIL", detail: "Wrangler config needs a Worker entry point" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(config.compatibility_date ?? "")) return { status: "FAIL", detail: "Wrangler config needs a compatibility_date" };
+  if (!config.compatibility_flags?.includes("nodejs_compat")) return { status: "FAIL", detail: "Wrangler config must enable nodejs_compat" };
+  if (!hasExactDependency(pkg, CLOUDFLARE_ADAPTER.framework, CLOUDFLARE_ADAPTER.frameworkVersion)) {
+    return { status: "FAIL", detail: `pin ${CLOUDFLARE_ADAPTER.framework}@${CLOUDFLARE_ADAPTER.frameworkVersion}` };
+  }
+  if (!hasExactDependency(pkg, CLOUDFLARE_ADAPTER.deploymentPackage, CLOUDFLARE_ADAPTER.deploymentVersion)) {
+    return { status: "FAIL", detail: `pin ${CLOUDFLARE_ADAPTER.deploymentPackage}@${CLOUDFLARE_ADAPTER.deploymentVersion}` };
+  }
+  const scripts = pkg.scripts ?? {};
+  if (scripts["build:vinext"] !== "vinext build") return { status: "FAIL", detail: "build:vinext must run vinext build" };
+  if (scripts["build:cloudflare"] !== "npx convex deploy --cmd 'pnpm build:vinext'") {
+    return { status: "FAIL", detail: "build:cloudflare must wrap the separate vinext build with Convex deploy" };
+  }
+  const deploy = scripts["deploy:cloudflare"] ?? "";
+  if (!/\bvinext-cloudflare deploy\b/.test(deploy) || !deploy.includes("--skip-build") || !deploy.includes("dist/server/wrangler.json")) {
+    return { status: "FAIL", detail: "deploy:cloudflare must deploy the existing vinext build with --skip-build" };
+  }
+  const preview = scripts["preview:cloudflare"] ?? "";
+  if (!/\bwrangler versions upload\b/.test(preview) || !preview.includes("dist/server/wrangler.json")) {
+    return { status: "FAIL", detail: "preview:cloudflare must upload a preview version from the generated Wrangler config" };
+  }
+  for (const key of FORBIDDEN_VAR_KEYS) {
+    if (Object.hasOwn(config.vars ?? {}, key)) return { status: "FAIL", detail: `${key} belongs in its provider-owned secret store, not Worker vars` };
+  }
+  return { status: "PASS", detail: "Cloudflare vinext blueprint is explicit and Convex-first" };
+}
+
+export function inspectProductionCloudflareEnvironment(options = {}) {
+  return inspectCloudflareBlueprint(options);
+}
+
 export function revokeCloudflareCredentials({ commandRunner } = {}) {
-  const steps = [];
-  if (commandRunner) {
-    try {
-      commandRunner("wrangler", ["logout"]);
-      steps.push("Ran `wrangler logout`");
-    } catch {
-      steps.push("Failed to execute `wrangler logout` automatically");
-    }
-  } else {
-    steps.push("Run `wrangler logout` to remove local CLI credentials");
+  if (!commandRunner) return { revoked: false, steps: ["Run `wrangler logout` and verify that `wrangler whoami` fails"] };
+  try {
+    const result = commandRunner("wrangler", ["logout"]);
+    const revoked = result?.status === 0;
+    return {
+      revoked,
+      steps: revoked
+        ? ["Wrangler logout completed", "Revoke any scoped API token in the Cloudflare dashboard"]
+        : ["Wrangler logout failed; local authorization may still be active"],
+    };
+  } catch {
+    return { revoked: false, steps: ["Wrangler logout failed; local authorization may still be active"] };
   }
-  steps.push("Revoke any scoped API tokens in Cloudflare Dashboard under My Profile → API Tokens");
-  steps.push("Delete or unbind the Worker project if it should no longer be deployed");
-  return {
-    revoked: true,
-    steps,
-  };
 }

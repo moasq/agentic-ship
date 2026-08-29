@@ -20,6 +20,7 @@ import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inspectProductionBillingEnvironment } from "./lib/billing-coherence.mjs";
 import { inspectDeploymentBlueprint } from "./lib/deployment-coherence.mjs";
+import { parseWranglerConfig, validateCloudflareProjectName } from "./lib/connections/cloudflare.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => (existsSync(join(root, p)) ? readFileSync(join(root, p), "utf8") : "");
@@ -74,10 +75,18 @@ add(
 const deployment = inspectDeploymentBlueprint({
   netlifySource: read("netlify.toml"),
   vercelSource: read("vercel.json"),
-  cloudflareSource: read("wrangler.json") || read("wrangler.jsonc") || read("wrangler.toml"),
+  cloudflareSources: [
+    { path: "wrangler.json", source: read("wrangler.json") },
+    { path: "wrangler.jsonc", source: read("wrangler.jsonc") },
+    { path: "wrangler.toml", source: read("wrangler.toml") },
+  ],
   packageJsonSource: read("package.json"),
 });
 add("selected deploy blueprint intact", deployment.status, deployment.detail);
+
+const cloudflareConfigs = ["wrangler.json", "wrangler.jsonc"]
+  .map((path) => ({ path, source: read(path) }))
+  .filter((entry) => entry.source.trim());
 
 /* ---------- the CSP that actually ships ---------- */
 
@@ -120,6 +129,37 @@ add(
 /* ---------- prod deployment audit (needs login) ---------- */
 
 if (withProd) {
+  if (cloudflareConfigs.length === 1) {
+    const auth = spawnSync(process.execPath, [join(root, "scripts/check-cloudflare-auth.mjs")], {
+      cwd: root,
+      encoding: "utf8",
+      shell: process.platform === "win32",
+    });
+    add(
+      "prod Cloudflare auth is protected",
+      auth.status === 0 ? "PASS" : "FAIL",
+      auth.status === 0 ? "" : "authorize Wrangler with `pnpm provider:login cloudflare` or set a scoped API token and account ID",
+    );
+
+    try {
+      const config = parseWranglerConfig(cloudflareConfigs[0].source, cloudflareConfigs[0].path);
+      const name = validateCloudflareProjectName(config.name);
+      if (!name.valid) throw new Error(name.error);
+      const deployments = spawnSync("pnpm", ["exec", "wrangler", "deployments", "list", "--name", config.name, "--config", cloudflareConfigs[0].path], {
+        cwd: root,
+        shell: process.platform === "win32",
+        encoding: "utf8",
+      });
+      add(
+        "prod Cloudflare Worker is readable",
+        deployments.status === 0 ? "PASS" : "FAIL",
+        deployments.status === 0 ? "" : "the selected account and Worker could not be read; verify account_id, name, and Cloudflare access",
+      );
+    } catch (error) {
+      add("prod Cloudflare Worker is readable", "FAIL", error.message);
+    }
+  }
+
   const list = spawnSync("npx convex env list --prod", { cwd: root, shell: true, encoding: "utf8" });
   if (list.status !== 0) {
     add("prod convex env readable", "FAIL", "`npx convex env list --prod` failed — connect first (pnpm onboard)");
