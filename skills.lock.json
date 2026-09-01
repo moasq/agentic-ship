@@ -1,7 +1,8 @@
 {
   "$comment": "Provenance manifest. Nothing enters this bundle without an entry. Run the upstream-sync skill monthly.",
   "bundleVersion": "0.3.0",
-  "lastSync": "2026-08-14",
+  "repositoryMode": "tool-only",
+  "lastSync": "2026-09-01",
   "skills": [
     { "name": "agent-compatibility", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": [] },
     { "name": "workspace-health", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["platform-notes.md", "supply-chain.md", "tool-probes.md"] },
@@ -22,13 +23,13 @@
       "name": "clone-website",
       "upstream": "https://github.com/JCodesMore/ai-website-cloner-template (.claude/skills/clone-website/SKILL.md)",
       "upstreamVersion": "0.4.0",
-      "upstreamCommit": "3040f9c",
+      "upstreamCommit": "92872bc40ced2c5edb4d5dc9fd3970d40c77f4ca",
       "license": "MIT",
       "patched": true,
-      "lastSync": "2026-08-11",
+      "lastSync": "2026-09-01",
       "references": ["inspection-guide.md"],
       "localCheckout": "../website-cloner (git remote `upstream` → the template repo; `git pull upstream master` to refresh before re-syncing)",
-      "note": "Rewritten in house voice for this stack, keeping the upstream pipeline (recon → foundation → per-section spec → build → assemble → visual QA), the extraction scripts, the interaction-model discipline, and the expensive-lesson list. Deliberate departures: rights mode declared before extraction (AGENTS.md Cloning rules — upstream defaults to pixel-perfect with real assets unconditionally); extracted values land as globals.css tokens instead of literal values so check:ui stays green; fonts follow the OFL-only commit rule with substitution; npm → pnpm; builder dispatch mapped to frontend-builder. upstream-sync: diff the upstream SKILL.md against these departures, adopt procedure improvements, never re-import the unconditional-fidelity default."
+      "note": "Rewritten in house voice for this stack, keeping the upstream pipeline (recon → foundation → per-section spec → build → assemble → visual QA), the extraction scripts, the interaction-model discipline, and the expensive-lesson list. Deliberate departures: rights mode declared before extraction (AGENTS.md Cloning rules — upstream defaults to pixel-perfect with real assets unconditionally); extracted values land as globals.css tokens instead of literal values so check:ui stays green; fonts follow the OFL-only commit rule with substitution; npm → pnpm; builder dispatch mapped to frontend-builder. The 2026-09-01 review did not adopt upstream's optional Atlas Cloud generated-asset fallback because the core workflow must not require an account or paid service. upstream-sync: diff the upstream SKILL.md against these departures, adopt procedure improvements, never re-import the unconditional-fidelity default."
     },
     { "name": "frontend-security", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": ["analytics-posthog.md"] },
     { "name": "seo-blog", "upstream": "original", "patched": false, "lastSync": "2026-08-06", "references": [] },
@@ -46,12 +47,12 @@
     {
       "name": "security-review",
       "upstream": "https://github.com/getsentry/skills (skills/security-review/)",
-      "upstreamCommit": "24fdb83",
+      "upstreamCommit": "c2f99a5b04b4cd992ec3022d7c2c3e23e938d241",
       "license": "Apache-2.0 (LICENSE in the skill dir; references derive from OWASP Cheat Sheet Series, CC BY-SA 4.0, attributed in SKILL.md)",
       "patched": true,
-      "lastSync": "2026-08-11",
+      "lastSync": "2026-09-01",
       "references": ["api-security.md", "authentication.md", "authorization.md", "business-logic.md", "cryptography.md", "csrf.md", "data-protection.md", "deserialization.md", "error-handling.md", "file-security.md", "injection.md", "logging.md", "misconfiguration.md", "modern-threats.md", "ssrf.md", "supply-chain.md", "xss.md", "languages/javascript.md"],
-      "note": "Trimmed to this stack: languages/python.md and infrastructure/docker.md removed, the two loading tables in SKILL.md patched to match (upstream's tables also promise go/rust/java/k8s/terraform guides that do not exist upstream). Fetch upstream guides on demand for out-of-stack code. Complements frontend-security (this repo's posture rules; still the one home of the untrusted-component review list) — this skill is the audit-arbitrary-code procedure. Its Python/Django snippets are vulnerability-pattern examples, not repository procedure."
+      "note": "Trimmed to this stack: languages/python.md and infrastructure/docker.md removed, the two loading tables in SKILL.md patched to match (upstream's tables also promise go/rust/java/k8s/terraform guides that do not exist upstream). Fetch upstream guides on demand for out-of-stack code. Complements frontend-security (this repo's posture rules; still the one home of the untrusted-component review list) — this skill is the audit-arbitrary-code procedure. Its Python/Django snippets are vulnerability-pattern examples, not repository procedure. The 2026-09-01 upstream review found no changes under skills/security-review."
     },
     {
       "name": "playwright-best-practices",
@@ -60,62 +61,62 @@
       "upstreamVersion": "1.2",
       "license": "MIT (repo LICENSE.md copied into the skill dir)",
       "patched": false,
-      "lastSync": "2026-08-11",
+      "lastSync": "2026-09-01",
       "references": ["59 files across core/, architecture/, advanced/, browser-apis/, debugging/, frameworks/, infrastructure-ci-cd/, testing-patterns/ — vendored verbatim; SKILL.md is an activity-routing index and references load on demand"],
       "note": "The reliability layer for gate G3: flaky-test repair, isolation, waiting discipline, fixtures, CI. The `testing` skill remains the gate/data-tier authority and the vendor playwright-test-* agents remain the generation loop; this is technique doctrine both draw on. npm/npx commands inside are upstream prose for downstream test code, not this repo's script surface."
     },
     {
       "name": "accessibility",
       "upstream": "https://github.com/addyosmani/web-quality-skills (skills/accessibility/)",
-      "upstreamCommit": "95d6e25",
-      "upstreamVersion": "1.1",
+      "upstreamCommit": "afa8da942115f2961fdbfa80807ea0b232ff6c00",
+      "upstreamVersion": "2.0",
       "license": "MIT (repo LICENSE copied into the skill dir)",
       "patched": false,
-      "lastSync": "2026-08-11",
+      "lastSync": "2026-09-01",
       "references": ["A11Y-PATTERNS.md", "WCAG.md"],
-      "note": "WCAG 2.2 doctrine and fix patterns behind visual-qa's automated checks; visual-qa stays the review-process authority. Sibling skills (seo, performance, core-web-vitals, best-practices) deliberately not vendored — see skillRegistry."
+      "note": "WCAG 2.2 doctrine and fix patterns behind visual-qa's automated checks; visual-qa stays the review-process authority. Version 2.0 adds evidence-led live auditing with Lighthouse and the accessibility tree. Sibling skills (seo, performance, core-web-vitals, best-practices) deliberately not vendored — see skillRegistry."
     },
     {
       "name": "seo-audit",
       "upstream": "https://github.com/coreyhaines31/marketingskills (skills/seo-audit/)",
-      "upstreamCommit": "7868cb9",
-      "upstreamVersion": "2.0.0",
+      "upstreamCommit": "e55de886fe7580ec75cdb7ded5092b33f7d4ed58",
+      "upstreamVersion": "2.0.1",
       "license": "MIT (repo LICENSE copied into the skill dir)",
       "patched": false,
-      "lastSync": "2026-08-11",
+      "lastSync": "2026-09-01",
       "references": ["ai-writing-detection.md", "international-seo.md", "evals/evals.json"],
       "note": "Technical/on-page diagnosis procedure. seo-blog remains this stack's article pipeline and generated-surface (llms.txt/sitemap/robots) authority. Cross-references its family: schema, ai-seo, programmatic-seo — all vendored together so no pointer dangles."
     },
     {
       "name": "schema",
       "upstream": "https://github.com/coreyhaines31/marketingskills (skills/schema/)",
-      "upstreamCommit": "7868cb9",
+      "upstreamCommit": "e55de886fe7580ec75cdb7ded5092b33f7d4ed58",
       "upstreamVersion": "2.0.0",
       "license": "MIT (repo LICENSE copied into the skill dir)",
       "patched": false,
-      "lastSync": "2026-08-11",
+      "lastSync": "2026-09-01",
       "references": ["schema-examples.md", "evals/evals.json"],
       "note": "JSON-LD structured-data implementation. In this stack schema lands in route metadata/components per SEO rules; Next metadata API remains the mechanism."
     },
     {
       "name": "ai-seo",
       "upstream": "https://github.com/coreyhaines31/marketingskills (skills/ai-seo/)",
-      "upstreamCommit": "7868cb9",
-      "upstreamVersion": "2.2.0",
+      "upstreamCommit": "e55de886fe7580ec75cdb7ded5092b33f7d4ed58",
+      "upstreamVersion": "2.4.0",
       "license": "MIT (repo LICENSE copied into the skill dir)",
-      "patched": false,
-      "lastSync": "2026-08-11",
-      "references": ["citations-vs-recommendations.md", "content-patterns.md", "content-types.md", "okf.md", "platform-ranking-factors.md", "evals/evals.json"],
-      "note": "AEO/GEO doctrine — AI-engine citability, llms.txt strategy, per-platform ranking factors. Consistent with the SEO/AEO rules (robots.ts allows AI crawlers by name; llms.txt generated from typed sources); seo-blog owns the article procedure."
+      "patched": true,
+      "lastSync": "2026-09-01",
+      "references": ["citations-vs-recommendations.md", "content-patterns.md", "content-types.md", "okf.md", "platform-ranking-factors.md", "agent-readiness.md", "youtube-ai-citations.md", "evals/evals.json"],
+      "note": "AEO/GEO doctrine — AI-engine citability, llms.txt strategy, per-platform ranking factors, agent readiness, and YouTube citation structure. Consistent with the SEO/AEO rules (robots.ts allows AI crawlers by name; llms.txt generated from typed sources); seo-blog owns the article procedure. House patch removes pointers to unvendored public-relations and video skills while preserving the operating advice."
     },
     {
       "name": "programmatic-seo",
       "upstream": "https://github.com/coreyhaines31/marketingskills (skills/programmatic-seo/)",
-      "upstreamCommit": "7868cb9",
+      "upstreamCommit": "e55de886fe7580ec75cdb7ded5092b33f7d4ed58",
       "upstreamVersion": "2.0.0",
       "license": "MIT (repo LICENSE copied into the skill dir)",
       "patched": false,
-      "lastSync": "2026-08-11",
+      "lastSync": "2026-09-01",
       "references": ["playbooks.md", "evals/evals.json"],
       "note": "Template-pages-at-scale playbooks; completes the marketingskills SEO family's cross-references. Pages it produces are still product routes bound by metadata, token, and visual-evidence rules."
     },
@@ -125,18 +126,18 @@
       "upstreamCommit": "83e2316",
       "license": "MIT (repo LICENSE copied into the skill dir)",
       "patched": true,
-      "lastSync": "2026-08-14",
+      "lastSync": "2026-09-01",
       "references": ["guidelines.md", "review-checklist.md"],
       "note": "The Vercel docs handbook, vendored offline. Upstream's own skill wrapper (vercel-labs/agent-skills@writing-guidelines, 44K installs) carries no license and fetches these files from raw.githubusercontent.com on every use; this skill vendors the MIT source repo instead, pinned, so the loop works with no egress. SKILL.md is house-written: it binds the handbook to this stack (which rules transfer, which are Vercel platform conventions) and records the one deliberate conflict resolution with humanizer — straight quotes and three-dot ellipses win here. upstream-sync: diff both reference files against upstream; keep the scope table."
     },
     {
       "name": "humanizer",
       "upstream": "https://github.com/blader/humanizer (SKILL.md)",
-      "upstreamCommit": "523374d",
-      "upstreamVersion": "2.9.1",
+      "upstreamCommit": "e2e92e7b4b8229253ed5c8e81dc65463fdeddda5",
+      "upstreamVersion": "2.11.2",
       "license": "MIT (repo LICENSE copied into the skill dir)",
       "patched": false,
-      "lastSync": "2026-08-14",
+      "lastSync": "2026-09-01",
       "references": [],
       "note": "Vendored verbatim: the de-AI editing pass over finished prose, grounded in Wikipedia's Signs of AI writing. Runs in embedded mode as the last step of the writing-guidelines loop and stands alone for any text. Its straight-quote rule is the accepted resolution of the curly-quote conflict with the vendored Vercel handbook. Upstream also ships agents/ and a plugin manifest; only the skill is vendored."
     },
@@ -146,7 +147,7 @@
       "upstreamCommit": "3027f20",
       "license": "MIT (repo LICENSE copied into the skill dir); references vendor upstream's attributed copies of Art of README (hackergrrl), Make a README (Danny Guo), and Standard Readme (Richard Litt)",
       "patched": true,
-      "lastSync": "2026-08-14",
+      "lastSync": "2026-09-01",
       "references": ["art-of-readme.md", "make-a-readme.md", "standard-readme-spec.md", "standard-readme-example-minimal.md", "standard-readme-example-maximal.md", "templates/oss.md", "templates/personal.md", "templates/internal.md", "templates/xdg-config.md", "section-checklist.md", "style-guide.md", "using-references.md"],
       "note": "Audience-matched README doctrine: ask who reads it, pick the template for the project type, quickest path to it-works. One house edit: style-guide.md's prose pointer now names this repo's writing-guidelines + humanizer instead of upstream's un-vendored writing-clearly-and-concisely sibling. Boundary: documentation-and-adrs owns what a README must contain as a record; this skill owns making it land for a human reader."
     },
@@ -163,10 +164,10 @@
     {
       "name": "documentation-and-adrs",
       "upstream": "https://github.com/addyosmani/agent-skills (skills/documentation-and-adrs/)",
-      "upstreamCommit": "be42637",
+      "upstreamCommit": "d2c37ef6225dd8726cdd369a8030307f48592d26",
       "license": "MIT (repo LICENSE copied into the skill dir)",
       "patched": false,
-      "lastSync": "2026-08-14",
+      "lastSync": "2026-09-01",
       "references": [],
       "note": "Engineering documentation doctrine: ADRs, why-comments, README and changelog structure. Boundaries: seo-blog owns the product article pipeline, writing-guidelines owns prose quality, this skill owns what gets recorded and where. Its npm command examples are upstream prose, not this repo's script surface. Second adoption from this author — accessibility comes from his web-quality-skills repo."
     }
@@ -175,10 +176,10 @@
     {
       "name": "shadcn",
       "package": "shadcn",
-      "pinned": "4.16.1",
+      "pinned": "4.19.1",
       "upstream": "https://ui.shadcn.com/docs/mcp",
       "official": true,
-      "verified": "2026-08-06"
+      "verified": "2026-09-01"
     },
     {
       "name": "next-devtools",
@@ -186,7 +187,7 @@
       "pinned": "0.4.0",
       "upstream": "https://nextjs.org/docs/app/guides/mcp",
       "official": true,
-      "verified": "2026-08-06",
+      "verified": "2026-09-01",
       "note": "Next 16+ also ships version-accurate docs at node_modules/next/dist/docs/"
     },
     {
@@ -196,23 +197,24 @@
       "upstream": "https://github.com/magicuidesign/mcp",
       "official": true,
       "license": "MIT",
-      "verified": "2026-08-06"
+      "verified": "2026-09-01"
     },
     {
       "name": "context7",
       "package": "@upstash/context7-mcp",
-      "pinned": "3.2.5",
+      "pinned": "4.0.4",
       "upstream": "https://github.com/upstash/context7",
       "official": true,
-      "verified": "2026-08-06"
+      "verified": "2026-09-01",
+      "note": "Version 4 uses the MCP SDK v2 stateless server and retains the project-scoped stdio command. Version 4.0.4 includes the follow-up authentication fixes."
     },
     {
       "name": "convex",
       "package": "convex (CLI subcommand: mcp start)",
-      "pinned": "1.43.0",
+      "pinned": "1.45.0",
       "upstream": "https://docs.convex.dev/ai/convex-mcp-server",
       "official": true,
-      "verified": "2026-08-06",
+      "verified": "2026-09-01",
       "note": "Project-scoped stdio server. An unconnected deployment is a workspace-health stage warning."
     },
     {
@@ -222,7 +224,7 @@
       "transport": "http+oauth",
       "upstream": "https://github.com/stripe/ai (providers/claude/plugin/.mcp.json)",
       "official": true,
-      "verified": "2026-08-06"
+      "verified": "2026-09-01"
     },
     {
       "name": "resend",
@@ -231,7 +233,7 @@
       "transport": "http+oauth",
       "upstream": "https://github.com/resend/resend-skills (.mcp.json)",
       "official": true,
-      "verified": "2026-08-06"
+      "verified": "2026-09-01"
     },
     {
       "name": "posthog",
@@ -240,7 +242,7 @@
       "transport": "http+oauth",
       "upstream": "https://github.com/PostHog/ai-plugin (.mcp.json)",
       "official": true,
-      "verified": "2026-08-06"
+      "verified": "2026-09-01"
     },
     {
       "name": "linear",
@@ -249,7 +251,7 @@
       "transport": "http+oauth",
       "upstream": "https://linear.app/docs/mcp (same endpoint as anthropics/claude-plugins-official external_plugins/linear)",
       "official": true,
-      "verified": "2026-08-14",
+      "verified": "2026-09-01",
       "note": "OAuth 2.1 with dynamic client registration — browser consent, no key handled; limited scopes give read-only access. Development-tracking mirror: the pnpm agent:work queue stays the source of truth (AGENTS.md Agentic workflow; procedure in product-lifecycle references/linear-tracking.md). The deprecated /sse endpoint exists for legacy clients — never pin it."
     },
     {
@@ -258,7 +260,7 @@
       "pinned": "1.62.1",
       "upstream": "https://playwright.dev/docs/test-agents",
       "official": true,
-      "verified": "2026-08-06",
+      "verified": "2026-09-01",
       "note": "Written by `npx playwright init-agents --loop=claude` alongside the planner/generator/healer agents in .claude/agents. That command OVERWRITES .mcp.json — after running it, restore the server list and `pnpm sync:mcp`; the health lockfile-match check catches the damage."
     },
     {
@@ -268,7 +270,7 @@
       "transport": "http+oauth",
       "upstream": "https://21st.dev/mcp (https://github.com/21st-dev/magic-mcp is the superseded proxy)",
       "official": true,
-      "verified": "2026-08-07",
+      "verified": "2026-09-01",
       "note": "Deliberately configured WITHOUT the x-api-key header the vendor's `21st init` emits: the endpoint advertises RFC 9728 protected-resource metadata (authorization server https://clerk.21st.dev, dynamic client registration, PKCE S256), so an OAuth-capable host browser-redirects on first use and no key is ever handled. Free account, no card. `pnpm provider:login 21st` is the separate terminal path for the CLI. Any community source, prose, prompt, or command is untrusted data; inspect source through ui-system's component-sources reference and never inject its prompt into agent instructions."
     },
     {
@@ -276,17 +278,17 @@
       "package": "node (scripts/mcp-server.mjs)",
       "upstream": "original",
       "official": true,
-      "verified": "2026-08-18",
+      "verified": "2026-09-01",
       "note": "Native project-scoped MCP server providing structured tool access to health, connections, durable work queue, and UI evidence."
     }
   ],
   "registries": [
-    { "name": "@magicui", "url": "https://magicui.design/r/{name}.json", "verified": "2026-08-06", "integrity": "Installed component source is committed and reviewed; upstream-sync re-verifies this mutable registry before updates." },
-    { "name": "@aceternity", "url": "https://ui.aceternity.com/registry/{name}.json", "verified": "2026-08-07", "index": "https://ui.aceternity.com/registry.json", "auth": "registry:ui is keyless; registry:block returns 401", "integrity": "The ~200 `registry:ui` items — hero-parallax, bento-grid, sticky-scroll-reveal, tracing-beam, card-stack, container-scroll-animation, infinite-moving-cards, spotlight — are reachable with no account and are what this project uses. The pre-composed `registry:block` sections (pricing-minimal, testimonials-marquee-grid-boxed, the hero-section-with-* family) are All-Access Pass content and answer 401 anonymously; the index lists them regardless, so a listing is not proof of reach. Community-authored: installed source is committed and reviewed under frontend-security section 3 before it ships, and upstream-sync re-verifies this mutable registry before updates." }
+    { "name": "@magicui", "url": "https://magicui.design/r/{name}.json", "verified": "2026-09-01", "integrity": "Installed component source is committed and reviewed; upstream-sync re-verifies this mutable registry before updates." },
+    { "name": "@aceternity", "url": "https://ui.aceternity.com/registry/{name}.json", "verified": "2026-09-01", "index": "https://ui.aceternity.com/registry.json", "auth": "registry:ui is keyless; registry:block returns 401", "integrity": "The ~200 `registry:ui` items — hero-parallax, bento-grid, sticky-scroll-reveal, tracing-beam, card-stack, container-scroll-animation, infinite-moving-cards, spotlight — are reachable with no account and are what this project uses. The pre-composed `registry:block` sections (pricing-minimal, testimonials-marquee-grid-boxed, the hero-section-with-* family) are All-Access Pass content and answer 401 anonymously; the index lists them regardless, so a listing is not proof of reach. Community-authored: installed source is committed and reviewed under frontend-security section 3 before it ships, and upstream-sync re-verifies this mutable registry before updates." }
   ],
   "vendorKnowledge": {
     "$comment": "How each component vendor's knowledge stays current, and whether it ships an installable skill. Recorded so the question is answered once instead of re-derived every time someone asks. upstream-sync re-checks these each cycle: a vendor that starts shipping an official skill should be adopted, not missed.",
-    "verified": "2026-08-07",
+    "verified": "2026-09-01",
     "entries": [
       {
         "name": "shadcn",
@@ -328,11 +330,11 @@
     "postinstall": "link-skills, sync-mcp, and sync-agent-config in soft diagnostic mode"
   },
   "installer": {
-    "command": "npx github:moasq/create-agentic-ship my-app",
-    "repo": "https://github.com/moasq/create-agentic-ship",
-    "verified": "2026-08-09",
-    "design": "Zero dependencies, in its own repo. npx installs a package before running it, so any dependency is time the user spends waiting — and npm cannot install from a subdirectory of this repo, which rules out shipping the CLI here. It downloads the GitHub tarball and unpacks it with node:zlib plus a ~40-line tar reader: no git, no curl, no tar binary, no shell, so it behaves the same on Windows.",
-    "notes": "The .claude/skills symlink is skipped by the tarball (symlink entries are not extracted) and recreated by postinstall's link-skills — the same repair path that fixes Windows checkouts. Publishing to npm would shorten the command to `npx create-agentic-ship`; that needs the owner's npm account."
+    "command": "npx github:moasq/agentic-ship",
+    "repo": "https://github.com/moasq/agentic-ship",
+    "verified": "2026-09-01",
+    "design": "Zero dependencies, shipped from this repository through package.json's agentic-ship bin. The pure Node installer copies the toolkit payload with node:fs, skips existing files by default, and behaves the same on Windows, macOS, and Linux.",
+    "notes": "The .claude/skills symlink is skipped and recreated by postinstall's link-skills, the same repair path that fixes Windows checkouts. The installer supports force, merge, and dry-run modes without touching git."
   },
   "mirrors": [
     {
@@ -469,15 +471,15 @@
     }
   ],
   "backend": {
-    "$comment": "Phases 2+3. Backend SOURCE ships in full: schema, waitlist, Better Auth wiring (convex/auth.ts, auth.config.ts, convex.config.ts, http.ts, the /api/auth proxy) and the Stripe billing seam (convex/billing.ts). convex/_generated/ does NOT and cannot ship: only `npx convex dev` produces it, and that opens a browser, so it is the buyer's manual step. `npx convex codegen` needs CONVEX_DEPLOYMENT too — verified 2026-08-04, not assumed.",
-    "status": "implemented; awaiting the buyer's `npx convex dev` + Stripe keys",
-    "convex": "^1.43.0",
+    "$comment": "Downstream product guidance only. This tool repository ships no convex/, src/, generated client, backend implementation, or deployment. A product workspace that adopts Agentic Ship implements these seams and verifies them there.",
+    "status": "guidance-only",
+    "convex": "^1.45.0",
     "stripe": {
       "component": "@convex-dev/stripe",
       "version": "0.1.6",
       "upstream": "https://github.com/get-convex/stripe",
       "official": true,
-      "verified": "2026-08-04",
+      "verified": "2026-09-01",
       "apiVersion": "2026-04-22.dahlia",
       "apiVersionNote": "Stripe's current is 2026-07-29.dahlia; the component documents 2026-04-22.dahlia and we pin what the component pins. upstream-sync flags the drift — API versions change webhook payload shapes, never blind-bump.",
       "decisions": {
@@ -490,10 +492,10 @@
     },
     "email": {
       "component": "@convex-dev/resend",
-      "version": "0.2.6",
+      "version": "0.2.7",
       "upstream": "https://github.com/get-convex/resend",
       "official": true,
-      "verified": "2026-08-04",
+      "verified": "2026-09-01",
       "webhookPath": "/resend-webhook",
       "seam": "convex/email.ts — the only file importing the Resend SDK",
       "safetyDefault": "testMode: true. Resend then accepts ONLY its own test inboxes, so a wrong address in development cannot reach a real person. It flips to false together with requireEmailVerification: true in convex/auth.ts, after a sending domain is verified — pnpm health fails CRITICAL on the mismatch in either direction.",
@@ -503,8 +505,8 @@
     "analytics": {
       "vendor": "posthog",
       "package": "posthog-js",
-      "version": "1.410.10",
-      "verified": "2026-08-04",
+      "version": "1.424.0",
+      "verified": "2026-09-01",
       "seam": "src/lib/analytics.ts — typed AnalyticsEvent union; components never import posthog-js",
       "init": "instrumentation-client.ts (Next.js official integration point)",
       "cspDecision": "Traffic is proxied through /ingest on our own origin via next.config.ts rewrites, so connect-src stays 'self' — no analytics origin is ever added to the CSP, and ad blockers do not silently drop technical users' data. PostHog's own recommended setup. Requires skipTrailingSlashRedirect: true.",
@@ -547,7 +549,7 @@
       "adapter": "@convex-dev/better-auth",
       "adapterUpstream": "https://labs.convex.dev/better-auth",
       "official": true,
-      "verified": "2026-08-06",
+      "verified": "2026-09-01",
       "adapterVersion": "0.12.5",
       "pins": {
         "convex": ">=1.25.0",
@@ -628,10 +630,10 @@
     "cursor": { "generated": [".cursor/agents/", ".cursor/mcp.json", ".cursor/hooks.json"], "verified": "2026-08-06 official schema plus executable hook tests" },
     "hermes": { "generated": [".hermes/profile/", ".hermes/roles.md"], "verified": "2026-08-06 isolated Hermes 0.20.0 profile install" },
     "openclaw": { "generated": [".openclaw/config.json5", ".openclaw/roles.md"], "verified": "2026-08-06 generated from OpenClaw workspace/skills/subagent docs; not yet exercised against an isolated install" },
-    "scaffold": { "install": "npx github:moasq/create-agentic-ship my-app" }
+    "scaffold": { "install": "npx github:moasq/agentic-ship" }
   },
   "pins": {
-    "$comment": "The recorded version pins for the downstream product stack. 'N.x' pins the major; a full 'x.y.z' means EXACT. The upstream-sync skill verifies these against upstream — no gate in this tool repo enforces them, because the packages they name live in the product workspace, not in this repo's dependency-free package.json. better-auth's exact patched pin and its adapter-only type bridge are verified downstream by src/lib/auth-client.test.ts and recorded in heal-ledger.md. The narrative for backend pins lives in backend.auth.pins.",
+    "$comment": "The recorded version pins for the downstream product stack. 'N.x' pins the major; a full 'x.y.z' means EXACT. Verified against current releases on 2026-09-01. The upstream-sync skill verifies these against upstream — no gate in this tool repo enforces them, because the packages they name live in the product workspace, not in this repo's dependency-free package.json. better-auth stays on the audited 1.6.26 exact pin until the adapter type bridge and downstream auth contract are re-audited against 1.7.x. Its adapter-only type bridge is verified downstream by src/lib/auth-client.test.ts and recorded in heal-ledger.md. The narrative for backend pins lives in backend.auth.pins.",
     "next": "16.x",
     "vinext": "1.0.0-beta.8",
     "@vinext/cloudflare": "1.0.0-beta.6",
@@ -644,11 +646,11 @@
     "zod": "4.x"
   },
   "assets": {
-    "$comment": "Files vendored INTO the repo rather than fetched at build time. Committed on purpose: next/font/google downloads the face during `next build`, so a host with no egress cannot build at all — that took out CI here once (.agents/heal-ledger.md, 2026-08-05). Only redistributable licences may appear here; scripts/fetch-font.mjs enforces the split and keeps non-redistributable Fontshare faces gitignored.",
+    "$comment": "Downstream font recipes plus README marks that are actually vendored in this tool repository. Product fonts are not bundled here. A downstream workspace fetches and commits OFL faces because next/font/google requires build-time egress. scripts/fetch-font.mjs enforces the license split and keeps non-redistributable Fontshare faces gitignored.",
     "added": "2026-08-05",
     "entries": [
-      { "name": "IBM Plex Sans", "kind": "font", "weights": "400-700 (one variable file)", "file": "src/fonts/ofl/ibm-plex-sans-variable.woff2", "subset": "latin", "license": "OFL-1.1", "licenseFile": "src/fonts/ofl/ibm-plex-sans-OFL.txt", "upstream": "https://github.com/IBM/plex", "fetch": "pnpm font --ofl \"IBM Plex Sans\" 400,500,600,700", "verified": "2026-08-06" },
-      { "name": "IBM Plex Mono", "kind": "font", "weights": "400,500 (static instances)", "subset": "latin", "license": "OFL-1.1", "licenseFile": "src/fonts/ofl/ibm-plex-mono-OFL.txt", "upstream": "https://github.com/IBM/plex", "fetch": "pnpm font --ofl \"IBM Plex Mono\" 400,500", "verified": "2026-08-06" },
+      { "name": "IBM Plex Sans", "kind": "downstream font recipe", "status": "not bundled in this tool repository", "weights": "400-700 (one variable file)", "outputs": ["src/fonts/ofl/ibm-plex-sans-variable.woff2", "src/fonts/ofl/ibm-plex-sans-OFL.txt"], "subset": "latin", "license": "OFL-1.1", "upstream": "https://github.com/IBM/plex", "fetch": "pnpm font --ofl \"IBM Plex Sans\" 400,500,600,700", "verified": "2026-09-01" },
+      { "name": "IBM Plex Mono", "kind": "downstream font recipe", "status": "not bundled in this tool repository", "weights": "400,500 (static instances)", "outputs": ["src/fonts/ofl/ibm-plex-mono-400.woff2", "src/fonts/ofl/ibm-plex-mono-500.woff2", "src/fonts/ofl/ibm-plex-mono-OFL.txt"], "subset": "latin", "license": "OFL-1.1", "upstream": "https://github.com/IBM/plex", "fetch": "pnpm font --ofl \"IBM Plex Mono\" 400,500", "verified": "2026-09-01" },
       { "name": "Host brand marks", "kind": "readme-icons", "marks": "claudecode, codex, cursor, nousresearch (Hermes vendor), openclaw", "files": ".github/assets/hosts/<host>-{light,dark}.svg", "license": "MIT (set); each brand remains its owner's trademark, used only to identify a supported host", "licenseFile": ".github/assets/hosts/credits.md", "upstream": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/<slug>.svg", "edit": "currentColor replaced with #1f2328 (light) and #e6edf3 (dark); README selects with <picture> because a GitHub-rendered SVG inherits no color", "verified": "2026-08-06 scanned for scripts/external refs, rendered at 30px in both themes" },
       { "name": "Stack brand marks", "kind": "readme-icons", "marks": "nodedotjs, pnpm, typescript, nextdotjs, react, tailwindcss, shadcnui, lucide, convex, betterauth, stripe, resend, posthog, netlify, github, linear, vitest", "files": ".github/assets/stack/<slug>-{light,dark}.svg", "license": "CC0-1.0 (Simple Icons set); each brand remains its owner's trademark, used only to identify a stack layer", "licenseFile": ".github/assets/stack/credits.md", "upstream": "https://unpkg.com/simple-icons@latest/icons/<slug>.svg", "edit": "fill=\"#1f2328\" (light) / fill=\"#e6edf3\" (dark) added to the <svg> element — upstream ships no fill, which renders black in dark mode; README and docs/stack.md select with <picture>", "verified": "2026-08-14 scanned for scripts/external refs; zustand and playwright have no mark in the set, their rows stay text-only", "usedBy": ["README.md", "docs/stack.md"] }
     ]

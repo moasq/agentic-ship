@@ -26,8 +26,11 @@ versioned JSON envelope in both `structuredContent` and the text fallback.
 
 - `get_health` runs the real workspace health gate.
 - `get_verification_results` runs the offline definition-of-done gate.
-- `get_connections` reads safe connection status and may filter by provider ID.
-- `get_work_status` and `get_next_work` read the durable queue.
+- `get_connections` reads safe connection status and may filter by validated provider
+  and host IDs.
+- `get_work_status` returns at most 100 queue items with offset, limit, total, and
+  `hasMore` page metadata. `get_next_work` requires a validated role and returns at
+  most 100 ready items.
 - `get_ui_plan` reads `.agents/ui/plan.json`.
 - `get_ui_evidence` inspects `.agents/ui/evidence/manifest.json` and current captures.
 
@@ -44,7 +47,8 @@ gate-evidence entry.
 Tool output removes recognized credentials, authorization codes, email addresses,
 phone-like values, payment-card-like values, prompts, transcripts, and provider
 payloads. Mutation input containing those shapes is rejected rather than stored.
-The server returns no project path and never reads credential file contents.
+Every successful result is checked against its advertised output schema before it is
+returned. The server returns no project path and never reads credential file contents.
 
 To revoke mutation access, remove `--allow-mutations` from the project server args and
 regenerate mirrors. To remove the server, delete only its canonical `.mcp.json` entry,

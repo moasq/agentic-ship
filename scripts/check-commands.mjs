@@ -28,6 +28,7 @@ import {
   isDownstream,
   unreferencedScripts,
   reconcile,
+  inspectToolOnlyLock,
 } from "./lib/check-commands-lib.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -99,9 +100,10 @@ const mcpRecon = reconcile(
   Object.keys(mcpSource.mcpServers ?? {}),
   { lockLabel: "skills.lock.json", diskLabel: ".mcp.json" },
 );
+const toolOnlyLockIssues = inspectToolOnlyLock(lock);
 
 // ── Verdict ───────────────────────────────────────────────────────────────────
-const failed = missingRefs.length > 0 || !skillsRecon.ok || !mcpRecon.ok;
+const failed = missingRefs.length > 0 || !skillsRecon.ok || !mcpRecon.ok || toolOnlyLockIssues.length > 0;
 
 if (!failed) {
   if (!quiet) {
@@ -116,7 +118,7 @@ if (!failed) {
   process.exit(0);
 }
 
-const problems = missingRefs.length + (skillsRecon.ok ? 0 : 1) + (mcpRecon.ok ? 0 : 1);
+const problems = missingRefs.length + (skillsRecon.ok ? 0 : 1) + (mcpRecon.ok ? 0 : 1) + toolOnlyLockIssues.length;
 console.error(`commands: FAIL — ${problems} problem(s)\n`);
 
 if (missingRefs.length > 0) {
@@ -142,6 +144,12 @@ for (const [recon, source] of [
   for (const n of recon.missingFromLock) console.error(`    on ${recon.diskLabel}, missing from lock: ${n}`);
   for (const n of recon.missingFromDisk) console.error(`    in lock, missing from ${recon.diskLabel}: ${n}`);
   console.error("    Fix: reconcile via the upstream-sync skill; never hand-edit versions.\n");
+}
+
+if (toolOnlyLockIssues.length > 0) {
+  console.error("  Tool-only lock contract:");
+  for (const issue of toolOnlyLockIssues) console.error(`    ${issue}`);
+  console.error("    Fix: keep downstream product guidance clearly scoped and remove bundled product-path claims.\n");
 }
 
 process.exit(1);

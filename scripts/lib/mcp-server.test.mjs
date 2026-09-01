@@ -47,6 +47,7 @@ describe("Agentic Ship MCP server", () => {
     expect(listed.result.tools.find((item) => item.name === "get_health").annotations.readOnlyHint).toBe(true);
     expect(listed.result.tools.find((item) => item.name === "complete_work").annotations.readOnlyHint).toBe(false);
     expect(listed.result.tools.every((item) => item.outputSchema)).toBe(true);
+    expect(listed.result.tools.every((item) => item.outputSchema.properties.data.type)).toBe(true);
   });
 
   test("runs real health and verification services instead of hardcoding success", async () => {
@@ -73,8 +74,12 @@ describe("Agentic Ship MCP server", () => {
     const connectionService = {
       status: () => ({
         type: "connection_status",
+        supportedHosts: ["codex", "cursor"],
         providers: [{ id: "stripe" }, { id: "github" }],
-        actions: [{ actionId: "conn_one", provider: "stripe" }, { actionId: "conn_two", provider: "github" }],
+        actions: [
+          { actionId: "conn_one", provider: "stripe", host: "codex" },
+          { actionId: "conn_two", provider: "github", host: "cursor" },
+        ],
       }),
     };
     const server = createAgenticShipMcpServer(root, { connectionService });
@@ -85,7 +90,27 @@ describe("Agentic Ship MCP server", () => {
     expect((await call(server, "get_ui_evidence")).result.structuredContent.data.inspection.status).toBe("not_applicable");
     const connections = (await call(server, "get_connections", { provider: "stripe" })).result.structuredContent.data;
     expect(connections.providers).toEqual([{ id: "stripe" }]);
-    expect(connections.actions).toEqual([{ actionId: "conn_one", provider: "stripe" }]);
+    expect(connections.actions).toEqual([{ actionId: "conn_one", provider: "stripe", host: "codex" }]);
+    const hostConnections = (await call(server, "get_connections", { host: "cursor" })).result.structuredContent.data;
+    expect(hostConnections.actions).toEqual([{ actionId: "conn_two", provider: "github", host: "cursor" }]);
+    expect((await call(server, "get_connections", { host: "invented" })).result.isError).toBe(true);
+  });
+
+  test("bounds queue reads and reports deterministic page metadata", async () => {
+    const root = fixture();
+    const store = createWorkStore(root);
+    store.init({ name: "Demo", goal: "Verify paging" });
+    for (const id of ["one", "two", "three"]) {
+      store.add({ id, role: "backend-builder", summary: id, acceptanceCriteria: ["Pass"] });
+    }
+    const server = createAgenticShipMcpServer(root, { workStore: store });
+    await initialize(server);
+
+    const page = (await call(server, "get_work_status", { limit: 1, offset: 1 })).result.structuredContent.data;
+    expect(page.items.map((item) => item.id)).toEqual(["two"]);
+    expect(page.page).toEqual({ offset: 1, limit: 1, total: 3, hasMore: true });
+    expect((await call(server, "get_work_status", { limit: 101 })).result.isError).toBe(true);
+    expect((await call(server, "get_next_work", { role: "backend-builder", limit: 2 })).result.structuredContent.data).toHaveLength(2);
   });
 
   test("requires explicit mutation capability and required action identifiers", async () => {
@@ -113,7 +138,9 @@ describe("Agentic Ship MCP server", () => {
     await initialize(server);
 
     expect((await call(server, "get_next_work", { role: "invented" })).result.isError).toBe(true);
+    expect((await call(server, "get_next_work")).result.isError).toBe(true);
     expect((await call(server, "start_work", { id: "backend", extra: true })).result.isError).toBe(true);
+    expect((await call(server, "get_ui_plan", { path: "/tmp/private" })).result.isError).toBe(true);
     await call(server, "start_work", { id: "backend" });
     const privateReason = await call(server, "block_work", { id: "backend", reason: "Contact person@example.com with github_pat_ABC12345678901234567890" });
     expect(privateReason.result.isError).toBe(true);
@@ -217,6 +244,20 @@ describe("Agentic Ship MCP server", () => {
     expect(await server.handleRequest({ jsonrpc: "2.0", method: "notifications/initialized" })).toBeNull();
     expect((await call(server, "missing")).error.code).toBe(-32602);
     expect((await server.handleRequest({ jsonrpc: "2.0", id: 3, method: "missing" })).error.code).toBe(-32601);
+  });
+
+  test("rejects handler output that does not match the advertised schema", async () => {
+    const workStore = {
+      load: () => ({ items: [] }),
+      next: () => "invalid",
+      transition: () => ({}),
+    };
+    const server = createAgenticShipMcpServer(fixture(), { workStore });
+    await initialize(server);
+
+    const response = await call(server, "get_next_work", { role: "backend-builder" });
+    expect(response.result.isError).toBe(true);
+    expect(response.result.content[0].text).toContain("result.data must be array");
   });
 
   test("keeps the role contract synchronized", () => {

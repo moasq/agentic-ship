@@ -44,13 +44,13 @@ The common tactic — publish a "best [category] software" guide, rank yourself 
 
 Recommendation is a consensus signal. The inputs the models weigh live mostly off your site:
 
-| Channel | Why it moves recommendations | Related skill |
+| Channel | Why it moves recommendations | Execution owner |
 |---|---|---|
-| **Review platforms** (G2, Capterra, TrustRadius, app stores) | Third-party validation models treat as evidence of legitimacy | customer-research (review generation loops) |
-| **Analyst coverage** (Gartner, Forrester, industry reports) | High-authority category framing; models echo analyst shortlists | public-relations |
-| **Communities and forums** (Reddit, HN, Slack/Discord, niche forums) | Unprompted practitioner discussion is heavily retrieved and hard to fake | community-marketing |
-| **Earned media and PR** | Independent sources repeating your positioning beyond your own site | public-relations |
-| **Video and podcasts** | Increasingly retrieved; transcripts carry brand + category associations | video, social |
+| **Review platforms** (G2, Capterra, TrustRadius, app stores) | Third-party validation models treat as evidence of legitimacy | Review generation program |
+| **Analyst coverage** (Gartner, Forrester, industry reports) | High-authority category framing; models echo analyst shortlists | Analyst relations |
+| **Communities and forums** (Reddit, HN, Slack/Discord, niche forums) | Unprompted practitioner discussion is heavily retrieved and hard to fake | Community program |
+| **Earned media and PR** | Independent sources repeating your positioning beyond your own site | Media relations |
+| **Video and podcasts** | Increasingly retrieved; transcripts carry brand + category associations | Video and social channels |
 
 The test to apply before investing in another self-ranked guide: *if a model ignored everything on our domain, would the rest of the web still put us on the shortlist?* If not, that gap is the priority. AEO discourse often stops at "are we in the answer?" — the better question is "are we credible enough to be recommended?"
 

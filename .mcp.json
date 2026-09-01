@@ -2,7 +2,7 @@
   "mcpServers": {
     "shadcn": {
       "command": "npx",
-      "args": ["-y", "shadcn@4.16.1", "mcp"]
+      "args": ["-y", "shadcn@4.19.1", "mcp"]
     },
     "next-devtools": {
       "command": "npx",
@@ -18,11 +18,11 @@
     },
     "context7": {
       "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp@3.2.5"]
+      "args": ["-y", "@upstash/context7-mcp@4.0.4"]
     },
     "convex": {
       "command": "npx",
-      "args": ["-y", "convex@1.43.0", "mcp", "start"]
+      "args": ["-y", "convex@1.45.0", "mcp", "start"]
     },
     "stripe": {
       "type": "http",

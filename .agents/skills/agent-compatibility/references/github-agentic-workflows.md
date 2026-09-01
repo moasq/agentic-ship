@@ -12,7 +12,7 @@ Install the official compiler at the version recorded by the package, then initi
 the target repository for the engine it will use:
 
 ```text
-gh extension install github/gh-aw --pin v0.86.2
+gh extension install github/gh-aw --pin v0.87.10
 gh aw init --engine copilot --no-mcp
 gh aw add moasq/agentic-ship@<reviewed-commit-sha>
 ```

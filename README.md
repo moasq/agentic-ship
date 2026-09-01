@@ -22,6 +22,9 @@ Ship is that setup as a toolkit you own and drop into your own workspace, driven
 coding agent you already pay for. No app is bundled to delete — the kit **directs and
 verifies** the one your agent builds.
 
+Agentic Ship is listed in the
+[Development & Workflow section of Awesome AI Plugins](https://github.com/hashgraph-online/awesome-ai-plugins#development--workflow).
+
 ## Install
 
 Run it from the project directory you want to adopt it in:
@@ -96,7 +99,9 @@ for the pinned workflow example and update procedure.
 The project-scoped `agentic-ship` server exposes real health and verification results,
 safe connection status, the durable queue, and UI plan and evidence state. Queue
 mutations use the same locked transition service as `pnpm agent:work`; they are enabled
-only when the server starts with `--allow-mutations`. See the
+only when the server starts with `--allow-mutations`. Read tools validate their output
+against tool-specific schemas. Queue reads are bounded and return page metadata, and
+connection filters accept only known provider and host IDs. See the
 [project MCP guide](.agents/skills/agent-compatibility/references/agentic-ship-mcp.md)
 for the tool list, read-only mode, verification, and removal.
 

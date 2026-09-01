@@ -39,4 +39,33 @@ describe("README provider catalog sync", () => {
     });
     expect(result.issues).toEqual(["AGENTS.md provider:login row is missing cloudflare"]);
   });
+
+  it("checks the installer and MCP count against canonical project data", () => {
+    const result = inspectReadmeProviderCatalog({
+      providers: {},
+      readme: "Run npx github:moasq/agentic-ship with 2 pinned MCP servers.",
+      packageJson: { bin: { "agentic-ship": "bin/cli.js" } },
+      lockfile: {
+        installer: { command: "npx github:moasq/agentic-ship" },
+        distribution: { scaffold: { install: "npx github:moasq/agentic-ship" } },
+      },
+      mcpServers: { one: {}, two: {} },
+    });
+    expect(result).toEqual({ status: "PASS", issues: [] });
+  });
+
+  it("rejects installer and MCP count drift", () => {
+    const result = inspectReadmeProviderCatalog({
+      providers: {},
+      readme: "Run the old installer with 3 pinned MCP servers.",
+      packageJson: { bin: { "agentic-ship": "old.js" } },
+      lockfile: {
+        installer: { command: "old installer" },
+        distribution: { scaffold: { install: "old installer" } },
+      },
+      mcpServers: { one: {}, two: {} },
+    });
+    expect(result.status).toBe("FAIL");
+    expect(result.issues).toHaveLength(5);
+  });
 });

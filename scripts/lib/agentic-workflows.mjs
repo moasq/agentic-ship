@@ -56,8 +56,8 @@ export function inspectAgenticWorkflowBundle(root) {
     } catch {
       errors.push(`${id} lock metadata is invalid`);
     }
-    if (metadata?.strict !== true || metadata?.compiler_version !== "v0.86.2") {
-      errors.push(`${id} must be strict output from gh-aw v0.86.2`);
+    if (metadata?.strict !== true || metadata?.compiler_version !== "v0.87.10") {
+      errors.push(`${id} must be strict output from gh-aw v0.87.10`);
     }
     for (const match of lock.matchAll(/^\s*uses:\s*([^\s]+)@([^\s#]+).*$/gm)) {
       if (!/^[a-f0-9]{40}$/.test(match[2])) errors.push(`${id} has a mutable action reference: ${match[1]}@${match[2]}`);

@@ -7,7 +7,7 @@ test-safe**; no email UI, no templates beyond the two auth messages.
 
 | Piece | Owner | Job |
 | --- | --- | --- |
-| `@convex-dev/resend` 0.2.6 | Convex (first-party) | durable send queue (bundles workpool + rate-limiter), delivery webhook handling, `deliveryEvents` table |
+| `@convex-dev/resend` 0.2.7 | Convex (first-party) | durable send queue (bundles workpool + rate-limiter), delivery webhook handling, `deliveryEvents` table |
 | `resend@claude-plugins-official` | Resend (their `resend/resend-skills` repo) | skills + hosted MCP `mcp.resend.com`; ships `.codex-plugin` / `.cursor-plugin` / `.grok-plugin` too |
 | `convex/email.ts` | this repo | the seam — the only file that imports the Resend SDK |
 

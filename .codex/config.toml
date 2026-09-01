@@ -6,7 +6,7 @@ max_concurrent_threads_per_session = 4
 # Source server: shadcn
 [mcp_servers.workspace-shadcn]
 command = "npx"
-args = ["-y", "shadcn@4.16.1", "mcp"]
+args = ["-y", "shadcn@4.19.1", "mcp"]
 
 # Source server: next-devtools
 [mcp_servers.workspace-next-devtools]
@@ -25,12 +25,12 @@ url = "https://21st.dev/api/mcp"
 # Source server: context7
 [mcp_servers.workspace-context7]
 command = "npx"
-args = ["-y", "@upstash/context7-mcp@3.2.5"]
+args = ["-y", "@upstash/context7-mcp@4.0.4"]
 
 # Source server: convex
 [mcp_servers.workspace-convex]
 command = "npx"
-args = ["-y", "convex@1.43.0", "mcp", "start"]
+args = ["-y", "convex@1.45.0", "mcp", "start"]
 
 # Source server: stripe
 [mcp_servers.workspace-stripe]
