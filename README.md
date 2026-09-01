@@ -103,7 +103,9 @@ only when the server starts with `--allow-mutations`. Read tools validate their 
 against tool-specific schemas. Queue reads are bounded and return page metadata, and
 connection filters accept only known provider and host IDs. See the
 [project MCP guide](.agents/skills/agent-compatibility/references/agentic-ship-mcp.md)
-for the tool list, read-only mode, verification, and removal.
+for the tool list, read-only mode, verification, and removal. Claude reads the
+canonical declaration directly; the adapter sync carries the same local server into
+Codex, Cursor, Hermes, and OpenClaw without changing a user's global host settings.
 
 ### Add safe repository maintenance workflows
 

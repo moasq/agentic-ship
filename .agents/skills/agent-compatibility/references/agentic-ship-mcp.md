@@ -7,11 +7,10 @@ It listens on no port and resolves state from the current project directory.
 ## Install and verify
 
 The canonical declaration is the `agentic-ship` entry in `.mcp.json`. Run
-`pnpm sync:mcp` and `pnpm sync:agents` after changing it; Cursor, Codex, and the Codex
-plugin receive generated project-scoped mirrors. Claude reads `.mcp.json` directly.
-Hermes and OpenClaw keep their user profiles outside the repository, so follow their
-generated project guidance without editing a global host configuration on the user's
-behalf.
+`pnpm sync:mcp` and `pnpm sync:agents` after changing it. Claude reads `.mcp.json`
+directly; Cursor, Codex, the Codex plugin, Hermes, and OpenClaw receive generated local
+server entries. The Hermes profile and OpenClaw template remain non-secret repository
+artifacts. They do not edit a user's global host configuration.
 
 The committed server enables mutation tools with `--allow-mutations`. Remove that
 argument in a consumer that should be read-only. Without it, mutation calls return a

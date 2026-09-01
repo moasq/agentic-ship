@@ -55,8 +55,8 @@ rest of the static workspace contract.
 | Claude Code | `CLAUDE.md` imports `AGENTS.md`; `.claude/skills` resolves to `.agents/skills` | `.claude/agents` resolves to canonical roles in-project; generated top-level `agents/` ships the plugin roles | `.mcp.json`; plugin wiring and the completion hook live in `.claude/settings.json` |
 | Codex | reads `AGENTS.md` and project skills | generated `.codex/agents/*.toml` | generated project-scoped `.codex/config.toml`, including direct MCP URLs |
 | Cursor | reads `AGENTS.md` and Agent Skills | generated `.cursor/agents/*.md` | generated `.cursor/mcp.json`; use native hooks when a checked adapter declares them |
-| Hermes | reads `AGENTS.md`; `.hermes/profile/config.yaml` adds `.agents/skills` through `skills.external_dirs` | `.hermes/profile/SOUL.md` and the generated role catalog drive `delegate_task` from canonical briefs | configure OAuth MCP in the Hermes profile or user config; keep tokens outside the repository |
-| OpenClaw | reads `AGENTS.md` and discovers `.agents/skills` natively with this repository as the agent workspace; `.openclaw/config.json5` is the non-secret template for any other workspace | generated `.openclaw/roles.md` drives `sessions_spawn` from canonical briefs | configure MCP servers with the `openclaw mcp` CLI in user configuration; keep tokens outside the repository |
+| Hermes | reads `AGENTS.md`; `.hermes/profile/config.yaml` adds `.agents/skills` through `skills.external_dirs` | `.hermes/profile/SOUL.md` and the generated role catalog drive `delegate_task` from canonical briefs | generated profile entry for the local Agentic Ship server; configure OAuth MCP in the selected profile or user config and keep tokens outside the repository |
+| OpenClaw | reads `AGENTS.md` and discovers `.agents/skills` natively with this repository as the agent workspace; `.openclaw/config.json5` is the non-secret template for any other workspace | generated `.openclaw/roles.md` drives `sessions_spawn` from canonical briefs | generated template entry for the local Agentic Ship server; configure OAuth MCP with the host CLI in user configuration and keep tokens outside the repository |
 
 Claude Code, Codex, and Cursor all provide native delegated-agent surfaces. Hermes
 provides delegation through its profile; OpenClaw through `sessions_spawn`. Preserve
@@ -84,9 +84,10 @@ remote servers as direct HTTP entries with `type: "http"` and their HTTPS URL.
 
 Generate Codex remote entries as native `url = "https://..."` configuration. Keep the
 Cursor mirror in the shared `mcpServers` JSON shape. Let Claude Code consume the root
-configuration. Configure Hermes remote servers with its native HTTP transport and
-`auth: oauth` in the selected Hermes config. Configure OpenClaw servers with the
-`openclaw mcp` CLI in user configuration, never in a repository file.
+configuration. Generate the local Agentic Ship stdio entry in the Hermes profile and
+OpenClaw's non-secret template from the same canonical declaration. Configure Hermes
+remote servers with its native HTTP transport and `auth: oauth`; configure OpenClaw
+remote servers with the host CLI. OAuth credentials stay in user configuration.
 
 Do not introduce `mcp-remote` or another stdio bridge for a host that supports remote
 HTTP MCP directly. Do not place OAuth tokens, authorization codes, API keys, or client
