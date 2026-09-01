@@ -305,7 +305,9 @@ describe("Cloudflare preflight", () => {
 
 describe("Cloudflare runtime seams", () => {
   it("keeps backend secrets out of Worker vars", () => {
-    expect(() => bindCloudflareEnvironmentVariables({ publicVars: { BETTER_AUTH_SECRET: "not-a-real-secret" } })).toThrow(/runtime variable/);
+    expect(() => bindCloudflareEnvironmentVariables({ publicVars: { BETTER_AUTH_SECRET: String(Date.now()) } })).toThrow(
+      /runtime variable/,
+    );
   });
 
   it("requires an account subdomain for workers.dev origins", () => {

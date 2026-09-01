@@ -269,7 +269,11 @@ describe("GitHub work queue mirror", () => {
     const github = fakeGitHub();
     const lockDirectory = join(root, ".agent-state");
     mkdirSync(lockDirectory, { recursive: true });
-    writeFileSync(join(lockDirectory, "github-mirror.lock"), JSON.stringify({ schemaVersion: 1, token: "live", pid: process.pid, createdAt: Date.now() }), { mode: 0o600 });
+    writeFileSync(
+      join(lockDirectory, "github-mirror.lock"),
+      JSON.stringify({ schemaVersion: 1, token: String(process.pid), pid: process.pid, createdAt: Date.now() }),
+      { mode: 0o600 },
+    );
     const busy = createGitHubWorkMirror(root, { runner: github.runner });
     expect(busy.sync(workState(item()))).toMatchObject({ ok: false, status: "busy" });
     unlinkSync(join(lockDirectory, "github-mirror.lock"));
@@ -279,7 +283,11 @@ describe("GitHub work queue mirror", () => {
     const root = makeRoot();
     const lockDirectory = join(root, ".agent-state");
     mkdirSync(lockDirectory, { recursive: true });
-    writeFileSync(join(lockDirectory, "github-mirror.lock"), JSON.stringify({ schemaVersion: 1, token: "dead", pid: 424242, createdAt: Date.now() }), { mode: 0o600 });
+    writeFileSync(
+      join(lockDirectory, "github-mirror.lock"),
+      JSON.stringify({ schemaVersion: 1, token: String(424242), pid: 424242, createdAt: Date.now() }),
+      { mode: 0o600 },
+    );
     const github = fakeGitHub();
     const mirror = createGitHubWorkMirror(root, { runner: github.runner, isProcessAlive: () => false });
 
@@ -292,14 +300,22 @@ describe("GitHub work queue mirror", () => {
     const lockDirectory = join(root, ".agent-state");
     const lockFile = join(lockDirectory, "github-mirror.lock");
     mkdirSync(lockDirectory, { recursive: true });
-    writeFileSync(lockFile, JSON.stringify({ schemaVersion: 1, token: "dead", pid: 424242, createdAt: Date.now() }), { mode: 0o600 });
+    writeFileSync(
+      lockFile,
+      JSON.stringify({ schemaVersion: 1, token: String(424242), pid: 424242, createdAt: Date.now() }),
+      { mode: 0o600 },
+    );
     let replaced = false;
     const mirror = createGitHubWorkMirror(root, {
       runner: fakeGitHub().runner,
       isProcessAlive: (pid) => {
         if (pid === 424242 && !replaced) {
           replaced = true;
-          writeFileSync(lockFile, JSON.stringify({ schemaVersion: 1, token: "new-live", pid: process.pid, createdAt: Date.now() }), { mode: 0o600 });
+          writeFileSync(
+            lockFile,
+            JSON.stringify({ schemaVersion: 1, token: String(process.pid), pid: process.pid, createdAt: Date.now() }),
+            { mode: 0o600 },
+          );
           return false;
         }
         return true;
@@ -307,7 +323,7 @@ describe("GitHub work queue mirror", () => {
     });
 
     expect(mirror.sync(workState(item()))).toMatchObject({ ok: false, status: "busy" });
-    expect(JSON.parse(readFileSync(lockFile, "utf8")).token).toBe("new-live");
+    expect(JSON.parse(readFileSync(lockFile, "utf8")).token).toBe(String(process.pid));
     unlinkSync(lockFile);
   });
 });

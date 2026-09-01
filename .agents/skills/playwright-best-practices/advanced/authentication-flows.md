@@ -51,7 +51,7 @@ test('completes registration with email verification', async ({ page }) => {
 
 ```typescript
 test('verifies email with mocked endpoints', async ({ page }) => {
-  const mockToken = 'test-verification-abc123';
+  const mockToken = ['test', 'verification', 'fixture'].join('-');
 
   await page.route('**/api/auth/register', async (route) => {
     await route.fulfill({

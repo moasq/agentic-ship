@@ -30,8 +30,10 @@ await page.context().storageState({ path: ".auth/session.json" });
 
 // API login — skip the UI entirely
 const context = await browser.newContext();
+const e2ePassword = process.env.E2E_ACCOUNT_PASSWORD;
+if (!e2ePassword) throw new Error("E2E_ACCOUNT_PASSWORD is required");
 const response = await context.request.post("/api/auth/login", {
-  data: { email: "testuser@example.com", password: "secretPass123" },
+  data: { email: "testuser@example.com", password: e2ePassword },
 });
 await context.storageState({ path: ".auth/session.json" });
 ```
@@ -648,6 +650,8 @@ import { test as base } from "@playwright/test";
 
 export const test = base.extend({
   authenticatedPage: async ({ browser, playwright }, use) => {
+    const e2ePassword = process.env.E2E_ACCOUNT_PASSWORD;
+    if (!e2ePassword) throw new Error("E2E_ACCOUNT_PASSWORD is required");
     const apiContext = await playwright.request.newContext({
       baseURL: "http://localhost:4000",
     });
@@ -655,7 +659,7 @@ export const test = base.extend({
     await apiContext.post("/api/auth/login", {
       data: {
         email: "testuser@example.com",
-        password: "secretPass123",
+        password: e2ePassword,
       },
     });
 

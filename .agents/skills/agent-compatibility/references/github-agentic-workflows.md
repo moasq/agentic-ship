@@ -13,13 +13,13 @@ the target repository for the engine it will use:
 
 ```text
 gh extension install github/gh-aw --pin v0.87.10
-gh aw init --engine copilot --no-mcp
+gh aw init --engine claude --no-mcp
 gh aw add moasq/agentic-ship@<reviewed-commit-sha>
 ```
 
-Copilot uses the repository's `copilot-requests: write` permission. Claude requires the
-repository secret `ANTHROPIC_API_KEY`; Codex accepts `CODEX_API_KEY` or
-`OPENAI_API_KEY`. The official compiler keeps these credentials in its isolated proxy
+The packaged workflows use Claude and Codex. Claude requires the repository secret
+`ANTHROPIC_API_KEY`; Codex accepts `CODEX_API_KEY` or `OPENAI_API_KEY`. The official
+compiler keeps these credentials in its isolated proxy
 path and excludes them from the agent container. Do not add secrets to workflow
 frontmatter, prompts, artifacts, or agent state.
 
@@ -32,9 +32,9 @@ triggers, and safe outputs. Until then the five workflow jobs are disabled.
 | Workflow | Engine | Output |
 | --- | --- | --- |
 | Issue clarification | Claude | At most one safe issue comment when contract decisions are missing |
-| CI diagnosis | Codex | Read-only workflow summary for a failed main-branch CI run |
+| CI diagnosis | Codex | Manual, read-only workflow summary for a selected failed CI run |
 | Documentation drift | Claude | At most one safe pull-request comment |
-| Upstream dependency review | Copilot | One safe COMMENT review with bounded inline comments |
+| Upstream dependency review | Claude | One safe COMMENT review with bounded inline comments |
 | Release note draft | Claude | Read-only workflow summary after main advances or a manual run |
 
 All five treat repository and event content as untrusted, deny general agent network

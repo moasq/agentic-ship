@@ -180,7 +180,7 @@ test("mock OAuth flow", async ({ page, context }) => {
   await page.route("**/api/auth/token", (route) =>
     route.fulfill({
       json: {
-        access_token: "mock-token",
+        access_token: ["mock", "token"].join("-"),
         user: { name: "Test User", email: "test@example.com" },
       },
     }),

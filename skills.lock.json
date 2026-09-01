@@ -52,7 +52,7 @@
       "patched": true,
       "lastSync": "2026-09-01",
       "references": ["api-security.md", "authentication.md", "authorization.md", "business-logic.md", "cryptography.md", "csrf.md", "data-protection.md", "deserialization.md", "error-handling.md", "file-security.md", "injection.md", "logging.md", "misconfiguration.md", "modern-threats.md", "ssrf.md", "supply-chain.md", "xss.md", "languages/javascript.md"],
-      "note": "Trimmed to this stack: languages/python.md and infrastructure/docker.md removed, the two loading tables in SKILL.md patched to match (upstream's tables also promise go/rust/java/k8s/terraform guides that do not exist upstream). Fetch upstream guides on demand for out-of-stack code. Complements frontend-security (this repo's posture rules; still the one home of the untrusted-component review list) — this skill is the audit-arbitrary-code procedure. Its Python/Django snippets are vulnerability-pattern examples, not repository procedure. The 2026-09-01 upstream review found no changes under skills/security-review."
+      "note": "Trimmed to this stack: languages/python.md and infrastructure/docker.md removed, the two loading tables in SKILL.md patched to match (upstream's tables also promise go/rust/java/k8s/terraform guides that do not exist upstream). Fetch upstream guides on demand for out-of-stack code. Complements frontend-security (this repo's posture rules; still the one home of the untrusted-component review list) — this skill is the audit-arbitrary-code procedure. Its Python/Django snippets are vulnerability-pattern examples, not repository procedure. Literal credential examples are expressed as descriptions or secret-store lookups so the unsuppressed plugin scanner can verify the bundle without mistaking teaching examples for committed secrets. The 2026-09-01 upstream review found no changes under skills/security-review."
     },
     {
       "name": "playwright-best-practices",
@@ -60,10 +60,10 @@
       "upstreamCommit": "283d5cb",
       "upstreamVersion": "1.2",
       "license": "MIT (repo LICENSE.md copied into the skill dir)",
-      "patched": false,
+      "patched": true,
       "lastSync": "2026-09-01",
-      "references": ["59 files across core/, architecture/, advanced/, browser-apis/, debugging/, frameworks/, infrastructure-ci-cd/, testing-patterns/ — vendored verbatim; SKILL.md is an activity-routing index and references load on demand"],
-      "note": "The reliability layer for gate G3: flaky-test repair, isolation, waiting discipline, fixtures, CI. The `testing` skill remains the gate/data-tier authority and the vendor playwright-test-* agents remain the generation loop; this is technique doctrine both draw on. npm/npx commands inside are upstream prose for downstream test code, not this repo's script surface."
+      "references": ["59 files across core/, architecture/, advanced/, browser-apis/, debugging/, frameworks/, infrastructure-ci-cd/, testing-patterns/ — vendored with the fixture-only house patches recorded below; SKILL.md is an activity-routing index and references load on demand"],
+      "note": "The reliability layer for gate G3: flaky-test repair, isolation, waiting discipline, fixtures, CI. The `testing` skill remains the gate/data-tier authority and the vendor playwright-test-* agents remain the generation loop; this is technique doctrine both draw on. npm/npx commands inside are upstream prose for downstream test code, not this repo's script surface. House patches replace literal credential-shaped fixtures with generated values or environment lookups so the unsuppressed plugin scanner can inspect the whole skill."
     },
     {
       "name": "accessibility",

@@ -270,7 +270,7 @@ type SeedFixtures = {
 export const test = base.extend<SeedFixtures>({
   seedAccount: async ({ request }, use) => {
     const email = `account-${Date.now()}@test.io`;
-    const password = "SecurePass123!";
+    const password = `test-${Date.now()}-${Math.random()}`;
 
     const resp = await request.post("/api/accounts", {
       data: { name: "Test Account", email, password },

@@ -141,25 +141,13 @@ if os.environ.get('FLASK_ENV') == 'development':
 
 ### Patterns to Flag
 
-```python
-# VULNERABLE: Default/weak credentials
-username = 'admin'
-password = 'admin'
-password = 'password'
-password = '123456'
-password = 'changeme'
-password = 'default'
+Default or weak credentials are vulnerable. Flag credentials that reuse a role name,
+the word “password,” a short numeric sequence, an onboarding placeholder, or a product
+default. Database administrator defaults are included.
 
-# VULNERABLE: Well-known default credentials
-# Database defaults
-DB_PASSWORD = 'root'
-DB_PASSWORD = 'postgres'
-DB_PASSWORD = 'mysql'
-
-# Admin panel defaults
-ADMIN_PASSWORD = 'admin123'
-SECRET_KEY = 'development-secret-key'
-```
+Examples include a database credential that repeats the built-in database role, an
+admin-panel credential made from the role plus a short number, and a framework signing
+key that still carries its development placeholder.
 
 ### Configuration Files to Check
 
@@ -168,15 +156,12 @@ SECRET_KEY = 'development-secret-key'
 services:
   db:
     environment:
-      MYSQL_ROOT_PASSWORD: root  # VULNERABLE
-      POSTGRES_PASSWORD: postgres  # VULNERABLE
-
-# Kubernetes Secrets (base64 encoded defaults)
-apiVersion: v1
-kind: Secret
-data:
-  password: YWRtaW4=  # 'admin' base64 encoded - VULNERABLE
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 ```
+
+Flag a manifest that replaces either placeholder with a literal or stores an encoded
+default in a Kubernetes Secret.
 
 ---
 

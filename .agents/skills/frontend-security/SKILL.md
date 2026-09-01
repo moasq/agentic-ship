@@ -94,15 +94,10 @@ attempt that fails and one that runs. So `pnpm preflight` asserts the occurrence
 `next.config.ts` is still conditional, because the tempting way to silence a CSP warning
 is to delete the condition, and nothing downstream would ever notice.
 
-Verify it the way you would verify any header — read the response, not the source:
-
-```bash
-curl -sI http://localhost:3000/ | grep -i content-security-policy
-```
-
-Dev prints `script-src 'self' 'unsafe-inline' 'unsafe-eval'`; a production build
-(`pnpm build && pnpm start`) prints the same line without it. If those two ever agree,
-the guard is gone.
+Verify it by reading the rendered response through the downstream Playwright gate, not
+by inspecting the source. `pnpm test:e2e` compares development and production headers:
+development includes `'unsafe-eval'`, production does not. If those two ever agree, the
+guard is gone.
 
 ## 7. Pre-ship checklist
 

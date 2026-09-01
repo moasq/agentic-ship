@@ -204,7 +204,7 @@ export function generateEmail(prefix = 'user'): string {
 export function generateMember(overrides: Partial<Member> = {}): Member {
   return {
     email: generateEmail(),
-    password: 'SecurePass456!',
+    password: randomUUID(),
     name: 'Test Member',
     ...overrides,
   };

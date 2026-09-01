@@ -111,7 +111,7 @@ Codex, Cursor, Hermes, and OpenClaw without changing a user's global host settin
 
 The root `aw.yml` package includes five opt-in GitHub Agentic Workflows for issue
 clarification, CI diagnosis, documentation drift, upstream dependency review, and
-release-note drafting across Claude, Codex, and Copilot. Sources are Markdown;
+release-note drafting across Claude and Codex. Sources are Markdown;
 official strict compiler output is committed as `.lock.yml`. The agents have read-only
 repository access, deny general network access, and request any comment or review only
 through bounded safe outputs. See the

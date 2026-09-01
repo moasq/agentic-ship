@@ -199,12 +199,10 @@ os.system(f"cmd {user_input}")     # Command injection
 ```
 
 ### Always Flag (Secrets)
-```
-password = "hardcoded"
-api_key = "sk-..."
-AWS_SECRET_ACCESS_KEY = "..."
-private_key = "-----BEGIN"
-```
+
+Always flag a quoted literal assigned to a password, API-key, cloud-secret, or
+private-key field. Include fixture-looking values: a realistic credential in an
+example is still a copied credential pattern.
 
 ### Check Context First (MUST Investigate Before Flagging)
 ```

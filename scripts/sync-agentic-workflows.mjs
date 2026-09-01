@@ -23,11 +23,9 @@ if (preflightStatus === "missing_extension") {
   process.exit(1);
 }
 
-const result = spawnSync(
-  command,
-  ["aw", "compile", "--strict", "--validate", "--purge", "--no-check-update"],
-  { cwd: root, stdio: "inherit" },
-);
+const compileArgs = ["aw", "compile", "--strict", "--validate", "--purge", "--no-check-update"];
+if (process.argv.includes("--approve")) compileArgs.push("--approve");
+const result = spawnSync(command, compileArgs, { cwd: root, stdio: "inherit" });
 
 if (classifyGhAwCompilation(result) === "compile_failed") {
   console.error("Official gh-aw compilation failed. Repair the authored Markdown; never edit a .lock.yml file.");
