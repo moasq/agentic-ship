@@ -12,6 +12,15 @@
       { id: "agentic-ship", workspace: "<PROJECT_ROOT>" },
     ],
   },
+  mcp: {
+    servers: {
+      "agentic-ship": {
+        command: "node",
+        args: ["<PROJECT_ROOT>/scripts/mcp-server.mjs", "--allow-mutations"],
+        cwd: "<PROJECT_ROOT>",
+      },
+    },
+  },
   skills: {
     load: {
       extraDirs: ["<PROJECT_ROOT>/.agents/skills"],

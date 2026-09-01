@@ -9,6 +9,7 @@ import {
   classifyRefs,
   unreferencedScripts,
   reconcile,
+  inspectToolOnlyLock,
 } from "./check-commands-lib.mjs";
 
 describe("extractPnpmRefs", () => {
@@ -171,5 +172,27 @@ describe("reconcile", () => {
     expect(r.countMismatch).toBe(false);
     expect(r.missingFromLock).toEqual(["z"]);
     expect(r.missingFromDisk).toEqual(["b"]);
+  });
+});
+
+describe("tool-only lock contract", () => {
+  test("accepts downstream guidance without bundled product paths", () => {
+    expect(inspectToolOnlyLock({
+      repositoryMode: "tool-only",
+      backend: { status: "guidance-only" },
+      assets: { entries: [{ name: "README marks", file: ".github/assets/marks.svg" }] },
+    })).toEqual([]);
+  });
+
+  test("rejects stale implementation and product-asset claims", () => {
+    expect(inspectToolOnlyLock({
+      backend: { status: "implemented" },
+      assets: { entries: [{ name: "Font", file: "src/fonts/font.woff2", outputs: ["src/fonts/font.woff2"] }] },
+    })).toEqual([
+      "skills.lock.json must declare repositoryMode tool-only",
+      "skills.lock.json backend status must be guidance-only",
+      "skills.lock.json asset Font claims bundled product path src/fonts/font.woff2",
+      "skills.lock.json asset Font must mark downstream product outputs as not bundled",
+    ]);
   });
 });

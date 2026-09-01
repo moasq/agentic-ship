@@ -122,14 +122,36 @@ function objectSchema(properties = {}, required = []) {
 const idProperty = { type: "string", pattern: ITEM_ID };
 const actionProperty = { type: "string", pattern: SAFE_ID };
 const textProperty = { type: "string", minLength: 1, maxLength: 2048 };
-const outputSchema = objectSchema({ schemaVersion: { type: "integer" }, tool: { type: "string" }, data: {} }, ["schemaVersion", "tool", "data"]);
+const pageLimitProperty = { type: "integer", minimum: 1, maximum: 100 };
+const pageOffsetProperty = { type: "integer", minimum: 0, maximum: 100_000 };
+const openObjectSchema = { type: "object" };
+const workItemSchema = { type: "object" };
+const gateResultSchema = objectSchema(
+  {
+    status: { type: "string", enum: ["pass", "fail"] },
+    exitCode: { type: ["integer", "null"] },
+    output: { type: "array", maxItems: 12, items: { type: "string" } },
+  },
+  ["status", "exitCode", "output"],
+);
 
-function tool(name, description, inputSchema, readOnlyHint) {
+function outputSchema(name, dataSchema) {
+  return objectSchema(
+    {
+      schemaVersion: { type: "integer", enum: [1] },
+      tool: { type: "string", enum: [name] },
+      data: dataSchema,
+    },
+    ["schemaVersion", "tool", "data"],
+  );
+}
+
+function tool(name, description, inputSchema, dataSchema, readOnlyHint) {
   return {
     name,
     description,
     inputSchema,
-    outputSchema,
+    outputSchema: outputSchema(name, dataSchema),
     annotations: {
       title: name.replaceAll("_", " "),
       readOnlyHint,
@@ -141,25 +163,48 @@ function tool(name, description, inputSchema, readOnlyHint) {
 }
 
 export const MCP_TOOLS = [
-  tool("get_health", "Run and return the local workspace health gate.", objectSchema(), true),
-  tool("get_verification_results", "Run and return the offline definition-of-done gate.", objectSchema(), true),
-  tool("get_connections", "Read safe provider connection status and receipts.", objectSchema({ provider: { type: "string", pattern: ITEM_ID } }), true),
-  tool("get_work_status", "Read the durable work queue.", objectSchema(), true),
-  tool("get_next_work", "Read ready work for one validated role.", objectSchema({ role: { type: "string", enum: WORK_ROLES } }), true),
-  tool("get_ui_plan", "Read the canonical UI plan.", objectSchema(), true),
-  tool("get_ui_evidence", "Inspect canonical visual evidence and its acceptance state.", objectSchema(), true),
-  tool("start_work", "Start a ready work item.", objectSchema({ id: idProperty }, ["id"]), false),
-  tool("wait_work", "Wait on a safe human action.", objectSchema({ id: idProperty, actionId: actionProperty, reason: textProperty }, ["id", "actionId", "reason"]), false),
-  tool("resume_work", "Resume waiting work with evidence.", objectSchema({ id: idProperty, evidence: textProperty }, ["id", "evidence"]), false),
-  tool("block_work", "Block work with a safe reason.", objectSchema({ id: idProperty, reason: textProperty }, ["id", "reason"]), false),
-  tool("unblock_work", "Unblock work with evidence.", objectSchema({ id: idProperty, evidence: textProperty }, ["id", "evidence"]), false),
-  tool("complete_work", "Complete work with gate evidence.", objectSchema({ id: idProperty, evidence: { type: "array", minItems: 1, maxItems: 20, items: textProperty } }, ["id", "evidence"]), false),
+  tool("get_health", "Run and return the local workspace health gate.", objectSchema(), gateResultSchema, true),
+  tool("get_verification_results", "Run and return the offline definition-of-done gate.", objectSchema(), gateResultSchema, true),
+  tool(
+    "get_connections",
+    "Read safe provider connection status and receipts.",
+    objectSchema({ provider: { type: "string", pattern: ITEM_ID }, host: { type: "string", pattern: ITEM_ID } }),
+    openObjectSchema,
+    true,
+  ),
+  tool(
+    "get_work_status",
+    "Read a bounded page of the durable work queue.",
+    objectSchema({ limit: pageLimitProperty, offset: pageOffsetProperty }),
+    openObjectSchema,
+    true,
+  ),
+  tool(
+    "get_next_work",
+    "Read bounded ready work for one validated role.",
+    objectSchema({ role: { type: "string", enum: WORK_ROLES }, limit: pageLimitProperty }, ["role"]),
+    { type: "array", maxItems: 100, items: workItemSchema },
+    true,
+  ),
+  tool("get_ui_plan", "Read the canonical UI plan.", objectSchema(), openObjectSchema, true),
+  tool("get_ui_evidence", "Inspect canonical visual evidence and its acceptance state.", objectSchema(), openObjectSchema, true),
+  tool("start_work", "Start a ready work item.", objectSchema({ id: idProperty }, ["id"]), workItemSchema, false),
+  tool("wait_work", "Wait on a safe human action.", objectSchema({ id: idProperty, actionId: actionProperty, reason: textProperty }, ["id", "actionId", "reason"]), workItemSchema, false),
+  tool("resume_work", "Resume waiting work with evidence.", objectSchema({ id: idProperty, evidence: textProperty }, ["id", "evidence"]), workItemSchema, false),
+  tool("block_work", "Block work with a safe reason.", objectSchema({ id: idProperty, reason: textProperty }, ["id", "reason"]), workItemSchema, false),
+  tool("unblock_work", "Unblock work with evidence.", objectSchema({ id: idProperty, evidence: textProperty }, ["id", "evidence"]), workItemSchema, false),
+  tool("complete_work", "Complete work with gate evidence.", objectSchema({ id: idProperty, evidence: { type: "array", minItems: 1, maxItems: 20, items: textProperty } }, ["id", "evidence"]), workItemSchema, false),
 ];
 
 const toolByName = new Map(MCP_TOOLS.map((definition) => [definition.name, definition]));
 
 function matchesSchema(value, schema, path = "arguments") {
-  if (schema.type === "object") {
+  if (schema.enum && !schema.enum.includes(value)) throw new Error(`${path} must be one of: ${schema.enum.join(", ")}`);
+  const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+  const actualType = value === null ? "null" : Array.isArray(value) ? "array" : Number.isInteger(value) ? "integer" : typeof value;
+  if (schema.type && !types.includes(actualType)) throw new Error(`${path} must be ${types.join(" or ")}`);
+
+  if (actualType === "object") {
     if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${path} must be an object`);
     for (const key of schema.required ?? []) if (!(key in value)) throw new Error(`${path}.${key} is required`);
     if (schema.additionalProperties === false) {
@@ -168,17 +213,17 @@ function matchesSchema(value, schema, path = "arguments") {
     for (const [key, child] of Object.entries(schema.properties ?? {})) {
       if (key in value) matchesSchema(value[key], child, `${path}.${key}`);
     }
-  } else if (schema.type === "string") {
-    if (typeof value !== "string") throw new Error(`${path} must be a string`);
+  } else if (actualType === "string") {
     if (schema.minLength && value.trim().length < schema.minLength) throw new Error(`${path} must not be empty`);
     if (schema.maxLength && value.length > schema.maxLength) throw new Error(`${path} is too long`);
     if (schema.pattern && !new RegExp(schema.pattern).test(value)) throw new Error(`${path} has an invalid format`);
-    if (schema.enum && !schema.enum.includes(value)) throw new Error(`${path} must be one of: ${schema.enum.join(", ")}`);
-  } else if (schema.type === "array") {
-    if (!Array.isArray(value)) throw new Error(`${path} must be an array`);
+  } else if (actualType === "integer") {
+    if (schema.minimum !== undefined && value < schema.minimum) throw new Error(`${path} is below the minimum`);
+    if (schema.maximum !== undefined && value > schema.maximum) throw new Error(`${path} is above the maximum`);
+  } else if (actualType === "array") {
     if (schema.minItems && value.length < schema.minItems) throw new Error(`${path} needs at least one item`);
     if (schema.maxItems && value.length > schema.maxItems) throw new Error(`${path} has too many items`);
-    value.forEach((item, index) => matchesSchema(item, schema.items, `${path}[${index}]`));
+    if (schema.items) value.forEach((item, index) => matchesSchema(item, schema.items, `${path}[${index}]`));
   }
 }
 
@@ -207,7 +252,11 @@ function gateResult(result) {
     .split(/\r?\n/)
     .filter(Boolean)
     .slice(-12);
-  return { status: result.status === 0 && !result.error ? "pass" : "fail", exitCode: result.status, output };
+  return {
+    status: result.status === 0 && !result.error ? "pass" : "fail",
+    exitCode: Number.isInteger(result.status) ? result.status : null,
+    output,
+  };
 }
 
 export function createAgenticShipMcpServer(projectRoot, options = {}) {
@@ -222,13 +271,30 @@ export function createAgenticShipMcpServer(projectRoot, options = {}) {
     get_verification_results: () => gateResult(runScript("verify.mjs", ["--quiet"])),
     get_connections: (args) => {
       const status = (options.connectionService ?? createConnectionService({ projectRoot: root })).status();
-      if (!args.provider) return status;
-      const provider = status.providers.find((candidate) => candidate.id === args.provider);
-      if (!provider) throw new Error(`unknown provider: ${args.provider}`);
-      return { ...status, providers: [provider], actions: status.actions.filter((action) => action.provider === args.provider) };
+      if (args.host && !(status.supportedHosts ?? []).includes(args.host)) throw new Error(`unknown host: ${args.host}`);
+      let providers = status.providers;
+      if (args.provider) {
+        const provider = providers.find((candidate) => candidate.id === args.provider);
+        if (!provider) throw new Error(`unknown provider: ${args.provider}`);
+        providers = [provider];
+      }
+      const actions = status.actions.filter(
+        (action) => (!args.provider || action.provider === args.provider) && (!args.host || action.host === args.host),
+      );
+      return args.provider || args.host ? { ...status, providers, actions } : status;
     },
-    get_work_status: () => store.load(),
-    get_next_work: (args) => store.next(args.role),
+    get_work_status: (args) => {
+      const state = store.load();
+      const offset = args.offset ?? 0;
+      const limit = args.limit ?? 50;
+      const items = state.items ?? [];
+      return {
+        ...state,
+        items: items.slice(offset, offset + limit),
+        page: { offset, limit, total: items.length, hasMore: offset + limit < items.length },
+      };
+    },
+    get_next_work: (args) => store.next(args.role).slice(0, args.limit ?? 50),
     get_ui_plan: () => readJson(root, UI_PLAN_FILE) ?? { status: "not_configured" },
     get_ui_evidence: () => ({ inspection: inspectUiEvidence(root), manifest: readJson(root, UI_REVIEW_FILE) }),
     start_work: (args) => store.transition(args.id, "start"),
@@ -279,6 +345,7 @@ export function createAgenticShipMcpServer(projectRoot, options = {}) {
       }
       const data = sanitize(await handlers[definition.name](args));
       const envelope = { schemaVersion: 1, tool: definition.name, data };
+      matchesSchema(envelope, definition.outputSchema, "result");
       return {
         jsonrpc: "2.0",
         id: request.id,

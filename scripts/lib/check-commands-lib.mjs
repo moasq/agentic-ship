@@ -180,3 +180,20 @@ export function reconcile(lockNames, diskNames, { lockLabel = "lock", diskLabel 
     diskLabel,
   };
 }
+
+export function inspectToolOnlyLock(lock = {}) {
+  const issues = [];
+  if (lock.repositoryMode !== "tool-only") issues.push("skills.lock.json must declare repositoryMode tool-only");
+  if (lock.backend?.status !== "guidance-only") issues.push("skills.lock.json backend status must be guidance-only");
+  for (const asset of lock.assets?.entries ?? []) {
+    for (const field of ["file", "licenseFile"]) {
+      if (typeof asset[field] === "string" && asset[field].startsWith("src/")) {
+        issues.push(`skills.lock.json asset ${asset.name} claims bundled product path ${asset[field]}`);
+      }
+    }
+    if ((asset.outputs ?? []).some((output) => output.startsWith("src/")) && asset.status !== "not bundled in this tool repository") {
+      issues.push(`skills.lock.json asset ${asset.name} must mark downstream product outputs as not bundled`);
+    }
+  }
+  return issues;
+}

@@ -1,5 +1,5 @@
 manifest-version: "1"
-min-version: v0.86.2
+min-version: v0.87.10
 name: Agentic Ship starter workflows
 description: Five opt-in, read-only Agentic Workflows for issue, CI, documentation, dependency, and release maintenance.
 license: MIT

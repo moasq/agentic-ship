@@ -59,8 +59,10 @@ test.describe("Products API", () => {
   let token: string;
 
   test.beforeAll(async ({ request }) => {
+    const managerPassword = process.env.E2E_MANAGER_PASSWORD;
+    if (!managerPassword) throw new Error("E2E_MANAGER_PASSWORD is required");
     const res = await request.post("/api/auth/token", {
-      data: { email: "manager@shop.io", password: "mgr-secret" },
+      data: { email: "manager@shop.io", password: managerPassword },
     });
     token = (await res.json()).accessToken;
   });
@@ -101,8 +103,10 @@ test.describe("Products API", () => {
   });
 
   test("staff role cannot delete products", async ({ request }) => {
+    const staffPassword = process.env.E2E_STAFF_PASSWORD;
+    if (!staffPassword) throw new Error("E2E_STAFF_PASSWORD is required");
     const staffLogin = await request.post("/api/auth/token", {
-      data: { email: "staff@shop.io", password: "staff-pass" },
+      data: { email: "staff@shop.io", password: staffPassword },
     });
     const staffToken = (await staffLogin.json()).accessToken;
 

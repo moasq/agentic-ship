@@ -27,25 +27,25 @@
 export function inspectSocialAuthCoherence(envNames) {
   const names = new Set(envNames);
   const pairs = [
-    { provider: "Google", id: "GOOGLE_CLIENT_ID", secret: "GOOGLE_CLIENT_SECRET" },
-    { provider: "GitHub", id: "GITHUB_CLIENT_ID", secret: "GITHUB_CLIENT_SECRET" },
+    { provider: "Google", id: "GOOGLE_CLIENT_ID", secretName: "GOOGLE_CLIENT_SECRET" },
+    { provider: "GitHub", id: "GITHUB_CLIENT_ID", secretName: "GITHUB_CLIENT_SECRET" },
   ];
 
-  const halves = pairs.filter((pair) => names.has(pair.id) !== names.has(pair.secret));
+  const halves = pairs.filter((pair) => names.has(pair.id) !== names.has(pair.secretName));
   if (halves.length > 0) {
     return {
       status: "WARN",
       detail: halves
         .map((pair) => {
-          const present = names.has(pair.id) ? pair.id : pair.secret;
-          const missing = names.has(pair.id) ? pair.secret : pair.id;
+          const present = names.has(pair.id) ? pair.id : pair.secretName;
+          const missing = names.has(pair.id) ? pair.secretName : pair.id;
           return `${pair.provider} has ${present} but not ${missing} — the button stays hidden, so sign-in still works, but the provider is configured and unusable. Set the other half with \`pnpm secret:set ${missing}\`, or remove the first.`;
         })
         .join(" "),
     };
   }
 
-  const enabled = pairs.filter((pair) => names.has(pair.id) && names.has(pair.secret));
+  const enabled = pairs.filter((pair) => names.has(pair.id) && names.has(pair.secretName));
   return {
     status: "PASS",
     detail: enabled.length ? `social sign-in: ${enabled.map((p) => p.provider).join(", ")}` : "email and password only",
@@ -53,7 +53,7 @@ export function inspectSocialAuthCoherence(envNames) {
 }
 
 export const EMAIL_ENV = {
-  apiKey: "RESEND_API_KEY",
+  apiKeyName: "RESEND_API_KEY",
   webhook: "RESEND_WEBHOOK_SECRET",
   from: "EMAIL_FROM",
 };
@@ -71,7 +71,7 @@ export function inspectEmailCoherence(envNames, config) {
   const anyResend = [...names].some((name) => name.startsWith("RESEND_"));
   const { testMode, fromDomainIsResendDefault = false } = config;
 
-  if (!has(EMAIL_ENV.apiKey)) {
+  if (!has(EMAIL_ENV.apiKeyName)) {
     if (!anyResend) {
       return {
         status: "WARN",

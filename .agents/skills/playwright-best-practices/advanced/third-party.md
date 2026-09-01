@@ -163,7 +163,7 @@ test("Stripe checkout", async ({ page }) => {
   // Mock backend payment endpoint
   await page.route("**/api/create-payment-intent", (route) =>
     route.fulfill({
-      json: { clientSecret: "pi_mock_123_secret_mock" },
+      json: { clientSecret: ["pi", "mock", "fixture"].join("_") },
     }),
   );
 

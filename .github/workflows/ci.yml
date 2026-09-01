@@ -85,6 +85,6 @@ jobs:
       - name: Install the pinned official compiler
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh extension install github/gh-aw --pin v0.86.2
+        run: gh extension install github/gh-aw --pin v0.87.10
       - run: pnpm check:aw
       - run: pnpm test:aw

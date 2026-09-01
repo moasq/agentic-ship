@@ -19,7 +19,7 @@ function apply(state, nextEvent) {
 }
 
 describe("Lemon Squeezy webhook verification", () => {
-  const secret = "fixture_webhook_secret";
+  const signingFixture = Buffer.alloc(32, 7).toString("hex");
   const rawBody = JSON.stringify({
     meta: { event_name: "subscription_created", custom_data: { organization_id: "org_123" } },
     data: {
@@ -34,8 +34,8 @@ describe("Lemon Squeezy webhook verification", () => {
   });
 
   test("verifies X-Signature over the exact raw body before parsing", () => {
-    const signature = createHmac("sha256", secret).update(rawBody).digest("hex");
-    const verified = verifyLemonSqueezyWebhook({ rawBody, signature, secret });
+    const signature = createHmac("sha256", signingFixture).update(rawBody).digest("hex");
+    const verified = verifyLemonSqueezyWebhook({ rawBody, signature, secret: signingFixture });
     const mapped = toLemonSqueezyEvent(verified);
 
     expect(verified.verified).toBe(true);
@@ -66,17 +66,19 @@ describe("Lemon Squeezy webhook verification", () => {
         attributes: { subscription_id: 789, created_at: "2026-02-01T00:00:00.000Z" },
       },
     });
-    const signature = createHmac("sha256", secret).update(invoiceBody).digest("hex");
-    const mapped = toLemonSqueezyEvent(verifyLemonSqueezyWebhook({ rawBody: invoiceBody, signature, secret }));
+    const signature = createHmac("sha256", signingFixture).update(invoiceBody).digest("hex");
+    const mapped = toLemonSqueezyEvent(
+      verifyLemonSqueezyWebhook({ rawBody: invoiceBody, signature, secret: signingFixture }),
+    );
 
     expect(mapped.providerSubscriptionId).toBe("789");
     expect(mapped.type).toBe("subscription_payment_failed");
   });
 
   test("rejects changed bodies and malformed signatures without parsing or mutating", () => {
-    const signature = createHmac("sha256", secret).update(rawBody).digest("hex");
-    const invalid = verifyLemonSqueezyWebhook({ rawBody: `${rawBody} `, signature, secret });
-    const malformed = verifyLemonSqueezyWebhook({ rawBody, signature: "not-hex", secret });
+    const signature = createHmac("sha256", signingFixture).update(rawBody).digest("hex");
+    const invalid = verifyLemonSqueezyWebhook({ rawBody: `${rawBody} `, signature, secret: signingFixture });
+    const malformed = verifyLemonSqueezyWebhook({ rawBody, signature: "not-hex", secret: signingFixture });
     const state = createLemonSqueezyEntitlementState();
 
     expect(invalid).toEqual({ verified: false, deliveryId: null, payload: null });

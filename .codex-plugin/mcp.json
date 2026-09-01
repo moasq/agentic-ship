@@ -3,7 +3,7 @@
     "command": "npx",
     "args": [
       "-y",
-      "shadcn@4.16.1",
+      "shadcn@4.19.1",
       "mcp"
     ]
   },
@@ -28,14 +28,14 @@
     "command": "npx",
     "args": [
       "-y",
-      "@upstash/context7-mcp@3.2.5"
+      "@upstash/context7-mcp@4.0.4"
     ]
   },
   "convex": {
     "command": "npx",
     "args": [
       "-y",
-      "convex@1.43.0",
+      "convex@1.45.0",
       "mcp",
       "start"
     ]

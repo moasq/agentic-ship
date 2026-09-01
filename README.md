@@ -22,6 +22,9 @@ Ship is that setup as a toolkit you own and drop into your own workspace, driven
 coding agent you already pay for. No app is bundled to delete — the kit **directs and
 verifies** the one your agent builds.
 
+Agentic Ship is listed in the
+[Development & Workflow section of Awesome AI Plugins](https://github.com/hashgraph-online/awesome-ai-plugins#development--workflow).
+
 ## Install
 
 Run it from the project directory you want to adopt it in:
@@ -96,15 +99,19 @@ for the pinned workflow example and update procedure.
 The project-scoped `agentic-ship` server exposes real health and verification results,
 safe connection status, the durable queue, and UI plan and evidence state. Queue
 mutations use the same locked transition service as `pnpm agent:work`; they are enabled
-only when the server starts with `--allow-mutations`. See the
+only when the server starts with `--allow-mutations`. Read tools validate their output
+against tool-specific schemas. Queue reads are bounded and return page metadata, and
+connection filters accept only known provider and host IDs. See the
 [project MCP guide](.agents/skills/agent-compatibility/references/agentic-ship-mcp.md)
-for the tool list, read-only mode, verification, and removal.
+for the tool list, read-only mode, verification, and removal. Claude reads the
+canonical declaration directly; the adapter sync carries the same local server into
+Codex, Cursor, Hermes, and OpenClaw without changing a user's global host settings.
 
 ### Add safe repository maintenance workflows
 
 The root `aw.yml` package includes five opt-in GitHub Agentic Workflows for issue
 clarification, CI diagnosis, documentation drift, upstream dependency review, and
-release-note drafting across Claude, Codex, and Copilot. Sources are Markdown;
+release-note drafting across Claude and Codex. Sources are Markdown;
 official strict compiler output is committed as `.lock.yml`. The agents have read-only
 repository access, deny general network access, and request any comment or review only
 through bounded safe outputs. See the

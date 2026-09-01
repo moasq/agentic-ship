@@ -82,7 +82,7 @@ describe("host-neutral work state", () => {
     const store = makeStore({ lockAttempts: 1 });
     const lockPath = writeLock(
       store,
-      JSON.stringify({ schemaVersion: 1, token: "live-owner", pid: process.pid, createdAt: Date.now() }),
+      JSON.stringify({ schemaVersion: 1, token: String(process.pid), pid: process.pid, createdAt: Date.now() }),
     );
 
     expect(() => store.init({ name: "Example", goal: "Initialize once" })).toThrow(WorkStateBusyError);
@@ -115,7 +115,7 @@ describe("host-neutral work state", () => {
     store.init({ name: "Example", goal: "Recover after a crash" });
     writeLock(
       store,
-      JSON.stringify({ schemaVersion: 1, token: "dead-owner", pid: 424242, createdAt: Date.now() }),
+      JSON.stringify({ schemaVersion: 1, token: String(424242), pid: 424242, createdAt: Date.now() }),
     );
 
     const item = store.add({
@@ -154,7 +154,7 @@ describe("host-neutral work state", () => {
     store.init({ name: "Example", goal: "Preserve a live writer" });
     writeLock(
       store,
-      JSON.stringify({ schemaVersion: 1, token: "slow-live-owner", pid: process.pid, createdAt: Date.now() - 60_000 }),
+      JSON.stringify({ schemaVersion: 1, token: String(process.pid), pid: process.pid, createdAt: Date.now() - 60_000 }),
       new Date(Date.now() - 60_000),
     );
 

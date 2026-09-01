@@ -238,8 +238,8 @@ test("password reset token is single-use", async ({ page, request }) => {
   await page.getByLabel("Email").fill("user@example.com");
   await page.getByRole("button", { name: "Reset" }).click();
 
-  // Get token (in test env, might be exposed or use email mock)
-  const resetToken = "mock-reset-token";
+  // Read the one-time value from the isolated test mailbox.
+  const resetToken = await readResetTokenFromTestMailbox("user@example.com");
 
   // Use token first time
   await page.goto(`/reset-password?token=${resetToken}`);

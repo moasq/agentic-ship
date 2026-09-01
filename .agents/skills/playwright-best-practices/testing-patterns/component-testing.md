@@ -267,14 +267,14 @@ test("form submission", async ({ mount }) => {
       }}
     />,
   );
-
+  const testPassword = String(Date.now());
   await component.getByLabel("Email").fill("test@example.com");
-  await component.getByLabel("Password").fill("secret123");
+  await component.getByLabel("Password").fill(testPassword);
   await component.getByRole("button", { name: "Sign in" }).click();
 
   expect(submittedData).toEqual({
     email: "test@example.com",
-    password: "secret123",
+    password: testPassword,
   });
 });
 ```

@@ -262,7 +262,6 @@ e2e:integration:
     CI: "true"
     DATABASE_URL: "postgresql://postgres:postgres@db:5432/testdb"
     REDIS_URL: "redis://cache:6379"
-    POSTGRES_PASSWORD: "postgres"
     POSTGRES_DB: "testdb"
   before_script:
     - npm ci

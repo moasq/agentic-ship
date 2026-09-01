@@ -8,6 +8,7 @@ export const AGENTIC_WORKFLOW_IDS = [
   "upstream-review",
   "release-notes",
 ];
+export const AGENTIC_WORKFLOW_ENGINES = ["claude", "codex"];
 
 function read(root, path) {
   return readFileSync(join(root, path), "utf8");
@@ -56,13 +57,18 @@ export function inspectAgenticWorkflowBundle(root) {
     } catch {
       errors.push(`${id} lock metadata is invalid`);
     }
-    if (metadata?.strict !== true || metadata?.compiler_version !== "v0.86.2") {
-      errors.push(`${id} must be strict output from gh-aw v0.86.2`);
+    if (metadata?.strict !== true || metadata?.compiler_version !== "v0.87.10") {
+      errors.push(`${id} must be strict output from gh-aw v0.87.10`);
     }
     for (const match of lock.matchAll(/^\s*uses:\s*([^\s]+)@([^\s#]+).*$/gm)) {
       if (!/^[a-f0-9]{40}$/.test(match[2])) errors.push(`${id} has a mutable action reference: ${match[1]}@${match[2]}`);
     }
   }
-  for (const engine of ["claude", "codex", "copilot"]) if (!engines.has(engine)) errors.push(`starter bundle does not exercise ${engine}`);
+  for (const engine of AGENTIC_WORKFLOW_ENGINES) {
+    if (!engines.has(engine)) errors.push(`starter bundle does not exercise ${engine}`);
+  }
+  for (const engine of engines) {
+    if (!AGENTIC_WORKFLOW_ENGINES.includes(engine)) errors.push(`starter bundle uses undeclared engine ${engine}`);
+  }
   return errors;
 }

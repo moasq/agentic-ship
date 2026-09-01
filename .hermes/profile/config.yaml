@@ -2,6 +2,12 @@
 terminal:
   backend: local
   cwd: "${PROJECT_ROOT}"
+mcp_servers:
+  agentic-ship:
+    command: "node"
+    args:
+      - "${PROJECT_ROOT}/scripts/mcp-server.mjs"
+      - "--allow-mutations"
 skills:
   external_dirs:
     - "${PROJECT_ROOT}/.agents/skills"

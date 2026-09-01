@@ -8,8 +8,7 @@ if: ${{ vars.AGENTIC_WORKFLOWS_ENABLED == 'true' && github.event.pull_request.dr
 permissions:
   contents: read
   pull-requests: read
-  copilot-requests: write
-engine: copilot
+engine: claude
 network: {}
 tools:
   github:
