@@ -41,7 +41,7 @@
       "upstream": "original",
       "patched": false,
       "lastSync": "2026-08-11",
-      "references": ["better-auth-wiring.md", "better-auth-hardening.md", "deploy-netlify.md", "email-resend.md", "example-domain.md", "stripe-billing.md"],
+      "references": ["better-auth-wiring.md", "better-auth-hardening.md", "deploy-netlify.md", "email-resend.md", "example-domain.md", "observability-sentry.md", "stripe-billing.md"],
       "note": "Deliberately narrow: covers Convex INSIDE Agentic Ship only. Convex-the-product is taught by the official convex plugin's skills, which are not vendored here — they update themselves. better-auth-hardening.md is house-written (facts verified against Better Auth docs for the pinned 1.6.26) because better-auth/skills carries no license and cannot be vendored — see skillRegistry."
     },
     {

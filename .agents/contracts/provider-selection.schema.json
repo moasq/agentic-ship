@@ -13,6 +13,9 @@
     "tracking": {
       "oneOf": [{ "$ref": "#/$defs/providerId" }, { "type": "null" }],
       "default": "linear"
+    },
+    "observability": {
+      "oneOf": [{ "$ref": "#/$defs/providerId" }, { "type": "null" }]
     }
   },
   "$defs": {

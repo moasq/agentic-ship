@@ -1032,6 +1032,67 @@
           "text": "Delete the /lemonsqueezy/webhook endpoint under Lemon Squeezy Settings → Webhooks."
         }
       ]
+    },
+    "sentry": {
+      "displayName": "Sentry",
+      "capability": "observability",
+      "defaultForCapability": true,
+      "docsUrl": "https://docs.sentry.io/",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "projectProvisioning": {
+        "setupUrl": "https://sentry.io/settings/projects/",
+        "instructions": [
+          "Create or select your Sentry project in the Sentry dashboard.",
+          "Copy the public Client Keys (DSN) into NEXT_PUBLIC_SENTRY_DSN in `.env.local` — public DSNs are safe for client bundles and contain no secret tokens.",
+          "Store sensitive upload credentials like SENTRY_AUTH_TOKEN in your deployment provider or CI secret store with `pnpm secret:set`, never in git or `.env.local`.",
+          "Verify that the Sentry data scrubber and beforeSend filter redact PII, tokens, headers, and prompts before errors leave the environment."
+        ],
+        "verification": {
+          "policy": "machine",
+          "probes": [
+            {
+              "id": "public-dsn",
+              "label": "Public Sentry DSN exists",
+              "type": "env_file_key",
+              "file": ".env.local",
+              "key": "NEXT_PUBLIC_SENTRY_DSN",
+              "allowPrefixes": [
+                "https://"
+              ],
+              "required": true
+            },
+            {
+              "id": "observability-seam",
+              "label": "Sentry observability seam exists",
+              "type": "any_file_exists",
+              "paths": [
+                "src/lib/observability.ts",
+                "sentry.client.config.ts",
+                "sentry.client.config.js"
+              ],
+              "required": true
+            }
+          ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://sentry.io/settings/projects/",
+              "opensBrowser": true,
+              "why": "Open Sentry project settings to copy the public Client Keys (DSN) — safe for client-side error reporting."
+            }
+          ]
+        }
+      },
+      "revocation": [
+        {
+          "text": "Revoke or rotate SENTRY_AUTH_TOKEN in Sentry under Settings → Developer Settings → Auth Tokens."
+        },
+        {
+          "text": "Disable or remove the project DSN in Sentry under Project Settings → Client Keys (DSN) to halt error ingestion."
+        }
+      ]
     }
   }
 }
