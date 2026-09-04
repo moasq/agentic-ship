@@ -78,11 +78,12 @@ test("catalog exposes every supported provider and host", (t) => {
   assert.equal(result.type, "connection_status");
   assert.deepEqual(
     result.providers.map((provider) => provider.id),
-    ["convex", "stripe", "github", "linear", "resend", "posthog", "netlify", "vercel", "cloudflare", "polar", "lemonsqueezy"],
+    ["convex", "stripe", "github", "linear", "resend", "posthog", "netlify", "vercel", "cloudflare", "polar", "lemonsqueezy", "postmark"],
   );
   assert.deepEqual(result.supportedHosts, ["claude", "codex", "cursor", "hermes", "openclaw"]);
   assert.equal(result.providers.find((provider) => provider.id === "polar").agentToolConfiguration, null);
   assert.equal(result.providers.find((provider) => provider.id === "lemonsqueezy").agentToolConfiguration, null);
+  assert.equal(result.providers.find((provider) => provider.id === "postmark").agentToolConfiguration, null);
 });
 
 test("Vercel uses a read-only CLI auth probe and explicit project choice", (t) => {
@@ -229,6 +230,27 @@ test("Lemon Squeezy begins with project provisioning and verifies its real seams
 
   write(projectRoot, "convex/billing.ts", 'import "@lemonsqueezy/lemonsqueezy.js";');
   write(projectRoot, "convex/http.ts", 'const route = "/lemonsqueezy/webhook";');
+  const ready = service.resume(started.action.actionId);
+  assert.equal(ready.type, "connection_ready");
+  assert.equal(ready.verification.agentTool.required, false);
+  assert.equal(ready.verification.agentTool.basis, "not_required");
+});
+
+test("Postmark begins with project provisioning and verifies its real seams", (t) => {
+  const { service, projectRoot } = fixture(t);
+  const started = service.begin("postmark", "codex");
+
+  assert.equal(started.type, "input_required");
+  assert.equal(started.action.phase, "project_provisioning");
+  assert.equal(started.inputRequired.kind, "project_provisioning");
+  assert.doesNotMatch(JSON.stringify(started), /Postmark MCP|remote_oauth|read-only provider call/);
+
+  const missing = service.resume(started.action.actionId);
+  assert.equal(missing.type, "input_required");
+  assert.equal(missing.action.state, "failed_retryable");
+
+  write(projectRoot, "convex/email.ts", 'const provider = "postmark";\nconst config = { testMode: true };');
+  write(projectRoot, "convex/http.ts", 'const route = "/postmark/webhook";');
   const ready = service.resume(started.action.actionId);
   assert.equal(ready.type, "connection_ready");
   assert.equal(ready.verification.agentTool.required, false);
@@ -622,6 +644,6 @@ test("CLI status emits machine-readable JSON in an isolated state directory", (t
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.equal(output.type, "connection_status");
-  assert.equal(output.providers.length, 11);
+  assert.equal(output.providers.length, 12);
   assert.deepEqual(readdirSync(temporaryRoot), []);
 });
