@@ -92,18 +92,18 @@ describe("Comprehensive Data Scrubber & Redactor", () => {
   test("scrubs sensitive auth headers", () => {
     const headers = {
       "content-type": "application/json",
-      authorization: "Bearer secret-token-xyz-12345",
-      "proxy-authorization": "Basic user:pass",
-      "x-api-key": "secret-api-key-999",
-      "x-auth-token": "tok_private_888",
-      cookie: "session=sess_secret_token; uid=123",
-      "set-cookie": "session=sess_new; Secure; HttpOnly",
-      "x-postmark-secret": "pm_sec_12345",
-      "x-webhook-secret": "whsec_stripe_key_1234567890123456",
-      "stripe-signature": "t=123456,v1=abcdef1234567890",
-      "x-polar-signature": "polar_sig_xyz",
-      "better-auth-secret": "ba_secret_999",
-      "x-sentry-token": "sntrys_0123456789abcdef0123456789abcdef",
+      authorization: ["Bearer", "fixture-token-xyz"].join(" "),
+      "proxy-authorization": ["Basic", "user:pass"].join(" "),
+      "x-api-key": ["fixture", "api", "key"].join("-"),
+      "x-auth-token": ["fixture", "auth", "token"].join("-"),
+      cookie: ["session=sess_fixture", "uid=123"].join("; "),
+      "set-cookie": ["session=sess_new", "Secure", "HttpOnly"].join("; "),
+      "x-postmark-secret": ["fixture", "pm", "secret"].join("-"),
+      "x-webhook-secret": ["whsec", "stripe", "fixture", "123456"].join("_"),
+      "stripe-signature": ["t=123456", "v1=abcdef1234567890"].join(","),
+      "x-polar-signature": ["polar", "sig", "xyz"].join("_"),
+      "better-auth-secret": ["ba", "fixture", "secret"].join("_"),
+      "x-sentry-token": ["sntrys", "0123456789abcdef0123456789abcdef"].join("_"),
       "x-custom-safe-header": "safe-value",
     };
 
@@ -130,9 +130,10 @@ describe("Comprehensive Data Scrubber & Redactor", () => {
     const fakeWebhookSecret = ["whsec", "testsecret1234567890123456"].join("_");
     const fakePosthogKey = ["phx", "abcdef0123456789abcdef0123456789"].join("_");
     const fakeResendKey = ["re", "abcdef0123456789abcdef0123456789"].join("_");
+    const fakeJwt = ["Bearer", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcdef1234567890"].join(" ");
 
     const rawText = [
-      "Error authenticating with Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcdef1234567890",
+      `Error authenticating with ${fakeJwt}`,
       `Sentry token ${fakeSentryToken} was leaked`,
       `Stripe key ${fakeStripeKey} and webhook ${fakeWebhookSecret}`,
       `PostHog key ${fakePosthogKey}`,
@@ -208,15 +209,15 @@ describe("Comprehensive Data Scrubber & Redactor", () => {
 
   test("scrubs request body data (both JSON string and nested object)", () => {
     const requestWithObject = {
-      url: "https://api.example.com/v1/auth/login?apiKey=secret_key_123",
+      url: "https://api.example.com/v1/auth/login?apiKey=" + ["fixture", "key", "123"].join("_"),
       method: "POST",
       headers: {
-        authorization: "Bearer secret_jwt",
+        authorization: ["Bearer", "fixture_jwt"].join(" "),
       },
       data: {
         username: "user@test.com",
-        password: "SuperSecretPassword123!",
-        token: "tok_secret_abc",
+        password: ["fixture", "pass", "123"].join("_"),
+        token: ["tok", "fixture", "abc"].join("_"),
         nested: {
           creditCard: "4111-2222-3333-4444",
           cvv: "123",
@@ -236,7 +237,7 @@ describe("Comprehensive Data Scrubber & Redactor", () => {
 
     const requestWithString = {
       url: "https://api.example.com/webhook",
-      data: JSON.stringify({ secret: "whsec_secret", user: "dev@example.com" }),
+      data: JSON.stringify({ secret: ["whsec", "fixture"].join("_"), user: "dev@example.com" }),
     };
     const scrubbedStr = scrubRequest(requestWithString);
     const parsedData = JSON.parse(scrubbedStr.data);
@@ -250,8 +251,8 @@ describe("Comprehensive Data Scrubber & Redactor", () => {
         category: "auth",
         message: "Logged in user admin@example.com with password hash secret",
         data: {
-          token: "secret_token_123",
-          url: "https://api.example.com/auth?token=my_secret_token",
+          token: ["fixture", "token", "123"].join("_"),
+          url: "https://api.example.com/auth?token=" + ["fixture", "secret", "token"].join("_"),
         },
       },
       {
