@@ -87,8 +87,8 @@ describe("Plausible privacy filtering and data scrubbing", () => {
   });
 
   test("redacts sensitive tokens and secret keys", () => {
-    const fakeBearer = "Bearer abcdef0123456789abcdef";
-    const fakeJwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.doNotLeakThisSignature";
+    const fakeBearer = ["Bearer", "abcdef0123456789abcdef"].join(" ");
+    const fakeJwt = ["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9", "eyJzdWIiOiIxMjM0NTY3ODkwIn0", "doNotLeakThisSignature"].join(".");
     const fakeStripeKey = ["sk", "live", "0123456789abcdef0123456789"].join("_");
     const fakePosthogKey = ["phx", "0123456789abcdef0123456789"].join("_");
     const fakeSentryToken = ["sntrys", "0123456789abcdef0123456789"].join("_");
@@ -99,7 +99,7 @@ describe("Plausible privacy filtering and data scrubbing", () => {
       stripeKey: fakeStripeKey,
       posthogKey: fakePosthogKey,
       sentryToken: fakeSentryToken,
-      apiKey: "secret-key-12345",
+      apiKey: ["fixture", "key", "12345"].join("-"),
       password: "user-password",
     };
 

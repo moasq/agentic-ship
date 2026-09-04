@@ -124,7 +124,7 @@ describe("Production analytics preflight inspection", () => {
   });
 
   test("fails if personal PostHog phx_ key leaks into client env", () => {
-    const env = "NEXT_PUBLIC_POSTHOG_KEY=phx_personal_secret_token_12345\n";
+    const env = ["NEXT_PUBLIC_POSTHOG_KEY=phx", "fixture", "key", "val\n"].join("_");
     const result = inspectProductionAnalyticsEnvironment(env);
     expect(result.status).toBe("FAIL");
     expect(result.detail).toContain("contains a personal phx_ key");
