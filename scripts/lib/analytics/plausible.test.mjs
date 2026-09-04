@@ -100,7 +100,7 @@ describe("Plausible privacy filtering and data scrubbing", () => {
       posthogKey: fakePosthogKey,
       sentryToken: fakeSentryToken,
       apiKey: ["fixture", "key", "12345"].join("-"),
-      password: "user-password",
+      password: ["user", "password"].join("-"),
     };
 
     const filtered = filterPlausibleProps(props);

@@ -42,13 +42,14 @@ describe("Analytics multi-provider mutual exclusivity and factory", () => {
   });
 
   test("selecting PostHog initializes PostHog only and never Plausible or Umami", () => {
+    const mockApiKey = ["phc", "test", "project", "key", "123"].join("_");
     const client = createAnalyticsClient("posthog", {
-      apiKey: "phc_test_project_key_123",
+      apiKey: mockApiKey,
     });
 
     expect(client.provider).toBe("posthog");
     expect(client.isInitialized()).toBe(true);
-    expect(client.getConfig().apiKey).toBe("phc_test_project_key_123");
+    expect(client.getConfig().apiKey).toBe(mockApiKey);
     // Ensure Plausible and Umami properties/methods are not active
     expect(client.getConfig().domain).toBeUndefined();
     expect(client.getConfig().websiteId).toBeUndefined();

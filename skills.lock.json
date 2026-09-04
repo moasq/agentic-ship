@@ -618,7 +618,7 @@
   },
   "connections": {
     "catalogs": [".agents/connections/providers.json", ".agents/connections/hosts.json"],
-    "providers": ["convex", "stripe", "github", "linear", "resend", "posthog", "netlify", "vercel", "polar", "lemonsqueezy", "sentry", "plausible", "umami"],
+    "providers": ["convex", "stripe", "github", "linear", "resend", "posthog", "netlify", "plausible", "umami"],
     "hosts": ["claude", "codex", "cursor", "hermes", "openclaw"],
     "state": ".agent-state/connections/ (gitignored; whitelisted receipts only)",
     "verified": "2026-08-14 (github was cataloged 2026-08-07 but missing from this list; linear added with the tracking-mirror rules)"
