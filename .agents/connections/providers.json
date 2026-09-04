@@ -1032,6 +1032,131 @@
           "text": "Delete the /lemonsqueezy/webhook endpoint under Lemon Squeezy Settings → Webhooks."
         }
       ]
+    },
+    "plausible": {
+      "displayName": "Plausible",
+      "capability": "analytics",
+      "defaultForCapability": false,
+      "docsUrl": "https://plausible.io/docs",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "projectProvisioning": {
+        "setupUrl": "https://plausible.io/sites",
+        "instructions": [
+          "Create or select your site domain in the Plausible dashboard under Sites.",
+          "Set NEXT_PUBLIC_PLAUSIBLE_DOMAIN in .env.local to your configured domain (e.g. example.com).",
+          "Optionally configure NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL if using a custom proxy or self-hosted instance.",
+          "Verify that the analytics seam (src/lib/analytics.ts) uses privacy-first Plausible tracking without cookies."
+        ],
+        "verification": {
+          "policy": "machine",
+          "probes": [
+            {
+              "id": "plausible-domain",
+              "label": "Plausible domain is configured",
+              "type": "env_file_key",
+              "file": ".env.local",
+              "key": "NEXT_PUBLIC_PLAUSIBLE_DOMAIN",
+              "required": true
+            },
+            {
+              "id": "analytics-seam",
+              "label": "Plausible analytics seam exists",
+              "type": "any_file_exists",
+              "paths": [
+                "src/lib/analytics.ts",
+                "src/lib/analytics/plausible.ts"
+              ],
+              "required": true
+            }
+          ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://plausible.io/sites",
+              "opensBrowser": true,
+              "why": "Open Plausible sites dashboard to register your site domain."
+            }
+          ]
+        }
+      },
+      "revocation": [
+        {
+          "text": "Remove the site domain in the Plausible dashboard under Site Settings."
+        },
+        {
+          "text": "Remove NEXT_PUBLIC_PLAUSIBLE_DOMAIN and NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL from .env.local and your deployment environment."
+        }
+      ]
+    },
+    "umami": {
+      "displayName": "Umami",
+      "capability": "analytics",
+      "defaultForCapability": false,
+      "docsUrl": "https://umami.is/docs",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "projectProvisioning": {
+        "setupUrl": "https://cloud.umami.is/settings/websites",
+        "instructions": [
+          "Create a website in Umami Cloud or your self-hosted Umami dashboard.",
+          "Copy the Website ID into NEXT_PUBLIC_UMAMI_WEBSITE_ID in .env.local.",
+          "Set NEXT_PUBLIC_UMAMI_HOST_URL in .env.local to your Umami instance endpoint (e.g. https://cloud.umami.is).",
+          "Verify that the analytics seam (src/lib/analytics.ts) tracks events via Umami without collecting PII."
+        ],
+        "verification": {
+          "policy": "machine",
+          "probes": [
+            {
+              "id": "umami-website-id",
+              "label": "Umami Website ID is configured",
+              "type": "env_file_key",
+              "file": ".env.local",
+              "key": "NEXT_PUBLIC_UMAMI_WEBSITE_ID",
+              "required": true
+            },
+            {
+              "id": "umami-host-url",
+              "label": "Umami Host URL is configured",
+              "type": "env_file_key",
+              "file": ".env.local",
+              "key": "NEXT_PUBLIC_UMAMI_HOST_URL",
+              "allowPrefixes": [
+                "https://"
+              ],
+              "required": true
+            },
+            {
+              "id": "analytics-seam",
+              "label": "Umami analytics seam exists",
+              "type": "any_file_exists",
+              "paths": [
+                "src/lib/analytics.ts",
+                "src/lib/analytics/umami.ts"
+              ],
+              "required": true
+            }
+          ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://cloud.umami.is/settings/websites",
+              "opensBrowser": true,
+              "why": "Open Umami dashboard to create a website and copy its Website ID and Host URL."
+            }
+          ]
+        }
+      },
+      "revocation": [
+        {
+          "text": "Delete or disable the website in the Umami dashboard under Settings → Websites."
+        },
+        {
+          "text": "Remove NEXT_PUBLIC_UMAMI_WEBSITE_ID and NEXT_PUBLIC_UMAMI_HOST_URL from .env.local and your deployment environment."
+        }
+      ]
     }
   }
 }

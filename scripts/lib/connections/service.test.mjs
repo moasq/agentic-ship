@@ -78,11 +78,13 @@ test("catalog exposes every supported provider and host", (t) => {
   assert.equal(result.type, "connection_status");
   assert.deepEqual(
     result.providers.map((provider) => provider.id),
-    ["convex", "stripe", "github", "linear", "resend", "posthog", "netlify", "vercel", "cloudflare", "polar", "lemonsqueezy"],
+    ["convex", "stripe", "github", "linear", "resend", "posthog", "netlify", "vercel", "cloudflare", "polar", "lemonsqueezy", "plausible", "umami"],
   );
   assert.deepEqual(result.supportedHosts, ["claude", "codex", "cursor", "hermes", "openclaw"]);
   assert.equal(result.providers.find((provider) => provider.id === "polar").agentToolConfiguration, null);
   assert.equal(result.providers.find((provider) => provider.id === "lemonsqueezy").agentToolConfiguration, null);
+  assert.equal(result.providers.find((provider) => provider.id === "plausible").agentToolConfiguration, null);
+  assert.equal(result.providers.find((provider) => provider.id === "umami").agentToolConfiguration, null);
 });
 
 test("Vercel uses a read-only CLI auth probe and explicit project choice", (t) => {
@@ -622,6 +624,6 @@ test("CLI status emits machine-readable JSON in an isolated state directory", (t
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.equal(output.type, "connection_status");
-  assert.equal(output.providers.length, 11);
+  assert.equal(output.providers.length, 13);
   assert.deepEqual(readdirSync(temporaryRoot), []);
 });
