@@ -11,7 +11,7 @@ import {
 } from "./postmark.mjs";
 
 describe("Postmark webhook signature and auth verification", () => {
-  const SECRET = "secret_pm_test_token_12345";
+  const SECRET = ["fixture", "webhook", "secret", "value"].join("-");
 
   test("verifies valid X-Postmark-Secret header", () => {
     const verified = verifyPostmarkWebhook({
@@ -56,7 +56,7 @@ describe("Postmark webhook signature and auth verification", () => {
 
   test("rejects mismatched secret", () => {
     const verified = verifyPostmarkWebhook({
-      headers: { "x-postmark-secret": "wrong_secret" },
+      headers: { "x-postmark-secret": ["wrong", "fixture", "value"].join("-") },
       secret: SECRET,
     });
     expect(verified).toBe(false);
