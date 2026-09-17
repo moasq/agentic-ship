@@ -212,6 +212,10 @@ brief. Stripe uses `references/stripe-billing.md`; Polar uses
 `references/lemon-squeezy-billing.md`. A provider reference may add setup details, but
 it cannot weaken the billing invariants declared in `AGENTS.md`.
 
+Before writing email code, read the reference for the provider selected in the product
+brief: Resend uses `references/email-resend.md`; Postmark uses
+`references/email-postmark.md`.
+
 ## 9. Adding a feature — the fixed sequence
 
 1. Table + indexes in `schema.ts`

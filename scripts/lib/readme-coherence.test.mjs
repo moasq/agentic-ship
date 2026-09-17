@@ -9,14 +9,26 @@ const providers = {
     agentTool: { automation: { run: [{ command: "pnpm provider:login cloudflare" }] } },
   },
   stripe: { capability: "billing", displayName: "Stripe" },
+  resend: { capability: "email", displayName: "Resend" },
+  postmark: { capability: "email", displayName: "Postmark" },
+  sentry: { capability: "observability", displayName: "Sentry" },
 };
+
+const supportedCommands = [
+  "pnpm onboard stripe --host codex",
+  "pnpm onboard resend --host codex",
+  "pnpm onboard postmark --host codex",
+  "pnpm onboard netlify --host codex",
+  "pnpm onboard cloudflare --host codex",
+  "pnpm onboard sentry --host codex",
+].join("\n");
 
 describe("README provider catalog sync", () => {
   it("passes when each supported deployment provider is onboarded", () => {
     const result = inspectReadmeProviderCatalog({
       providers,
       agents: "| `pnpm provider:login <cli>` | install (cloudflare) |",
-      readme: "pnpm onboard netlify --host codex\npnpm onboard cloudflare --host codex\n### Not wired yet, and what a swap costs\n| Want instead | Wired today |",
+      readme: `${supportedCommands}\n### Not wired yet, and what a swap costs\n| Want instead | Wired today |`,
     });
     expect(result).toEqual({ status: "PASS", issues: [] });
   });
@@ -25,7 +37,7 @@ describe("README provider catalog sync", () => {
     const result = inspectReadmeProviderCatalog({
       providers,
       agents: "| `pnpm provider:login <cli>` | install (cloudflare) |",
-      readme: "pnpm onboard netlify --host codex\n### Not wired yet, and what a swap costs\n| Cloudflare | Netlify |",
+      readme: `${supportedCommands.replace("pnpm onboard cloudflare --host codex", "")}\n### Not wired yet, and what a swap costs\n| Cloudflare | Netlify |`,
     });
     expect(result.status).toBe("FAIL");
     expect(result.issues).toHaveLength(2);
@@ -35,9 +47,18 @@ describe("README provider catalog sync", () => {
     const result = inspectReadmeProviderCatalog({
       providers,
       agents: "| `pnpm provider:login <cli>` | install (netlify) |",
-      readme: "pnpm onboard netlify --host codex\npnpm onboard cloudflare --host codex",
+      readme: supportedCommands,
     });
     expect(result.issues).toEqual(["AGENTS.md provider:login row is missing cloudflare"]);
+  });
+
+  it("rejects a supported email provider listed as unwired", () => {
+    const result = inspectReadmeProviderCatalog({
+      providers,
+      agents: "| `pnpm provider:login <cli>` | install (cloudflare) |",
+      readme: `${supportedCommands}\n### Not wired yet, and what a swap costs\n| Postmark, SendGrid | Resend |`,
+    });
+    expect(result.issues).toContain("README still lists supported provider Postmark as not wired");
   });
 
   it("checks the installer and MCP count against canonical project data", () => {

@@ -70,8 +70,8 @@ reasoning behind each pick lives in [docs/stack.md](docs/stack.md).
 | Backend | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/convex-dark.svg"><img alt="" src=".github/assets/stack/convex-light.svg" height="14"></picture> Convex — schema, reactive functions, crons, file storage; functions are the API |
 | Auth | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/betterauth-dark.svg"><img alt="" src=".github/assets/stack/betterauth-light.svg" height="14"></picture> Better Auth (exact-pinned) through the Convex adapter |
 | Billing | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/stripe-dark.svg"><img alt="" src=".github/assets/stack/stripe-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/polar-dark.svg"><img alt="" src=".github/assets/stack/polar-light.svg" height="14"></picture> <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/lemonsqueezy-dark.svg"><img alt="" src=".github/assets/stack/lemonsqueezy-light.svg" height="14"></picture> Stripe by default, with Polar and Lemon Squeezy adapters; hosted checkout and webhook-backed entitlement |
-| Email | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/resend-dark.svg"><img alt="" src=".github/assets/stack/resend-light.svg" height="14"></picture> Resend through `@convex-dev/resend` — test-mode by default |
-| Analytics | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/posthog-dark.svg"><img alt="" src=".github/assets/stack/posthog-light.svg" height="14"></picture> PostHog behind a first-party `/ingest` proxy; the CSP stays closed |
+| Email | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/resend-dark.svg"><img alt="" src=".github/assets/stack/resend-light.svg" height="14"></picture> Resend by default, with Postmark adapter; test-mode by default |
+| Analytics | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/posthog-dark.svg"><img alt="" src=".github/assets/stack/posthog-light.svg" height="14"></picture> PostHog by default, with Plausible and Umami adapters; one provider at a time behind the shared privacy seam |
 | Fonts | Self-hosted OFL faces, fetched by `pnpm font`, committed |
 | Gates | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/stack/vitest-dark.svg"><img alt="" src=".github/assets/stack/vitest-light.svg" height="14"></picture> Vitest contracts · backend authorization postconditions · Playwright capture · deterministic Node checks — `pnpm verify` on every completion, `pnpm verify:full` before a release |
 | UI gates | `pnpm ui:plan` direction contract · `pnpm ui:review` visual evidence · `pnpm check:ui` component boundaries |
@@ -149,6 +149,60 @@ pnpm onboard polar --host codex
 pnpm onboard lemonsqueezy --host codex
 ```
 
+### Choose an email provider
+
+Product briefs select one email provider through `providerSelection.email`. Resend is
+the default. Postmark is the supported alternative. Both keep credentials in Convex
+and remain in test mode until the sending domain and email verification checks pass.
+
+```bash
+pnpm onboard resend --host codex
+pnpm onboard postmark --host codex
+```
+
+Read the [Resend guide](.agents/skills/convex-structure/references/email-resend.md) or
+the [Postmark guide](.agents/skills/convex-structure/references/email-postmark.md)
+before production. Postmark test mode uses `POSTMARK_API_TEST`, which validates a
+message without delivering it. Postmark webhooks use HTTP Basic Auth or a configured
+custom header because Postmark does not sign webhook payloads. Production preflight
+sends one message to Postmark's black-hole sink to verify the live token, sender,
+message stream, and webhook without contacting a person.
+
+### Choose an analytics provider
+
+Product briefs select exactly one analytics provider through
+`providerSelection.analytics`. PostHog is the default. Plausible and Umami are
+supported alternatives; a missing selection stays inert and never blocks the product.
+
+```bash
+pnpm onboard posthog --host codex
+pnpm onboard plausible --host codex
+pnpm onboard umami --host codex
+```
+
+Plausible uses the current site-specific script from its installation screen. Umami
+requires an exact website ID, HTTPS host, and explicit production-domain allowlist.
+Both adapters scrub event properties before calling the vendor's browser tracker and
+never treat a local dry run as proof of delivery. Read the
+[Plausible guide](.agents/skills/convex-structure/references/analytics-plausible.md) or
+[Umami guide](.agents/skills/convex-structure/references/analytics-umami.md) before
+production.
+
+### Add optional observability
+
+Sentry is optional. When selected, the official Next.js SDK covers browser, server,
+and edge errors through one scrubber seam. Convex errors use Convex's dashboard-owned
+Sentry integration. Builds stay green when observability is not selected.
+
+```bash
+pnpm onboard sentry --host codex
+```
+
+Read the [Sentry guide](.agents/skills/convex-structure/references/observability-sentry.md)
+before production. The gate checks privacy redaction, quiet local development, release
+identity, and source-map upload configuration. A human verification confirms one
+synthetic event and the Convex dashboard integration.
+
 ### Choose a deployment provider
 
 Product briefs select one deployment provider through `providerSelection.deployment`.
@@ -170,8 +224,9 @@ the [Vercel guide](.agents/skills/convex-structure/references/deploy-vercel.md),
 before production. `pnpm preflight` rejects a stale build command or multiple active
 deployment adapters. Cloudflare production preflight also requires live proof for the
 deployed Worker, custom domain, preview, auth, Convex query, and webhook routes.
-`pnpm check:readme` keeps this supported-provider list synchronized with the connection
-catalog so a newly wired deployment provider cannot remain in the "not wired" table.
+`pnpm check:readme` keeps the supported analytics, billing, email, deployment, and observability
+providers synchronized with the connection catalog so reader-facing setup does not go
+stale.
 
 ### Not wired yet, and what a swap costs
 
@@ -180,8 +235,8 @@ honest question is not "is it supported" but how much code a swap touches:
 
 | Want instead | Wired today | Swap cost |
 | --- | --- | --- |
-| Plausible, Umami | PostHog | small — `src/lib/analytics.ts` is the only file that imports the SDK |
-| Postmark, SendGrid | Resend | medium — `convex/email.ts` is the only sender, but the Convex component and its webhook go with it |
+| Mixpanel, Amplitude | PostHog, Plausible, Umami | small — `src/lib/analytics.ts` is the only file that imports the SDK |
+| SendGrid | Resend, Postmark | medium: add one provider-owned adapter, connection entry, lifecycle fixture, and production check |
 | Paddle | Stripe, Polar, Lemon Squeezy | medium: add one provider-owned adapter, connection entry, lifecycle fixture, and production check |
 | Clerk, Auth.js | Better Auth | medium — session truth is one query behind `requireUser`, but the Convex adapter is load-bearing |
 | Supabase, Postgres + Prisma | Convex | large — Convex is the spine; the auth, billing, and email components all ride it. Swapping it means rebuilding those seams |

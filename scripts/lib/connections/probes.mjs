@@ -3,6 +3,9 @@ import { spawnSync } from "node:child_process";
 import { homedir } from "node:os";
 import { isAbsolute, relative, resolve } from "node:path";
 import { inspectCloudflareBlueprint } from "./cloudflare.mjs";
+import { inspectPostmarkBlueprint } from "../email-providers/postmark.mjs";
+import { inspectSentryBlueprint } from "../observability/sentry.mjs";
+import { inspectAnalyticsBlueprint } from "../analytics/index.mjs";
 
 function projectPath(projectRoot, candidate) {
   const root = resolve(projectRoot);
@@ -20,6 +23,14 @@ function read(path) {
   } catch {
     return null;
   }
+}
+
+function readFirst(projectRoot, candidates) {
+  for (const candidate of candidates) {
+    const source = read(projectPath(projectRoot, candidate));
+    if (source !== null) return source;
+  }
+  return "";
 }
 
 function envValue(source, key) {
@@ -89,6 +100,35 @@ export function runConnectionProbe(probe, { projectRoot, homeDirectory, commandR
         source: read(projectPath(projectRoot, path)) ?? "",
       })),
       packageJsonSource: read(projectPath(projectRoot, "package.json")) ?? "",
+    });
+    return probeResult(probe, result.status === "PASS", result.detail);
+  }
+
+  if (probe.type === "postmark_blueprint") {
+    const result = inspectPostmarkBlueprint({
+      emailSource: read(projectPath(projectRoot, "convex/email.ts")) ?? "",
+      httpSource: read(projectPath(projectRoot, "convex/http.ts")) ?? "",
+    });
+    return probeResult(probe, result.status === "PASS", result.detail);
+  }
+
+  if (probe.type === "sentry_blueprint") {
+    const result = inspectSentryBlueprint({
+      packageJsonSource: read(projectPath(projectRoot, "package.json")) ?? "",
+      observabilitySource: readFirst(projectRoot, ["src/lib/observability.ts", "src/lib/observability.js"]),
+      clientSource: readFirst(projectRoot, ["instrumentation-client.ts", "instrumentation-client.js", "sentry.client.config.ts", "sentry.client.config.js"]),
+      serverSource: readFirst(projectRoot, ["sentry.server.config.ts", "sentry.server.config.js"]),
+      edgeSource: readFirst(projectRoot, ["sentry.edge.config.ts", "sentry.edge.config.js"]),
+      nextConfigSource: readFirst(projectRoot, ["next.config.ts", "next.config.mjs", "next.config.js"]),
+    });
+    return probeResult(probe, result.status === "PASS", result.detail);
+  }
+
+  if (probe.type === "analytics_blueprint") {
+    const result = inspectAnalyticsBlueprint({
+      provider: probe.provider,
+      analyticsSource: readFirst(projectRoot, ["src/lib/analytics.ts", "src/lib/analytics.js"]),
+      envSource: readFirst(projectRoot, [".env.local", ".env.example"]),
     });
     return probeResult(probe, result.status === "PASS", result.detail);
   }
