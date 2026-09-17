@@ -1033,6 +1033,52 @@
         }
       ]
     },
+    "plausible": {
+      "displayName": "Plausible",
+      "capability": "analytics",
+      "defaultForCapability": false,
+      "docsUrl": "https://plausible.io/docs",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "projectProvisioning": {
+        "setupUrl": "https://plausible.io/sites",
+        "instructions": [
+          "Create or select the production site in Plausible, then set NEXT_PUBLIC_PLAUSIBLE_DOMAIN to that exact hostname.",
+          "For Plausible Cloud, use the site-specific script shown in the installation page. For a self-hosted instance or first-party proxy, set NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL and NEXT_PUBLIC_PLAUSIBLE_EVENT_ENDPOINT to same-origin paths or allowlisted HTTPS URLs.",
+          "Implement src/lib/analytics.ts through the shared privacy seam. Initialize only the selected provider and dispatch browser events through plausible(), never through a simulated transport.",
+          "Send one synthetic custom event, confirm it in the Plausible dashboard, and attest that consent behavior matches the product privacy policy."
+        ],
+        "verification": {
+          "policy": "probe_and_attestation",
+          "probes": [
+            {
+              "id": "analytics-blueprint",
+              "label": "Plausible analytics blueprint is complete",
+              "type": "analytics_blueprint",
+              "provider": "plausible",
+              "required": true
+            }
+          ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://plausible.io/sites",
+              "opensBrowser": true,
+              "why": "Open Plausible Sites to configure the production domain and obtain its installation script."
+            }
+          ]
+        }
+      },
+      "revocation": [
+        {
+          "text": "Remove the site in Plausible under Site Settings."
+        },
+        {
+          "text": "Remove NEXT_PUBLIC_PLAUSIBLE_DOMAIN, NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL, NEXT_PUBLIC_PLAUSIBLE_EVENT_ENDPOINT, and NEXT_PUBLIC_PLAUSIBLE_ALLOWED_ORIGINS from local and deployment environments."
+        }
+      ]
+    },
     "postmark": {
       "displayName": "Postmark",
       "capability": "email",
@@ -1075,6 +1121,52 @@
         },
         {
           "text": "Delete the /postmark/webhook endpoint under Postmark Server → Webhooks."
+        }
+      ]
+    },
+    "umami": {
+      "displayName": "Umami",
+      "capability": "analytics",
+      "defaultForCapability": false,
+      "docsUrl": "https://docs.umami.is/",
+      "actionTtlMinutes": 1440,
+      "maxVerificationAttempts": 5,
+      "projectProvisioning": {
+        "setupUrl": "https://cloud.umami.is/settings/websites",
+        "instructions": [
+          "Create the production website in Umami Cloud or the self-hosted dashboard, then set NEXT_PUBLIC_UMAMI_WEBSITE_ID to its UUID.",
+          "Set NEXT_PUBLIC_UMAMI_HOST_URL to the allowlisted HTTPS instance origin and NEXT_PUBLIC_UMAMI_DOMAINS to the exact production hostnames that may emit events.",
+          "Implement src/lib/analytics.ts through the shared privacy seam. Initialize only the selected provider and dispatch browser events through umami.track(), never through a simulated transport.",
+          "Send one synthetic custom event, confirm it in the Umami dashboard, and attest that consent behavior matches the product privacy policy."
+        ],
+        "verification": {
+          "policy": "probe_and_attestation",
+          "probes": [
+            {
+              "id": "analytics-blueprint",
+              "label": "Umami analytics blueprint is complete",
+              "type": "analytics_blueprint",
+              "provider": "umami",
+              "required": true
+            }
+          ]
+        },
+        "automation": {
+          "run": [
+            {
+              "command": "pnpm open:url https://cloud.umami.is/settings/websites",
+              "opensBrowser": true,
+              "why": "Open Umami Websites to create the production site and copy its Website ID."
+            }
+          ]
+        }
+      },
+      "revocation": [
+        {
+          "text": "Delete or disable the website under Umami Settings → Websites."
+        },
+        {
+          "text": "Remove NEXT_PUBLIC_UMAMI_WEBSITE_ID, NEXT_PUBLIC_UMAMI_HOST_URL, NEXT_PUBLIC_UMAMI_DOMAINS, and NEXT_PUBLIC_UMAMI_SCRIPT_URL from local and deployment environments."
         }
       ]
     },

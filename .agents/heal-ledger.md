@@ -866,3 +866,18 @@ Format:
   tokens, missing build identifiers, local-development noise, stale README setup, and
   unsupported provider selections. The README sync gate now covers observability.
 - status: open
+
+## 2026-09-17 analytics-adapters-claimed-unsent-delivery
+
+- cause: the first Plausible and Umami helpers returned `delivered: true` without
+  calling a browser tracker, accepted arbitrary HTTPS analytics origins, and allowed
+  every Umami page when its domain allowlist was absent.
+- fix: configured clients now call an injected or browser-owned vendor tracker,
+  report dispatch separately from vendor-confirmed delivery, keep dry runs explicit,
+  require Plausible's site-specific script and origin allowlist, and make Umami domain
+  matching fail closed with correct wildcard boundaries.
+- prevention: provider probes now inspect the downstream analytics seam and public
+  configuration together; production tests cover missing allowlists, unavailable and
+  failing trackers, blocked origins, and dashboard-only delivery proof. README sync
+  now covers every supported analytics provider.
+- status: open

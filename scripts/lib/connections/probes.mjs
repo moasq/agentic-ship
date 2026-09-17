@@ -5,6 +5,7 @@ import { isAbsolute, relative, resolve } from "node:path";
 import { inspectCloudflareBlueprint } from "./cloudflare.mjs";
 import { inspectPostmarkBlueprint } from "../email-providers/postmark.mjs";
 import { inspectSentryBlueprint } from "../observability/sentry.mjs";
+import { inspectAnalyticsBlueprint } from "../analytics/index.mjs";
 
 function projectPath(projectRoot, candidate) {
   const root = resolve(projectRoot);
@@ -119,6 +120,15 @@ export function runConnectionProbe(probe, { projectRoot, homeDirectory, commandR
       serverSource: readFirst(projectRoot, ["sentry.server.config.ts", "sentry.server.config.js"]),
       edgeSource: readFirst(projectRoot, ["sentry.edge.config.ts", "sentry.edge.config.js"]),
       nextConfigSource: readFirst(projectRoot, ["next.config.ts", "next.config.mjs", "next.config.js"]),
+    });
+    return probeResult(probe, result.status === "PASS", result.detail);
+  }
+
+  if (probe.type === "analytics_blueprint") {
+    const result = inspectAnalyticsBlueprint({
+      provider: probe.provider,
+      analyticsSource: readFirst(projectRoot, ["src/lib/analytics.ts", "src/lib/analytics.js"]),
+      envSource: readFirst(projectRoot, [".env.local", ".env.example"]),
     });
     return probeResult(probe, result.status === "PASS", result.detail);
   }

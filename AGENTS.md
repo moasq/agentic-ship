@@ -600,13 +600,17 @@ Details: `.agents/skills/convex-structure/references/observability-sentry.md`.
 - A completed setup needs both machine proof of the runtime and source-map blueprint and
   human confirmation of one non-personal synthetic event plus the Convex integration.
 
-## Analytics rules (PostHog, wired)
+## Analytics rules (replaceable provider, PostHog default)
 
-Detail: `.agents/skills/frontend-security/references/analytics-posthog.md`.
+Details: `.agents/skills/frontend-security/references/analytics-posthog.md`,
+`.agents/skills/convex-structure/references/analytics-plausible.md`, and
+`.agents/skills/convex-structure/references/analytics-umami.md`.
 
-- `src/lib/analytics.ts` is the only file that imports `posthog-js`. Events come from
+- The product brief selects exactly one provider: PostHog, Plausible, or Umami.
+  `src/lib/analytics.ts` is the only file that imports or calls its browser tracker.
+  Events come from
   the typed `AnalyticsEvent` union — add the name there first, or it does not exist.
-- Traffic is proxied through `/ingest` on our own origin, so **the CSP stays closed**.
+- PostHog traffic is proxied through `/ingest` on our own origin, so **the CSP stays closed**.
   Never add a PostHog origin to `connect-src` to "fix" analytics; fix the rewrite.
 - `phc_` project key is public and lives in `.env.local`. A `phx_` personal key never
   enters this repo — `pnpm health` treats one as CRITICAL.
@@ -614,6 +618,17 @@ Detail: `.agents/skills/frontend-security/references/analytics-posthog.md`.
   Never send tokens, emails, or URL contents as event properties.
 - `autocapture` is off and inputs are masked in replay. Turning either on is a
   `frontend-security` decision, not a convenience.
+- Plausible uses the site-specific script from its current installation screen, not
+  the retired generic script. A self-hosted or proxied script and event endpoint must
+  be same-origin or match an explicit HTTPS origin allowlist.
+- Umami requires an exact website ID, HTTPS host, and non-empty domain allowlist.
+  Missing domains deny tracking; wildcard matches require a real subdomain boundary.
+- Every provider receives the same scrubbed custom-event contract. Prompts,
+  transcripts, secrets, email addresses, unrestricted user content, and full URL
+  query strings never enter analytics. Identity tracking is disabled for Plausible and
+  Umami.
+- Adapter calls are non-blocking. They may report that a tracker accepted a call, but
+  only vendor-dashboard readback proves delivery. A dry run never claims delivery.
 
 ## Deploy rules (Netlify, Vercel, or Cloudflare)
 

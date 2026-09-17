@@ -20,6 +20,7 @@ import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inspectProductionBillingEnvironment } from "./lib/billing-coherence.mjs";
 import { inspectDeploymentBlueprint } from "./lib/deployment-coherence.mjs";
+import { inspectProductionAnalyticsEnvironment } from "./lib/analytics/index.mjs";
 import { inspectSentryBlueprint } from "./lib/observability/sentry.mjs";
 import { verifyPostmarkLive } from "./lib/email-providers/postmark-live.mjs";
 
@@ -117,6 +118,12 @@ add(
   localBillingSecret ? "FAIL" : "PASS",
   localBillingSecret ? "production billing secrets belong in the production Convex deployment environment" : "",
 );
+const localPosthogPersonalKey = /^NEXT_PUBLIC_POSTHOG_KEY=phx_/m.test(envLocal);
+add(
+  "no personal PostHog key in client env",
+  localPosthogPersonalKey ? "FAIL" : "PASS",
+  localPosthogPersonalKey ? "NEXT_PUBLIC_POSTHOG_KEY contains a personal phx_ key — use a public phc_ project key" : "",
+);
 const localSentryAuthSecret = /^NEXT_PUBLIC_SENTRY_AUTH_TOKEN=/m.test(envLocal);
 add(
   "no sensitive Sentry auth token in client env",
@@ -148,6 +155,12 @@ add(
 /* ---------- prod deployment audit (needs login) ---------- */
 
 if (withProd) {
+  const analytics = inspectProductionAnalyticsEnvironment(new Map(Object.entries(process.env).map(([key, value]) => [key, value ?? ""])));
+  add(
+    "production analytics public configuration",
+    analytics.status === "FAIL" ? "FAIL" : analytics.status,
+    analytics.status === "FAIL" ? analytics.detail : analytics.status === "SKIP" ? "analytics is optional; expose the selected provider's public deployment variables when running preflight" : "",
+  );
   if (cloudflareConfigs.length === 1) {
     const live = spawnSync(process.execPath, [join(root, "scripts/verify-cloudflare-live.mjs")], {
       cwd: root,

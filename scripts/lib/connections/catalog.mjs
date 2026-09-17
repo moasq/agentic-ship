@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 
 const IDENTIFIER = /^[a-z][a-z0-9-]*$/;
 const PLACEHOLDER = /\{([a-z][a-z0-9-]*)\}/g;
-const PROBE_TYPES = new Set(["any_file_exists", "cloudflare_blueprint", "command_succeeds", "env_file_key", "file_contains", "file_exists", "home_file_exists", "mcp_server", "postmark_blueprint", "sentry_blueprint"]);
+const PROBE_TYPES = new Set(["analytics_blueprint", "any_file_exists", "cloudflare_blueprint", "command_succeeds", "env_file_key", "file_contains", "file_exists", "home_file_exists", "mcp_server", "postmark_blueprint", "sentry_blueprint"]);
 const AUTH_FLOWS = new Set(["cli_browser_login", "remote_oauth"]);
 const VERIFICATION_POLICIES = new Set(["machine", "probe_and_attestation"]);
 const CAPABILITIES = new Set(["analytics", "backend", "billing", "deployment", "email", "observability", "repository", "tracking"]);
@@ -45,6 +45,7 @@ function validateProbe(probe, owner) {
     assert(typeof probe.file === "string" && typeof probe.key === "string", `${owner}.${probe.id} needs file and key`);
   }
   if (probe.type === "mcp_server") assert(IDENTIFIER.test(probe.server ?? ""), `${owner}.${probe.id} needs a server id`);
+  if (probe.type === "analytics_blueprint") assert(["plausible", "umami"].includes(probe.provider), `${owner}.${probe.id} needs a supported analytics provider`);
   if (probe.type === "home_file_exists") {
     assert(typeof probe.homePath === "string" && probe.homePath.length > 0, `${owner}.${probe.id} needs a homePath`);
     assert(
