@@ -7,13 +7,14 @@ export function inspectReadmeProviderCatalog({
   mcpServers,
 } = {}) {
   const issues = [];
-  const deploymentProviders = Object.entries(providers).filter(([, provider]) => provider.capability === "deployment");
+  const documentedCapabilities = new Set(["analytics", "billing", "email", "deployment", "observability"]);
   const unsupportedSection = readme.split("### Not wired yet, and what a swap costs")[1] ?? "";
 
-  for (const [id, provider] of deploymentProviders) {
+  for (const [id, provider] of Object.entries(providers)) {
+    if (!documentedCapabilities.has(provider.capability)) continue;
     const command = `pnpm onboard ${id} --host codex`;
     if (!readme.includes(command)) issues.push(`README is missing the supported ${provider.displayName} onboarding command`);
-    if (new RegExp(`^\\|\\s*${provider.displayName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\|`, "m").test(unsupportedSection)) {
+    if (new RegExp(`^\\|[^|]*\\b${provider.displayName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b[^|]*\\|`, "m").test(unsupportedSection)) {
       issues.push(`README still lists supported provider ${provider.displayName} as not wired`);
     }
   }

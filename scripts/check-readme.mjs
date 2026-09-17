@@ -25,4 +25,4 @@ if (result.status === "FAIL") {
   for (const issue of result.issues) console.error(`- ${issue}`);
   process.exit(1);
 }
-console.log("README sync: PASS — supported deployment providers match the reader-facing catalog.");
+console.log("README sync: PASS — supported providers match the reader-facing catalog.");

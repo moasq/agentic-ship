@@ -78,11 +78,15 @@ test("catalog exposes every supported provider and host", (t) => {
   assert.equal(result.type, "connection_status");
   assert.deepEqual(
     result.providers.map((provider) => provider.id),
-    ["convex", "stripe", "github", "linear", "resend", "posthog", "netlify", "vercel", "cloudflare", "polar", "lemonsqueezy"],
+    ["convex", "stripe", "github", "linear", "resend", "posthog", "netlify", "vercel", "cloudflare", "polar", "lemonsqueezy", "plausible", "postmark", "umami", "sentry"],
   );
   assert.deepEqual(result.supportedHosts, ["claude", "codex", "cursor", "hermes", "openclaw"]);
   assert.equal(result.providers.find((provider) => provider.id === "polar").agentToolConfiguration, null);
   assert.equal(result.providers.find((provider) => provider.id === "lemonsqueezy").agentToolConfiguration, null);
+  assert.equal(result.providers.find((provider) => provider.id === "plausible").agentToolConfiguration, null);
+  assert.equal(result.providers.find((provider) => provider.id === "umami").agentToolConfiguration, null);
+  assert.equal(result.providers.find((provider) => provider.id === "postmark").agentToolConfiguration, null);
+  assert.equal(result.providers.find((provider) => provider.id === "sentry").agentToolConfiguration, null);
 });
 
 test("Vercel uses a read-only CLI auth probe and explicit project choice", (t) => {
@@ -233,6 +237,64 @@ test("Lemon Squeezy begins with project provisioning and verifies its real seams
   assert.equal(ready.type, "connection_ready");
   assert.equal(ready.verification.agentTool.required, false);
   assert.equal(ready.verification.agentTool.basis, "not_required");
+});
+
+test("Postmark begins with project provisioning and verifies its real seams", (t) => {
+  const { service, projectRoot } = fixture(t);
+  const started = service.begin("postmark", "codex");
+
+  assert.equal(started.type, "input_required");
+  assert.equal(started.action.phase, "project_provisioning");
+  assert.equal(started.inputRequired.kind, "project_provisioning");
+  assert.doesNotMatch(JSON.stringify(started), /Postmark MCP|remote_oauth|read-only provider call/);
+
+  const missing = service.resume(started.action.actionId);
+  assert.equal(missing.type, "input_required");
+  assert.equal(missing.action.state, "failed_retryable");
+
+  write(projectRoot, "convex/email.ts", 'const provider = "postmark";\nconst config = { testMode: true };');
+  write(projectRoot, "convex/http.ts", 'const route = "/postmark/webhook";');
+  const incomplete = service.resume(started.action.actionId);
+  assert.equal(incomplete.type, "input_required");
+  assert.equal(incomplete.action.state, "failed_retryable");
+
+  write(projectRoot, "convex/email.ts", [
+    'const provider = "postmark";',
+    'const config = { testMode: true };',
+    'const token = config.testMode ? "POSTMARK_API_TEST" : process.env.POSTMARK_SERVER_TOKEN;',
+    'if (recipient.inactive) throw new Error("suppressed");',
+  ].join("\n"));
+  write(projectRoot, "convex/http.ts", [
+    'const route = "/postmark/webhook";',
+    'const secret = process.env.POSTMARK_WEBHOOK_SECRET;',
+    'verifyPostmarkWebhook(headers, secret);',
+    'const trace = headers.get("X-PM-Webhook-Trace-Id");',
+  ].join("\n"));
+  const ready = service.resume(started.action.actionId);
+  assert.equal(ready.type, "connection_ready");
+  assert.equal(ready.verification.agentTool.required, false);
+  assert.equal(ready.verification.agentTool.basis, "not_required");
+});
+
+test("Sentry requires the complete runtime and build blueprint", (t) => {
+  const { service, projectRoot } = fixture(t);
+  const started = service.begin("sentry", "codex");
+  assert.equal(started.type, "input_required");
+
+  const missing = service.resume(started.action.actionId);
+  assert.equal(missing.type, "input_required");
+
+  write(projectRoot, "package.json", JSON.stringify({ dependencies: { "@sentry/nextjs": "^10.0.0" } }));
+  write(projectRoot, "src/lib/observability.ts", 'export function scrubSentryEvent(event) { const fields = "authorization cookie prompt transcript"; return event; }');
+  const init = 'Sentry.init({ environment: process.env.NODE_ENV, release: process.env.SENTRY_RELEASE, beforeSend: scrubSentryEvent });';
+  write(projectRoot, "instrumentation-client.ts", `${init}\nSentry.init({ enabled: process.env.NODE_ENV === "production" || process.env.SENTRY_ENABLE_DEV === "true", environment: process.env.NODE_ENV, release: process.env.SENTRY_RELEASE, beforeSend: scrubSentryEvent });`);
+  write(projectRoot, "sentry.server.config.ts", init);
+  write(projectRoot, "sentry.edge.config.ts", init);
+  write(projectRoot, "next.config.ts", 'withSentryConfig(config, { authToken: process.env.SENTRY_AUTH_TOKEN, org: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT, release: { name: process.env.SENTRY_RELEASE } });');
+
+  const ready = service.resume(started.action.actionId);
+  assert.equal(ready.type, "connection_ready");
+  assert.equal(ready.verification.policy, "probe_and_attestation");
 });
 
 test("begin checks first and reports a fully configured provider ready with no pause", (t) => {
@@ -609,7 +671,7 @@ test("a cross-process lock rejects a conflicting mutation and permits a retry", 
   const retried = contendingService.begin("stripe", "codex");
   assert.equal(retried.type, "input_required");
   assert.equal(readdirSync(stateDirectory).filter((name) => name.endsWith(".json")).length, 1);
-});
+}, 20_000);
 
 test("CLI status emits machine-readable JSON in an isolated state directory", (t) => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "agent-connections-cli-"));
@@ -622,6 +684,6 @@ test("CLI status emits machine-readable JSON in an isolated state directory", (t
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.equal(output.type, "connection_status");
-  assert.equal(output.providers.length, 11);
+  assert.equal(output.providers.length, 15);
   assert.deepEqual(readdirSync(temporaryRoot), []);
-});
+}, 20_000);

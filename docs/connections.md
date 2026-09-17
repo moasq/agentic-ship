@@ -18,10 +18,13 @@ way to revoke it.
 | GitHub | Repository, PRs, CI | `gh` device flow via `pnpm provider:login github` |
 | Linear | Development tracking | Hosted MCP OAuth in the AI host |
 | Resend | Email | Hosted MCP OAuth, keys via hidden input |
-| PostHog | Analytics | Hosted MCP OAuth, public `phc_` key only |
+| PostHog | Analytics (default) | Hosted MCP OAuth, public `phc_` key only |
+| Plausible | Analytics (alternative) | Public domain, site-specific script, and explicit HTTPS origin allowlist |
+| Umami | Analytics (alternative) | Public website ID, HTTPS host, and explicit production-domain allowlist |
 | Netlify | Deploy | `netlify login` browser flow |
 | Vercel | Deploy (alternative) | `vercel login` device flow via `pnpm provider:login vercel` |
 | Cloudflare | Deploy (alternative) | Keyring-backed Wrangler OAuth via `pnpm provider:login cloudflare` |
+| Sentry | Observability (optional) | Public DSN plus deployment-owned release and source-map settings |
 
 The catalog behind this table is
 [.agents/connections/providers.json](../.agents/connections/providers.json): probes,
