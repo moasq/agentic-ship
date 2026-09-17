@@ -881,3 +881,16 @@ Format:
   failing trackers, blocked origins, and dashboard-only delivery proof. README sync
   now covers every supported analytics provider.
 - status: open
+
+## 2026-09-17 playwright-bump-refreshed-unrelated-lock-entries
+
+- cause: the automated Playwright update regenerated the shared lockfile and also
+  advanced unrelated Vitest transitive packages, widening a focused dependency PR
+  beyond the package named in its title.
+- fix: the lockfile was regenerated from current `main` with the repository-pinned
+  pnpm version, preserving existing resolutions while updating only Playwright and
+  its exact runtime packages to 1.63.0.
+- prevention: dependency reviews compare the resolved lockfile delta with the declared
+  package scope, then run the frozen install, full verification, browser smoke test,
+  supply-chain audit, and repository scanner before merge.
+- status: open
