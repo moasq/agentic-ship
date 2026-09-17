@@ -86,7 +86,7 @@ Windows. The buyer may be on any of the three.
 | `pnpm sync:mcp` · `pnpm check:mcp` | write / verify the `.cursor/mcp.json` mirror |
 | `pnpm sync:agents` · `pnpm check:agents` | write / verify native Claude plugin, Codex, Cursor, Hermes, and OpenClaw role adapters |
 | `pnpm check:commands` | every `pnpm` name in prose resolves to a real script, and `skills.lock.json` matches disk |
-| `pnpm check:readme` | verify that the README's supported deployment providers match the connection catalog |
+| `pnpm check:readme` | verify that the README's supported providers match the connection catalog |
 | `pnpm secret` | print one random base64 secret |
 
 `pnpm install` runs the link, MCP, and agent-adapter synchronizers through `postinstall`.
@@ -559,28 +559,58 @@ lifecycle, and revocation details. Stripe uses `stripe-billing.md`; Polar uses
   writing every row against that workspace's own `ownerId` — it creates no user, grants
   no membership and moves no plan, so seeding can never hand anyone access.
 
-## Email rules (Resend, wired)
+## Email rules (replaceable provider, Resend default)
 
-Detail: `.agents/skills/convex-structure/references/email-resend.md`.
+Details: `.agents/skills/convex-structure/references/email-resend.md` and `.agents/skills/convex-structure/references/email-postmark.md`.
 
-- `convex/email.ts` is the only file that imports the Resend SDK. Every outbound email
-  goes through it; adding one means adding a function there, never a direct API call.
-- Sends are enqueued **inside the calling transaction** by the component. Do not write
-  retry logic, and do not send from a client.
-- `testMode: true` is the shipped default — only Resend's test inboxes can receive mail.
+The product brief selects one email provider: Resend remains the default; Postmark is the supported alternative.
+
+- `convex/email.ts` is the only file that imports the email provider SDK. Every outbound email
+  goes through it; adding one means adding a function there, never a direct API call from domain code.
+- Sends are enqueued or dispatched through the backend seam inside the calling transaction.
+- `testMode: true` is the shipped default — only allowlisted test inboxes or sandbox tokens receive mail.
   It flips to `false` **together with** `requireEmailVerification: true` in
   `convex/auth.ts`, after a sending domain is verified. `pnpm health` fails on either
   half of that pair being wrong.
-- `/resend-webhook` in `convex/http.ts` belongs to the component; it verifies the
-  signature. Never parse a webhook body yourself.
+- `/resend-webhook` verifies Resend signatures. Postmark does not sign webhooks, so
+  `/postmark/webhook` requires HTTP Basic Auth or a configured custom header. Prefer
+  Postmark's trace ID for idempotency, then fall back to an event-specific compound key.
+- In Postmark test mode, use `POSTMARK_API_TEST` as the server token. Disabling open
+  and link tracking does not prevent delivery.
+- Postmark production preflight verifies the live token, transactional stream,
+  authenticated webhook, and sender by sending one message to Postmark's black-hole
+  sink. The sink does not contact a person, but the message counts toward monthly volume.
 
-## Analytics rules (PostHog, wired)
+## Observability rules (optional Sentry)
 
-Detail: `.agents/skills/frontend-security/references/analytics-posthog.md`.
+Details: `.agents/skills/convex-structure/references/observability-sentry.md`.
 
-- `src/lib/analytics.ts` is the only file that imports `posthog-js`. Events come from
+- Observability is optional. With no selected provider or Sentry configuration, install,
+  build, and verification remain green.
+- The official `@sentry/nextjs` SDK owns browser, server, and edge reporting. All three
+  initializations use the shared `src/lib/observability.ts` scrubber through `beforeSend`.
+- `NEXT_PUBLIC_SENTRY_DSN` is public. `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`,
+  `SENTRY_PROJECT`, and `SENTRY_RELEASE` are build-only values and never use a
+  `NEXT_PUBLIC_` name.
+- Local development stays quiet unless `SENTRY_ENABLE_DEV=true` is explicit. Production
+  events declare environment and release, keep default PII collection off, and upload
+  source maps through `withSentryConfig` using the same release identifier.
+- Convex exceptions use Convex's dashboard-owned Sentry integration with a Node.js
+  project. Do not import the Sentry SDK into Convex functions.
+- A completed setup needs both machine proof of the runtime and source-map blueprint and
+  human confirmation of one non-personal synthetic event plus the Convex integration.
+
+## Analytics rules (replaceable provider, PostHog default)
+
+Details: `.agents/skills/frontend-security/references/analytics-posthog.md`,
+`.agents/skills/convex-structure/references/analytics-plausible.md`, and
+`.agents/skills/convex-structure/references/analytics-umami.md`.
+
+- The product brief selects exactly one provider: PostHog, Plausible, or Umami.
+  `src/lib/analytics.ts` is the only file that imports or calls its browser tracker.
+  Events come from
   the typed `AnalyticsEvent` union — add the name there first, or it does not exist.
-- Traffic is proxied through `/ingest` on our own origin, so **the CSP stays closed**.
+- PostHog traffic is proxied through `/ingest` on our own origin, so **the CSP stays closed**.
   Never add a PostHog origin to `connect-src` to "fix" analytics; fix the rewrite.
 - `phc_` project key is public and lives in `.env.local`. A `phx_` personal key never
   enters this repo — `pnpm health` treats one as CRITICAL.
@@ -588,6 +618,17 @@ Detail: `.agents/skills/frontend-security/references/analytics-posthog.md`.
   Never send tokens, emails, or URL contents as event properties.
 - `autocapture` is off and inputs are masked in replay. Turning either on is a
   `frontend-security` decision, not a convenience.
+- Plausible uses the site-specific script from its current installation screen, not
+  the retired generic script. A self-hosted or proxied script and event endpoint must
+  be same-origin or match an explicit HTTPS origin allowlist.
+- Umami requires an exact website ID, HTTPS host, and non-empty domain allowlist.
+  Missing domains deny tracking; wildcard matches require a real subdomain boundary.
+- Every provider receives the same scrubbed custom-event contract. Prompts,
+  transcripts, secrets, email addresses, unrestricted user content, and full URL
+  query strings never enter analytics. Identity tracking is disabled for Plausible and
+  Umami.
+- Adapter calls are non-blocking. They may report that a tracker accepted a call, but
+  only vendor-dashboard readback proves delivery. A dry run never claims delivery.
 
 ## Deploy rules (Netlify, Vercel, or Cloudflare)
 
